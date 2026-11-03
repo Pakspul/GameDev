@@ -56,15 +56,43 @@ So the controls are familiar to phone players, but **a skill-based, chaotic, sho
 | **Ties to the collection** | New ground | **Packing the van is a puzzle**: a natural bridge from the puzzle games | New ground |
 | **Risk** | Most original, so most design work | Moving furniture with physics can be fiddly on touch | Closest to Overcooked: hard to make feel like our own |
 
+**Chosen: Camper Crew.** A grey-box prototype is playable in [`games/camper-crew/`](../games/camper-crew/) (see *Prototype status* below).
+
 **Recommendation: Camper Crew.** It takes the two games you like and turns the co-op into "one person running a moving vehicle", which is a proven solo formula (one crew member running between stations). The road gives endless generated levels for free, and the inside of a camper is small, which suits a phone screen. Moving Day is a strong second because of the packing puzzle.
 
 ### How we would build it
 
 - **Look and engine:** low-poly 3D from a fixed, slightly tilted top-down camera, so the whole room fits on the screen and you never fight the camera. Per the roadmap, a new game starts on modern three.js rather than r128. Physics: our own simple boxes and gravity first; a small physics library only if we truly need one (it must be offline and phone-home free).
-- **Controls:** landscape. Left thumb: floating thumbstick. Right thumb: **Grab/Drop** and **Use** (hold to throw). Also keyboard and a real gamepad (the browser Gamepad API), so a phone with a Bluetooth controller works too.
+- **Controls:** landscape. Left thumb: floating thumbstick. Right thumb: **Grab/Drop** and **Use** (throw, take the wheel, hold to patch or spray). Also keyboard and a real gamepad (the browser Gamepad API), so a phone with a Bluetooth controller works too.
 - **Levels:** a seed builds the road (or house, or kitchen) from hand-made pieces, then draws the event deck. Same seed, same level: daily challenge without a server.
 - **Battery:** this is the first game that has to render all the time while playing, so pause hard when paused or in the background, and cap the frame rate.
 
 ### First step: is it fun?
 
 Before any art or content, build a **grey-box prototype in a day or two**: one room on a moving floor, thumbstick and two buttons, three stations, three random events, a two-minute timer. Play it on the phone. If running around in grey boxes is already a bit stressful and funny, it is worth building. If not, change the verbs before anything else.
+
+### Prototype status
+
+The grey box is in [`games/camper-crew/`](../games/camper-crew/): plain boxes, system font, no sound. What's in it:
+
+- **Endless generated roads** (`levels.js`): straights and bends, rain zones, potholes and hunger moments from a seed. Road *n* is the same every time; later roads are longer, twistier and wetter.
+- **One room, nine stations:** wheel, passenger, stove, counter, fridge, fuel filler, table, fuel-can crate, luggage shelf, tool counter.
+- **Four kinds of trouble:**
+  - **Bends:** without you at the wheel the camper drifts into the grass, slows down and rumbles.
+  - **Fuel:** runs out after about a minute of driving.
+  - **Hunger:** fridge → stove → passenger. Leave food on the stove too long and it catches fire.
+  - **Rain:** leaks with slippery puddles.
+  - **Potholes:** knock the luggage off the shelf.
+- **Physics:** loose items slide in bends and hop on potholes. You can catch thrown items, and throws aim themselves at the station that wants the item.
+- **Two meters and three stars:** fuel and mood. ★ for reaching camp, ★ for a mood of 50% or more, ★ for 20 s of daylight to spare.
+- **Controls:** touch (floating stick, Grab and Use buttons, multi-touch), keyboard (WASD/arrows, Space, E), gamepad (stick/d-pad, A, B/X, Start). Works in landscape and portrait.
+- **Tech:** built on the vendored three.js r128 like the other games, so it stays buildless. The move to modern three.js + Vite can come with the real version.
+- **Tuning:** all the knobs sit together in the `T` object at the top of `game.js`. `window.CamperDebug` exposes the state and a `step()` function for scripted tests and tuning from the console.
+
+**Questions for the first playtests:**
+
+1. Is running between the wheel and everything else stressful in a *funny* way, or just stressful?
+2. Are the bends too punishing? (`T.offroad`, the assist in `updateDrive`.)
+3. Do throws feel good on touch?
+4. Is three minutes the right length?
+5. Which trouble is the most fun, and which is a chore? Cut or change the chore before adding anything new.

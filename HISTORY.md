@@ -11,15 +11,19 @@ Template: copy this to the top for a new day
 -
 
 **Decided**
+- Camper Crew is the action game to try first. The prototype uses three.js r128 like the other games, so it needs no build step for now.
 -
 
 **Next**
+- Playtest Camper Crew on the phone: is it fun? Tune or cut before adding art.
 -
 -->
 
 ## 2026-11-03
 
 **Done**
+- Wrote a game backlog ([docs/BACKLOG.md](docs/BACKLOG.md)): ten puzzle games, and three concepts for a chaotic single-player action game.
+- Built a grey-box prototype of **Camper Crew**, the chosen action concept. You're the only crew on a self-driving camper: take the wheel in bends, refuel, cook for the passenger, put out fires, patch leaks and re-stow luggage, then reach camp before sunset. Roads are generated from a seed. Touch, keyboard and gamepad all work.
 - Added the first work-in-progress versions of four games, each as a single HTML file: **Jade Pavilion** (mahjong), **Nuts & Bolts** (nut sorting), **Outbound** (arrow puzzle) and **Unscrew** (3D take-apart, in Dutch).
 - Restructured the repository for a mobile app:
   - every game in its own folder under `games/`, split into HTML, CSS and JS (code unchanged)
