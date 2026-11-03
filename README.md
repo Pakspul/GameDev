@@ -13,8 +13,9 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Outbound** | Every arrow leaves the way it points; find the order that clears the board (2D and 3D shapes) |
 | **Unscrew** | Take 3D objects apart screw by screw (in Dutch for now) |
 | **Graphite** | Pencil-and-paper logic puzzles: Sudoku, Takuzu, Star Battle and Calcudoku, endlessly generated, each with exactly one solution |
+| **Camper Crew** *(prototype)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
 
-The first four are built with [three.js](https://threejs.org); Graphite is plain 2D canvas. They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
+Jade Pavilion, Nuts & Bolts, Outbound, Unscrew and Camper Crew are built with [three.js](https://threejs.org); Graphite is plain 2D canvas. They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
 
 ## Quick start
 
@@ -49,6 +50,7 @@ docs/               guides
 - [TODO.md](TODO.md): what to do next, as a checklist
 - [HISTORY.md](HISTORY.md): what was done, per day
 - [docs/ROADMAP.md](docs/ROADMAP.md): tips and ideas for new games
+- [docs/BACKLOG.md](docs/BACKLOG.md): the next games: ten puzzle games and one chaotic action game
 - [docs/NAMING.md](docs/NAMING.md): notes for choosing the final name ("Honest Arcade" is a working title)
 - [PRIVACY.md](PRIVACY.md): privacy policy (short version: we collect nothing)
 
