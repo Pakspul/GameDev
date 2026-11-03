@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Placeholder app icon: four tiles, one per game, in each game's accent colour. -->
+  <rect width="512" height="512" rx="112" fill="#1d1a16"/>
+  <rect x="96"  y="96"  width="148" height="148" rx="34" fill="#dcb760"/>
+  <rect x="268" y="96"  width="148" height="148" rx="34" fill="#ffc93c"/>
+  <rect x="96"  y="268" width="148" height="148" rx="34" fill="#d9581c"/>
+  <rect x="268" y="268" width="148" height="148" rx="34" fill="#ff6a13"/>
+  <path d="M226 206v100l86-50z" fill="#f4efe6"/>
+</svg>

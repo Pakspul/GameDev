@@ -1,0 +1,20 @@
+{
+  "name": "honest-arcade",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ad-free puzzle games built with three.js — playable in the browser, packaged for Android (and later iOS) with Capacitor.",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "npm run build && node scripts/serve.mjs --dist",
+    "test": "npm run build && node tests/smoke.mjs",
+    "fonts": "node scripts/vendor-fonts.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
