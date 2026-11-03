@@ -1,0 +1,57 @@
+# Publishes the browser version to Azure Static Web Apps on every push to main.
+# Every pull request also gets its own temporary preview URL (posted as a comment on the
+# PR); it is removed again when the PR is closed or merged.
+#
+# One-time setup: create the Static Web App in Azure with deployment source "Other",
+# copy its deployment token, and save it in this repository as the Actions secret
+# AZURE_STATIC_WEB_APPS_API_TOKEN (Settings → Secrets and variables → Actions).
+name: Publish to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write # to comment the preview URL on the PR
+
+jobs:
+  deploy:
+    # Pull requests from forks can't read the secret, so they're skipped.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    concurrency:
+      group: azure-swa-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm run build
+      # dist/ is already built above, so Azure only uploads it (no build on their side).
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: dist
+          output_location: ""
+          skip_app_build: true
+          skip_api_build: true
+
+  close-preview:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close
+          app_location: dist
