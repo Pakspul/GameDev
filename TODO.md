@@ -6,6 +6,7 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 
 - [ ] Merge the restructure branch into `main`
 - [ ] Turn on GitHub Pages: *repo Settings → Pages → Source: GitHub Actions*
+- [ ] Azure Static Web Apps: create the app (deployment source *Other*) and save its deployment token as the repo secret `AZURE_STATIC_WEB_APPS_API_TOKEN` (see `.github/workflows/azure-static-web-apps.yml`)
 - [ ] Play every game on the phone (`npm run dev`, or the Pages link) and write any bugs down under **Bugs & notes** below
 - [ ] Choose a licence (GPL-3.0 or MIT, see the roadmap) and add a `LICENSE` file
 

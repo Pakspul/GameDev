@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Assembles the playable web build in dist/ — this folder is what Capacitor copies into
-// the Android (and later iOS) app, and what gets published to GitHub Pages.
+// the Android (and later iOS) app, and what gets published to GitHub Pages / Azure.
 //
 // No bundler needed (yet): the games are plain HTML/CSS/JS, so a build is a clean copy
 // of the files the player needs, leaving out tooling and source-only files.
@@ -16,7 +16,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
 const gi = process.argv.indexOf("--game");
 const ONLY = gi > 0 ? process.argv[gi + 1] : null;
-const INCLUDE = ONLY ? [`games/${ONLY}`, "shared"] : ["index.html", "manifest.webmanifest", "games", "shared"];
+// staticwebapp.config.json is read by Azure Static Web Apps (MIME types, headers); harmless elsewhere.
+const INCLUDE = ONLY ? [`games/${ONLY}`, "shared", "staticwebapp.config.json"]
+  : ["index.html", "manifest.webmanifest", "games", "shared", "staticwebapp.config.json"];
 const SKIP_FILES = new Set(["google-fonts.txt", "README.md", ".DS_Store"]); // source-only files
 if (gi > 0 && !(await readdir(join(ROOT, "games"))).includes(ONLY)) {
   console.error(`Unknown game "${ONLY}". Choose one of: ${(await readdir(join(ROOT, "games"))).join(", ")}`);
