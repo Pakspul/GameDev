@@ -141,7 +141,7 @@ Do this on a real phone, ideally also on a cheap or old one.
 
 Every Android app has a unique ID like `io.github.yourname.arcade`. **It can never change after the first upload to Play.** Use a domain you control, reversed. If you have none, `io.github.<your-github-username>.<appname>` is a common, safe choice.
 
-Also decide on the **app name**. "Honest Arcade" is a working title, defined in `index.html`, `manifest.webmanifest` and `capacitor.config.json`. ⚠️ Google Play does not allow promotional words like *free*, *no ads*, *best* or *#1* in the app **title** or icon. Put the mission in the **description** instead.
+Also decide on the **app name**. "Honest Arcade" is a working title; notes, candidates and the list of files to change are in [NAMING.md](NAMING.md). Unlike the app ID, the store name can still change later, so keep the app ID name-neutral (e.g. `io.github.pakspul.arcade`). ⚠️ Google Play does not allow promotional words like *free*, *no ads*, *best* or *#1* in the app **title** or icon. Put the mission in the **description** instead.
 
 ### Add Capacitor
 

@@ -1,25 +1,15 @@
 # Roadmap, tips and game ideas
 
-## Next steps, in order
+## Next steps
 
-1. **Play it on your phone today.** `npm run dev` and open the printed address on your phone, or enable GitHub Pages ([guide, rung 4](ANDROID.md#rung-4-share-a-link-github-pages)).
-2. **Make three decisions** that are hard to change later:
-   - The **name** of the collection ("Honest Arcade" is a placeholder).
-   - The **app ID** (`io.github.<you>.<name>`, permanent once uploaded).
-   - A **licence**. "Open" is part of the mission, so pick one: **GPL-3.0** keeps derivatives ad-free and open too; **MIT** is the most permissive. Without a licence file the code is legally "all rights reserved", even in a public repo.
-3. **Recruit your 12 testers now.** The 14-day closed test is the slowest step to Google Play, so line up friends and family with Android phones early.
-4. **"Back to arcade" in every game's own menu**, styled per game, calling `Platform.home()`. Needed for iOS, and nice on Android.
-5. **Capacitor + debug build on your own phone** ([guide, part 2](ANDROID.md#part-2-one-time-setup)).
-6. **Language:** Unscrew is Dutch, the others English. Pick one for the first release, or add a small `en`/`nl` strings file per game.
-7. **Play Console account → internal test → closed test → production.**
-8. Later: shared `Platform.storage` / haptics in all games, then the iOS port.
+The concrete, tickable list lives in **[TODO.md](../TODO.md)**, and what has been done per day is in **[HISTORY.md](../HISTORY.md)**. In short: play it on your phone, make the few permanent decisions (app ID, licence; the name can wait, see [NAMING.md](NAMING.md)), recruit 12 testers early, then follow the [Android guide](ANDROID.md).
 
 ## Tips
 
 **Process**
 - **Run `npm test` before every commit.** It takes seconds, and GitHub runs it again on every push. The screenshots are a quick visual diff between versions.
 - **Small commits, one idea each.** Git is your undo button across days, not just minutes.
-- **Keep a `CHANGELOG.md`.** Play Console asks "what's new" on every release; you'll already have the answer.
+- **Write a few lines in [HISTORY.md](../HISTORY.md) at the end of each session.** Play Console asks "what's new" on every release, and you'll already have the answer.
 - **Back up the signing key** the day you create it.
 - **Bump the save version on purpose.** Each game stores progress under a versioned key (`unscrew.v2`, `jade-pavilion-v1`…). If you change level generation, migrate or bump deliberately; never break players' progress by accident.
 

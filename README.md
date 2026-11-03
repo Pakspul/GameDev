@@ -1,5 +1,7 @@
 # Honest Arcade
 
+> *Working title: the final name is still open, see [docs/NAMING.md](docs/NAMING.md).*
+
 **Puzzle games that are actually free to play. No ads, no tracking, no pay-to-win. Ever.**
 
 Most "free" mobile games make you watch an ad after every level, until you spend more time on ads than on playing. These games are made the other way round: free because they are free. Read the full [mission](MISSION.md).
@@ -43,7 +45,10 @@ docs/               guides
 - [MISSION.md](MISSION.md): the promise, and how to check every change against it
 - [docs/ANDROID.md](docs/ANDROID.md): from browser to Google Play, including how to test on your phone; iOS notes
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the code is organised and how to improve it safely
-- [docs/ROADMAP.md](docs/ROADMAP.md): next steps, tips and ideas for new games
+- [TODO.md](TODO.md): what to do next, as a checklist
+- [HISTORY.md](HISTORY.md): what was done, per day
+- [docs/ROADMAP.md](docs/ROADMAP.md): tips and ideas for new games
+- [docs/NAMING.md](docs/NAMING.md): notes for choosing the final name ("Honest Arcade" is a working title)
 - [PRIVACY.md](PRIVACY.md): privacy policy (short version: we collect nothing)
 
 ## Credits
