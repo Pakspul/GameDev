@@ -13,7 +13,7 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Outbound** | Every arrow leaves the way it points; find the order that clears the board (2D and 3D shapes) |
 | **Unscrew** | Take 3D objects apart screw by screw |
 | **Graphite** | Pencil-and-paper logic puzzles: Sudoku, Takuzu, Star Battle and Calcudoku, endlessly generated, each with exactly one solution |
-| **Camper Crew** *(prototype)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
+| **Camper Crew** *(prototype, dev only)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
 
 Jade Pavilion, Nuts & Bolts, Outbound, Unscrew and Camper Crew are built with [three.js](https://threejs.org); Graphite is plain 2D canvas. They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
 
@@ -30,6 +30,8 @@ npm run build      # assemble dist/ (what goes into the app)
 ```
 
 No build step is needed while developing: edit a file and refresh.
+
+Experimental games (listed in `EXPERIMENTAL` in [scripts/build.mjs](scripts/build.mjs), currently Camper Crew) are playable in `npm run dev` but left out of `dist/`, so they don't reach the website or the app. `npm run build -- --experimental` includes them; `npm test` does that so they stay tested.
 
 ## Repository layout
 

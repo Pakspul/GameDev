@@ -8,7 +8,7 @@
     "dev": "node scripts/serve.mjs",
     "build": "node scripts/build.mjs",
     "preview": "npm run build && node scripts/serve.mjs --dist",
-    "test": "node tests/puzzles.mjs && npm run build && node tests/smoke.mjs",
+    "test": "node tests/puzzles.mjs && npm run build -- --experimental && node tests/smoke.mjs",
     "fonts": "node scripts/vendor-fonts.mjs"
   },
   "devDependencies": {
