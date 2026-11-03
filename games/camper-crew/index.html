@@ -9,24 +9,24 @@
 </head>
 <body class="state-menu">
 
-<canvas id="scene" aria-label="The camper, seen from above"></canvas>
+<canvas id="scene" data-i18n-attr="aria-label:scene"></canvas>
 
 <!-- World-anchored labels (station names, hazards); positioned every frame -->
 <div id="labels" aria-hidden="true"></div>
 
 <!-- Heads-up display while driving -->
 <header id="hud">
-  <button type="button" class="hud-btn" id="pauseBtn" aria-label="Pause">
+  <button type="button" class="hud-btn" id="pauseBtn" data-i18n-attr="aria-label:pause">
     <svg width="18" height="18" viewBox="0 0 18 18"><rect x="4" y="3" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="10.5" y="3" width="3.5" height="12" rx="1" fill="currentColor"/></svg>
   </button>
   <div class="trip">
     <div class="track" id="track"><div class="marker" id="marker"></div><div class="flag"></div></div>
     <div class="meters">
-      <div class="meter fuel"><span>Fuel</span><i><b id="fuelBar"></b></i></div>
-      <div class="meter mood"><span>Mood</span><i><b id="moodBar"></b></i></div>
+      <div class="meter fuel"><span data-i18n="fuel"></span><i><b id="fuelBar"></b></i></div>
+      <div class="meter mood"><span data-i18n="mood"></span><i><b id="moodBar"></b></i></div>
     </div>
   </div>
-  <div class="sun" id="sun" title="Time until sunset">0:00</div>
+  <div class="sun" id="sun" data-i18n-attr="title:sunTip">0:00</div>
 </header>
 <div id="alerts" aria-live="polite"></div>
 
@@ -34,65 +34,67 @@
 <div id="controls">
   <div id="stickZone"></div>
   <div id="stick"><div id="knob"></div></div>
-  <button type="button" class="act" id="btnUse"><span>Use</span></button>
-  <button type="button" class="act" id="btnGrab"><span>Grab</span></button>
+  <button type="button" class="act" id="btnUse"><span data-i18n="btn.use"></span></button>
+  <button type="button" class="act" id="btnGrab"><span data-i18n="btn.grab"></span></button>
 </div>
 
 <!-- Start screen -->
 <section id="menu" class="overlay" aria-label="Camper Crew">
   <div class="card">
     <div class="topline">
-      <button type="button" class="ghost" id="arcadeBtn">&larr; Arcade</button>
-      <span class="tag">Grey-box prototype</span>
+      <button type="button" class="ghost" id="arcadeBtn" data-i18n="arcade"></button>
+      <span class="tag" data-i18n="prototype"></span>
     </div>
     <h1>Camper Crew</h1>
-    <p class="lead">The camper drives itself. Mostly. You are the only crew on board: get to the campsite before the sun sets.</p>
+    <p class="lead" data-i18n="lead"></p>
     <div class="road-pick">
-      <button type="button" class="round" id="prevRoad" aria-label="Previous road">&lsaquo;</button>
-      <div class="road-name"><strong id="roadName">Road 1</strong><span id="roadStars"></span></div>
-      <button type="button" class="round" id="nextRoad" aria-label="Next road">&rsaquo;</button>
+      <button type="button" class="round" id="prevRoad" data-i18n-attr="aria-label:prevRoad">&lsaquo;</button>
+      <div class="road-name"><strong id="roadName"></strong><span id="roadStars"></span></div>
+      <button type="button" class="round" id="nextRoad" data-i18n-attr="aria-label:nextRoad">&rsaquo;</button>
     </div>
-    <button type="button" class="primary" id="playBtn">Drive</button>
+    <button type="button" class="primary" id="playBtn" data-i18n="drive"></button>
     <details>
-      <summary>How to play</summary>
+      <summary data-i18n="how"></summary>
       <ul class="how">
-        <li><b>Move</b> with the stick (left thumb), WASD/arrows or a gamepad.</li>
-        <li><b>Grab</b> picks up and puts down (Space, gamepad A).</li>
-        <li><b>Use</b> throws, takes the wheel, patches and sprays (E, gamepad B/X). Throws aim themselves at the right spot.</li>
-        <li><b>Bends:</b> sit at the wheel or the camper drifts off the road.</li>
-        <li><b>Fuel:</b> take a can from the crate and throw it into the fuel filler.</li>
-        <li><b>Hungry passenger:</b> fridge &rarr; stove &rarr; passenger. Don't let it burn.</li>
-        <li><b>Rain</b> makes the roof leak: patch it with the kit. Puddles are slippery.</li>
-        <li><b>Potholes</b> knock luggage off the shelf. Put it back.</li>
+        <li data-i18n-html="how.1"></li>
+        <li data-i18n-html="how.2"></li>
+        <li data-i18n-html="how.3"></li>
+        <li data-i18n-html="how.4"></li>
+        <li data-i18n-html="how.5"></li>
+        <li data-i18n-html="how.6"></li>
+        <li data-i18n-html="how.7"></li>
+        <li data-i18n-html="how.8"></li>
       </ul>
-      <p class="small">Stars: &#9733; reach the campsite, &#9733; with the mood at half or more, &#9733; with 20 seconds of daylight to spare.</p>
+      <p class="small" data-i18n-html="how.stars"></p>
     </details>
   </div>
 </section>
 
 <!-- Pause -->
-<section id="pause" class="overlay" aria-label="Paused" hidden>
+<section id="pause" class="overlay" data-i18n-attr="aria-label:paused" hidden>
   <div class="card narrow">
-    <h2>Paused</h2>
-    <button type="button" class="primary" id="resumeBtn">Resume</button>
-    <button type="button" class="secondary" id="restartBtn">Restart road</button>
-    <button type="button" class="secondary" id="menuBtn">Menu</button>
+    <h2 data-i18n="paused"></h2>
+    <button type="button" class="primary" id="resumeBtn" data-i18n="resume"></button>
+    <button type="button" class="secondary" id="restartBtn" data-i18n="restartRoad"></button>
+    <button type="button" class="secondary" id="menuBtn" data-i18n="menu"></button>
   </div>
 </section>
 
 <!-- Result -->
-<section id="result" class="overlay" aria-label="Result" hidden>
+<section id="result" class="overlay" data-i18n-attr="aria-label:result" hidden>
   <div class="card narrow">
-    <h2 id="resultTitle">Arrived!</h2>
+    <h2 id="resultTitle"></h2>
     <div class="stars" id="resultStars"></div>
     <p id="resultText"></p>
-    <button type="button" class="primary" id="nextBtn">Next road</button>
-    <button type="button" class="secondary" id="retryBtn">Try again</button>
-    <button type="button" class="secondary" id="resultMenuBtn">Menu</button>
+    <button type="button" class="primary" id="nextBtn" data-i18n="nextRoad"></button>
+    <button type="button" class="secondary" id="retryBtn" data-i18n="tryAgain"></button>
+    <button type="button" class="secondary" id="resultMenuBtn" data-i18n="menu"></button>
   </div>
 </section>
 
 <script src="../../shared/js/platform.js"></script>
+<script src="../../shared/js/i18n.js"></script>
+<script src="strings.js"></script>
 <script src="../../shared/vendor/three/three.min.js"></script>
 <script src="levels.js"></script>
 <script src="game.js"></script>

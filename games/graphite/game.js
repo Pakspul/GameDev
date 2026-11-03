@@ -4,6 +4,7 @@
 (function () {
 "use strict";
 const $ = (s) => document.querySelector(s);
+const _t = I18n.t;
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 /* ---------- icons ---------- */
@@ -34,77 +35,23 @@ function fillIcons(root) {
 
 /* ---------- puzzle types ---------- */
 const TIERS = ["easy", "medium", "hard", "expert"];
-const TIER_LABEL = { easy: "Easy", medium: "Medium", hard: "Hard", expert: "Expert" };
+const TIER_LABEL = Object.fromEntries(TIERS.map((t) => [t, _t("tier." + t)]));
 const KINDS = {
-  sudoku: {
-    name: "Sudoku", gen: window.GraphiteSudoku, input: "digits",
-    desc: "Put 1 to 9 in every row, column and 3×3 box.",
-    tiers: {
-      easy: "Plenty of clues. Spotting the one place a number can go is all you need.",
-      medium: "Fewer clues. Look for a number that's stuck on one line inside a box.",
-      hard: "Needs pairs and triples: cells that share the same few candidates.",
-      expert: "X-wings and XY-wings. Pencil marks will help.",
-    },
-    rules: [
-      "Every row, every column and every 3×3 box holds the numbers 1 to 9, each exactly once.",
-      "Tap a cell, then a number. Tap the same number again to clear it.",
-      "Turn on <b>Notes</b> to pencil in the numbers a cell could still be. Placing a number removes it from the notes around it.",
-      "Every puzzle can be solved by logic alone. You never have to guess.",
-    ],
-  },
-  takuzu: {
-    name: "Takuzu", gen: window.GraphiteTakuzu, input: "cycle",
-    desc: "Fill the grid with suns and moons.",
-    tiers: {
-      easy: "6 × 6. Pairs, sandwiches and counting.",
-      medium: "8 × 8. The same tricks on a bigger board.",
-      hard: "10 × 10. Sometimes you must check every way to finish a line.",
-      expert: "12 × 12, sparse and demanding.",
-    },
-    rules: [
-      "Every row and every column has as many suns as moons.",
-      "Never three of the same next to each other in a row or column.",
-      "No two rows are the same, and no two columns are the same.",
-      "Tap an empty cell for a sun, again for a moon, and once more to clear it. Printed cells can't be changed.",
-      "Also known as Binairo or binary puzzle. Every puzzle can be solved by logic alone.",
-    ],
-  },
-  stars: {
-    name: "Star Battle", gen: window.GraphiteStars, input: "stars",
-    desc: "Hide stars in the regions. They may never touch.",
-    tiers: {
-      easy: "6 × 6, one star in every row, column and region.",
-      medium: "8 × 8, one star each.",
-      hard: "9 × 9, one star each.",
-      expert: "10 × 10 with two stars in every row, column and region.",
-    },
-    rules: [
-      "Every row, every column and every coloured region holds the same number of stars: one, or two on Expert.",
-      "Stars never touch each other, not even at a corner.",
-      "Tap once for a dot (\"no star here\"), twice for a star, three times to clear. Drag from a dot to dot many cells at once.",
-      "Turn on <b>Auto-dots</b> to mark the cells around every star you place.",
-      "Every puzzle has exactly one solution.",
-    ],
-  },
-  calcudoku: {
-    name: "Calcudoku", gen: window.GraphiteCalcudoku, input: "digits",
-    desc: "Fill the grid; every cage must make its number.",
-    tiers: {
-      easy: "4 × 4. All four operations, small cages.",
-      medium: "5 × 5.",
-      hard: "6 × 6 with bigger cages.",
-      expert: "7 × 7, and no free numbers.",
-    },
-    rules: [
-      "On a grid of size n, put 1 to n in every row and column, each exactly once.",
-      "The numbers in each outlined cage combine to the small target number in its corner, using the operation shown. A cage with only a number is that number.",
-      "For − and ÷ take the bigger number first: \"2÷\" could be 3 and 6. Numbers may repeat inside a cage, as long as they're not in the same row or column.",
-      "Tap a cell, then a number. Notes work just like in Sudoku.",
-      "Every puzzle has exactly one solution.",
-    ],
-  },
+  sudoku: { gen: window.GraphiteSudoku, input: "digits" },
+  takuzu: { gen: window.GraphiteTakuzu, input: "cycle" },
+  stars: { gen: window.GraphiteStars, input: "stars" },
+  calcudoku: { gen: window.GraphiteCalcudoku, input: "digits" },
 };
 const KIND_ORDER = ["sudoku", "takuzu", "stars", "calcudoku"];
+// Names, descriptions and rules come from strings.js: "<kind>.name", "<kind>.tier.<tier>", "<kind>.rule.1", ...
+for (const k of KIND_ORDER) {
+  const K = KINDS[k];
+  K.name = _t(k + ".name");
+  K.desc = _t(k + ".desc");
+  K.tiers = Object.fromEntries(TIERS.map((t) => [t, _t(k + ".tier." + t)]));
+  K.rules = [];
+  for (let i = 1; I18n.has(k + ".rule." + i); i++) K.rules.push(_t(k + ".rule." + i));
+}
 // Daily difficulty by weekday (0 = Sunday): gentle at the start of the week, a treat on Saturday.
 const DAILY_TIER = ["hard", "easy", "medium", "medium", "hard", "medium", "expert"];
 const PAGE = 30;
@@ -270,8 +217,8 @@ async function startGame(opts) {
   colors = null;
   G = null;
   showView("game");
-  $("#gPill").textContent = date ? "Daily · " + TIER_LABEL[tier] : KINDS[kind].name + " · " + TIER_LABEL[tier];
-  $("#gTitle").textContent = date ? KINDS[kind].name : "Level " + level;
+  $("#gPill").textContent = date ? _t("daily", { tier: TIER_LABEL[tier] }) : KINDS[kind].name + " · " + TIER_LABEL[tier];
+  $("#gTitle").textContent = date ? KINDS[kind].name : _t("level", { n: level });
   $("#pad").innerHTML = ""; $("#tools").innerHTML = ""; $("#timer").textContent = "";
   const canvas = $("#board");
   canvas.style.visibility = "hidden";
@@ -283,7 +230,7 @@ async function startGame(opts) {
     $("#loading").hidden = false;
     let p;
     try { p = await generate(kind, tier, date ? "daily:" + date : tier + ":" + level); }
-    catch (e) { console.warn(e); $("#loading").textContent = "Something went wrong making this puzzle."; return; }
+    catch (e) { console.warn(e); $("#loading").textContent = _t("genFailed"); return; }
     if (token !== loadToken) return;
     state = { key, p, cells: initialCells(p), notes: new Array(p.n * p.n).fill(0), hints: 0, elapsed: 0 };
   }
@@ -844,18 +791,18 @@ function buildControls() {
     let h = "";
     for (let d = 1; d <= n; d++) h += `<button type="button" class="key" data-d="${d}" aria-label="${d}">${d}<small></small></button>`;
     pad.innerHTML = h;
-    tools.innerHTML = tool("tUndo", "undo", "Undo") + tool("tErase", "erase", "Erase") + tool("tNotes", "pencil", "Notes") + tool("tHint", "bulb", "Hint");
+    tools.innerHTML = tool("tUndo", "undo", _t("tool.undo")) + tool("tErase", "erase", _t("tool.erase")) + tool("tNotes", "pencil", _t("tool.notes")) + tool("tHint", "bulb", _t("tool.hint"));
     pad.querySelectorAll(".key").forEach((b) => b.addEventListener("click", () => inputDigit(+b.dataset.d)));
     $("#tErase").addEventListener("click", erase);
     $("#tNotes").addEventListener("click", toggleNotes);
   } else if (k === "takuzu") {
     pad.style.gridTemplateColumns = "1fr";
-    pad.innerHTML = `<div class="legend">Tap: <i style="background:${readColors().sun}"></i> sun, then <i style="background:${readColors().moon}"></i> moon, then empty</div>`;
-    tools.innerHTML = tool("tUndo", "undo", "Undo") + tool("tHint", "bulb", "Hint");
+    pad.innerHTML = `<div class="legend">${_t("legend.takuzu", { sun: `<i style="background:${readColors().sun}"></i>`, moon: `<i style="background:${readColors().moon}"></i>` })}</div>`;
+    tools.innerHTML = tool("tUndo", "undo", _t("tool.undo")) + tool("tHint", "bulb", _t("tool.hint"));
   } else {
     pad.style.gridTemplateColumns = "1fr";
-    pad.innerHTML = `<div class="legend">${G.p.k} star${G.p.k > 1 ? "s" : ""} per row, column and region. Tap once for a dot, twice for a star.</div>`;
-    tools.innerHTML = tool("tUndo", "undo", "Undo") + tool("tAuto", "dots", "Auto-dots") + tool("tHint", "bulb", "Hint");
+    pad.innerHTML = `<div class="legend">${_t("legend.stars", { k: G.p.k })}</div>`;
+    tools.innerHTML = tool("tUndo", "undo", _t("tool.undo")) + tool("tAuto", "dots", _t("tool.autodot")) + tool("tHint", "bulb", _t("tool.hint"));
     $("#tAuto").addEventListener("click", () => { store.settings.autodot = !store.settings.autodot; save(); updateControls(); syncSettings(); });
   }
   $("#tUndo").addEventListener("click", undo);
@@ -907,8 +854,8 @@ function hint() {
     G.hints++;
     G.sel = i;
     G.flash = { cell: i, until: performance.now() + 1400, bad: true };
-    const what = p.kind === "stars" ? (G.cells[i] === 2 ? "That star" : "That dot") : p.kind === "takuzu" ? "That symbol" : "That " + G.cells[i];
-    toast(what + " didn't fit the solution, so it's been cleared. (Undo brings it back.)", 4500);
+    const what = p.kind === "stars" ? (G.cells[i] === 2 ? "wrong.star" : "wrong.dot") : p.kind === "takuzu" ? "wrong.symbol" : "wrong.digit";
+    toast(_t(what, { v: G.cells[i] }), 4500);
     const act = begin();
     setCell(act, i, p.kind === "takuzu" ? -1 : 0, 0);
     commit(act, "erase");
@@ -919,7 +866,7 @@ function hint() {
   let h = null;
   if (p.kind === "sudoku") {
     const r = GraphiteSudoku.hint(G.cells);
-    if (r) h = { cell: r.cell, value: r.value, text: r.text };
+    if (r) h = { cell: r.cell, value: r.value, text: sudokuHintText(r) };
   } else if (p.kind === "takuzu") {
     const r = GraphiteTakuzu.hint(G.cells, n);
     if (r) h = { cell: r.cell, value: r.value, text: takuzuHintText(r, n) };
@@ -931,7 +878,7 @@ function hint() {
       const c = res.domains ? GraphiteCommon.popcount(res.domains[i]) : 9;
       if (c < bestN) { best = i; bestN = c; }
     }
-    if (best >= 0) h = { cell: best, value: p.solution[best], text: bestN === 1 ? `Only ${p.solution[best]} fits here: check the cage and the numbers already in this row and column.` : `This cell is ${p.solution[best]}.` };
+    if (best >= 0) h = { cell: best, value: p.solution[best], text: _t(bestN === 1 ? "hint.calcuOnly" : "hint.calcuIs", { v: p.solution[best] }) };
   } else {
     // the missing star in the row with the fewest open cells
     let best = -1, bestOpen = 99;
@@ -942,12 +889,12 @@ function hint() {
       for (let c = 0; c < n; c++) if (G.cells[r * n + c] === 0) open++;
       if (open < bestOpen) { best = i; bestOpen = open; }
     }
-    if (best >= 0) h = { cell: best, value: 2, text: "A star goes here." };
+    if (best >= 0) h = { cell: best, value: 2, text: _t("hint.star") };
   }
   if (!h) {
     for (let i = 0; i < n * n; i++) {
       const want = p.kind === "stars" ? (p.solution[i] ? 2 : null) : p.solution[i];
-      if (want !== null && G.cells[i] !== want) { h = { cell: i, value: want, text: "This one is filled in for you." }; break; }
+      if (want !== null && G.cells[i] !== want) { h = { cell: i, value: want, text: _t("hint.filled") }; break; }
     }
   }
   if (!h) return;
@@ -962,14 +909,18 @@ function hint() {
   commit(act, "tick");
   kick();
 }
+function sudokuHintText(r) {
+  const v = { v: r.value, unit: _t("unit." + r.unit) };
+  if (r.how === "hidden") return _t(r.after ? "hint.hiddenAfter" : "hint.hidden", v);
+  return _t(r.after ? "hint.nakedAfter" : "hint.naked", v);
+}
 function takuzuHintText(r, n) {
   const name = (v) => (v === 0 ? "sun" : "moon");
-  const other = name(1 - r.value), me = name(r.value);
-  const line = r.line < n ? "row" : "column";
-  if (r.why === "pair") return `Two ${other}s side by side: the cell next to them must be a ${me}.`;
-  if (r.why === "sandwich") return `This cell sits between two ${other}s, so it must be a ${me}.`;
-  if (r.why === "count") return `This ${line} already has all its ${other}s, so the rest are ${me}s.`;
-  return `Every way to finish this ${line} puts a ${me} here (remember: no three in a row, and no two lines alike).`;
+  const vars = {
+    me: _t("sym." + name(r.value)), mes: _t("syms." + name(r.value)), others: _t("syms." + name(1 - r.value)),
+    line: _t(r.line < n ? "unit.row" : "unit.column"),
+  };
+  return _t(r.why === "pair" || r.why === "sandwich" || r.why === "count" ? "hint." + r.why : "hint.lines", vars);
 }
 
 /* ---------- winning ---------- */
@@ -1010,18 +961,17 @@ function checkWin() {
 function showWin(stars, time, best, newBest) {
   if (!G) return;
   const kind = KINDS[G.kind].name;
-  $("#ovPill").textContent = G.date ? "Daily · " + kind : kind + " · " + TIER_LABEL[G.tier];
-  $("#ovTitle").textContent = ["", "Solved", "Nicely done", "Clean solve"][stars];
+  $("#ovPill").textContent = G.date ? _t("daily", { tier: kind }) : kind + " · " + TIER_LABEL[G.tier];
+  $("#ovTitle").textContent = _t("win." + stars);
   $("#ovStars").innerHTML = [1, 2, 3].map((k) => ICON.star.replace("<svg", `<svg class="${k <= stars ? "on" : ""}"`)).join("");
-  const hints = G.hints === 0 ? "no hints" : G.hints === 1 ? "1 hint" : G.hints + " hints";
-  let text = `${G.date ? "Today's puzzle" : "Level " + G.level} in ${fmtTime(time)}, ${hints}.`;
-  if (!G.date && newBest && Object.keys(prog(G.kind, G.tier).done).length > 1) text += " Your fastest " + TIER_LABEL[G.tier] + " yet!";
-  else if (!G.date && best && !newBest) text += ` Best: ${fmtTime(best)}.`;
+  let text = _t("win.text", { what: G.date ? _t("win.todays") : _t("level", { n: G.level }), time: fmtTime(time), hints: _t("hints", { n: G.hints }) });
+  if (!G.date && newBest && Object.keys(prog(G.kind, G.tier).done).length > 1) text += _t("win.fastest", { tier: TIER_LABEL[G.tier] });
+  else if (!G.date && best && !newBest) text += _t("win.best", { t: fmtTime(best) });
   if (G.date) {
     const s = streak();
     const left = KIND_ORDER.filter((k) => !(store.daily[G.date] || {})[k]).length;
-    text += left ? ` ${left} more daily puzzle${left > 1 ? "s" : ""} waiting today.` : " That's all four dailies for today!";
-    if (s > 1) text += ` ${s} days in a row.`;
+    text += left ? _t("win.dailiesLeft", { n: left }) : _t("win.dailiesDone");
+    if (s > 1) text += _t("win.streak", { n: s });
   }
   $("#ovText").textContent = text;
   const acts = $("#ovActions");
@@ -1033,11 +983,11 @@ function showWin(stars, time, best, newBest) {
     acts.appendChild(b);
   };
   if (G.date) {
-    btn("Back", true, () => { closeOverlay(); goHome(); });
+    btn(_t("back"), true, () => { closeOverlay(); goHome(); });
   } else {
     const kind = G.kind, tier = G.tier, next = G.level + 1;
-    btn("Levels", false, () => { closeOverlay(); goHome(); });
-    btn("Next level", true, () => { closeOverlay(); startGame({ kind, tier, level: next }); });
+    btn(_t("levels"), false, () => { closeOverlay(); goHome(); });
+    btn(_t("nextLevel"), true, () => { closeOverlay(); startGame({ kind, tier, level: next }); });
   }
   $("#overlay").hidden = false;
   acts.querySelector(".primary").focus();
@@ -1047,9 +997,9 @@ function closeOverlay() { $("#overlay").hidden = true; }
 function confirmRestart() {
   if (!G || G.done) return;
   $("#ovPill").textContent = KINDS[G.kind].name;
-  $("#ovTitle").textContent = "Start over?";
+  $("#ovTitle").textContent = _t("restart.title");
   $("#ovStars").innerHTML = "";
-  $("#ovText").textContent = "This clears everything you've filled in. Your time keeps running and hints still count.";
+  $("#ovText").textContent = _t("restart.body");
   const acts = $("#ovActions");
   acts.innerHTML = "";
   const mk = (label, primary, fn) => {
@@ -1057,8 +1007,8 @@ function confirmRestart() {
     b.type = "button"; b.className = "btn2" + (primary ? " primary" : ""); b.textContent = label;
     b.addEventListener("click", fn); acts.appendChild(b);
   };
-  mk("Cancel", false, closeOverlay);
-  mk("Start over", true, () => {
+  mk(_t("cancel"), false, closeOverlay);
+  mk(_t("restart.ok"), true, () => {
     closeOverlay();
     const act = begin();
     const init = initialCells(G.p);
@@ -1102,14 +1052,14 @@ function renderHome() {
   const date = today(), dt = dailyTier(date), rec = store.daily[date] || {};
   $("#todayRow").innerHTML = KIND_ORDER.map((k) => {
     const done = !!rec[k], wip = store.current[k + ":daily"] && store.current[k + ":daily"].key === keyOf(k, dt, 0, date);
-    return `<button type="button" class="day${done ? " done" : ""}" data-kind="${k}" style="--k:var(--c-${k})" aria-label="Daily ${KINDS[k].name}, ${TIER_LABEL[dt]}${done ? ", solved" : ""}">
-      <span class="ico">${ICON[k]}</span><b>${KINDS[k].name}</b><small>${done ? "Solved" : wip ? "In progress" : TIER_LABEL[dt]}</small>
+    return `<button type="button" class="day${done ? " done" : ""}" data-kind="${k}" style="--k:var(--c-${k})" aria-label="${_t(done ? "day.ariaSolved" : "day.aria", { kind: KINDS[k].name, tier: TIER_LABEL[dt] })}">
+      <span class="ico">${ICON[k]}</span><b>${KINDS[k].name}</b><small>${done ? _t("day.solved") : wip ? _t("day.wip") : TIER_LABEL[dt]}</small>
       ${done ? `<span class="check">${ICON.check}</span>` : ""}</button>`;
   }).join("");
   $("#todayRow").querySelectorAll(".day").forEach((b) => b.addEventListener("click", () => startGame({ kind: b.dataset.kind, tier: dt, date })));
   const s = streak();
   const doneToday = KIND_ORDER.filter((k) => rec[k]).length;
-  $("#streak").textContent = s > 1 ? `${s} days in a row` : doneToday ? `${doneToday} of 4 today` : "New puzzles every day";
+  $("#streak").textContent = s > 1 ? _t("streak", { n: s }) : doneToday ? _t("doneToday", { n: doneToday }) : _t("newEveryDay");
 
   // kinds
   $("#kinds").innerHTML = KIND_ORDER.map((k) => `<button type="button" class="kind" role="tab" data-kind="${k}" style="--k:var(--c-${k})" aria-selected="${k === kind}" aria-controls="panel"><span class="ico">${ICON[k]}</span>${KINDS[k].name}</button>`).join("");
@@ -1121,12 +1071,12 @@ function renderHome() {
   $("#tiers").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { store.ui.tier[kind] = b.dataset.tier; save(); renderHome(); }));
 
   const pr = prog(kind, tier), solvedCount = Object.keys(pr.done).length;
-  $("#tierMeta").textContent = K.tiers[tier] + (solvedCount ? ` ${solvedCount} solved${pr.best ? ", best " + fmtTime(pr.best) : ""}.` : "");
+  $("#tierMeta").textContent = K.tiers[tier] + (solvedCount ? _t("tier.solved", { n: solvedCount }) + (pr.best ? _t("tier.best", { t: fmtTime(pr.best) }) : "") + "." : "");
   const cur = store.current[kind + ":" + tier];
   const curLevel = cur ? +cur.key.split(":")[2] : 0;
   const next = nextLevel(kind, tier);
   const playLevel = curLevel || next;
-  $("#playBtn").innerHTML = `<span class="ico">${ICON.play}</span>${curLevel ? "Continue" : "Play"} level ${playLevel}`;
+  $("#playBtn").innerHTML = `<span class="ico">${ICON.play}</span>${_t(curLevel ? "play.continue" : "play.play", { n: playLevel })}`;
   $("#playBtn").onclick = () => startGame({ kind, tier, level: playLevel });
 
   // level grid
@@ -1139,7 +1089,7 @@ function renderHome() {
     const st = pr.done[l] || 0;
     const cls = ["lvl", st ? "done" : "", l === next ? "next" : "", l === curLevel ? "wip" : ""].join(" ");
     const pips = st ? [1, 2, 3].map((k) => ICON.star.replace("<svg", `<svg class="${k <= st ? "on" : ""}"`)).join("") : "";
-    h += `<button type="button" class="${cls}" data-l="${l}" aria-label="Level ${l}${st ? ", " + st + " stars" : ""}">${l}<small>${pips}</small></button>`;
+    h += `<button type="button" class="${cls}" data-l="${l}" aria-label="${st ? _t("lvl.ariaStars", { n: l, s: st }) : _t("lvl.aria", { n: l })}">${l}<small>${pips}</small></button>`;
   }
   $("#levelGrid").innerHTML = h;
   $("#levelGrid").querySelectorAll(".lvl").forEach((b) => b.addEventListener("click", () => startGame({ kind, tier, level: +b.dataset.l })));
@@ -1166,6 +1116,14 @@ document.querySelectorAll("[data-setting]").forEach((b) => b.addEventListener("c
 document.querySelectorAll("[data-theme-opt]").forEach((b) => b.addEventListener("click", () => {
   store.settings.theme = b.dataset.themeOpt; save(); syncSettings(); applyTheme();
 }));
+// Language is shared with the hub and every other game; switching reloads the page.
+I18n.languages.forEach((l) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.setAttribute("role", "radio"); b.lang = l.code; b.textContent = l.name;
+  b.setAttribute("aria-checked", String(l.code === I18n.lang));
+  b.addEventListener("click", () => I18n.set(l.code));
+  $("#langSeg").appendChild(b);
+});
 $("#settingsBtn").addEventListener("click", () => { syncSettings(); $("#settings").hidden = false; });
 $("#settingsClose").addEventListener("click", () => { $("#settings").hidden = true; });
 $("#settings").addEventListener("click", (e) => { if (e.target.id === "settings") $("#settings").hidden = true; });

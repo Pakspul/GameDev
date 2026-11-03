@@ -2,10 +2,13 @@
 "use strict";
 const G = OutboundGen, G3 = OutboundGen3D, GS = OutboundShapes;
 const $ = (s) => document.querySelector(s);
+const _t = I18n.t;
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const ALL_TIERS = Object.assign({}, G.TIERS, G3.TIERS, GS.TIERS);
 const kindOf = (t) => (t.indexOf("c-") === 0 ? "box" : t.indexOf("s-") === 0 ? "shape" : "flat");
-const MODE_LABEL = { flat: "", box: " · Boxes", shape: " · Shapes" };
+// "c-hard" and "s-hard" share the "hard" name; the generators never read .name.
+for (const t in ALL_TIERS) ALL_TIERS[t].name = _t("tier." + t.replace(/^[cs]-/, ""));
+const MODE_LABEL = { flat: "", box: _t("modeLabel.box"), shape: _t("modeLabel.shape") };
 
 const ICON = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
@@ -35,23 +38,23 @@ const ICON = {
 };
 
 const TIER_INFO = {
-  easy:   { pips: 1, desc: "Short arrows on small boards. Learn to read the lanes." },
-  medium: { pips: 2, desc: "Longer arrows and more of them crossing each other's path." },
-  hard:   { pips: 3, desc: "Long chains where one arrow holds up a dozen others." },
-  extra:  { pips: 4, desc: "Packed boards up to 34 by 34 with arrows that wind everywhere." },
-  insane: { pips: 5, desc: "40 by 40, arrows up to 60 cells long, very few free at any time." },
-  master: { pips: 6, desc: "Up to 48 by 48, tuned for long chains and arrows whose blocker sits far down the lane." },
-  grandmaster: { pips: 7, desc: "Up to 64 by 64 with 300+ arrows. Zoom in and trace every lane." },
-  "c-easy":   { pips: 1, desc: "Small cubes and boxes. Short arrows that wrap over an edge now and then." },
-  "c-medium": { pips: 2, desc: "Cubes, towers, slabs and bricks with longer arrows." },
-  "c-hard":   { pips: 3, desc: "Arrows wrap around corners and block lanes on faces you can't see." },
-  "c-extra":  { pips: 4, desc: "Big boxes and arrows up to 34 cells long. Turn it over often." },
-  "c-insane": { pips: 5, desc: "13-cell cubes with arrows that wrap all the way around." },
-  "s-easy":   { pips: 1, desc: "A cube with a bar, a wave, an L. Meet walls and curves." },
-  "s-medium": { pips: 2, desc: "T-blocks, steps and loaves. Curved sides carry lanes around." },
-  "s-hard":   { pips: 3, desc: "Arches and crosses join in, with lots of inside corners that act as walls." },
-  "s-extra":  { pips: 4, desc: "Bigger shapes and lanes that run over a curve and down the far side." },
-  "s-insane": { pips: 5, desc: "Shapes up to 18 cells across with 100+ arrows." }
+  easy:   { pips: 1 },
+  medium: { pips: 2 },
+  hard:   { pips: 3 },
+  extra:  { pips: 4 },
+  insane: { pips: 5 },
+  master: { pips: 6 },
+  grandmaster: { pips: 7 },
+  "c-easy":   { pips: 1 },
+  "c-medium": { pips: 2 },
+  "c-hard":   { pips: 3 },
+  "c-extra":  { pips: 4 },
+  "c-insane": { pips: 5 },
+  "s-easy":   { pips: 1 },
+  "s-medium": { pips: 2 },
+  "s-hard":   { pips: 3 },
+  "s-extra":  { pips: 4 },
+  "s-insane": { pips: 5 }
 };
 const TIER_PTS = { easy: 10, medium: 20, hard: 30, extra: 45, insane: 65, master: 90, grandmaster: 120,
   "c-easy": 15, "c-medium": 25, "c-hard": 40, "c-extra": 55, "c-insane": 75,
@@ -62,14 +65,15 @@ const DAILY = [
   { tier: "c-extra", level: 12 }, { tier: "s-extra", level: 16 }, { tier: "master", level: 20 }
 ];
 const SHOP = [
-  { id: "probe", kind: "item", name: "Probe", price: 40, icon: "probe", desc: "Test one arrow before you tap it: see its lane and whether it can leave. No heart lost, stars kept." },
-  { id: "heart", kind: "item", name: "Extra heart", price: 60, icon: "heartPlus", desc: "Add a fourth heart to the level you're playing. One per level." },
-  { id: "skip", kind: "item", name: "Skip pass", price: 120, icon: "skip", desc: "Skip a level you're stuck on. It counts as cleared with 1 star; come back any time for 3." },
-  { id: "lane", kind: "unlock", name: "Lane trace", price: 300, icon: "lane", desc: "Press and hold any arrow to draw its lane to the edge, around curves too. Yours to keep." },
-  { id: "skin-rainbow", kind: "skin", name: "Rainbow", price: 250, desc: "Every arrow its own colour, so long winding arrows are easier to follow." },
-  { id: "skin-blueprint", kind: "skin", name: "Blueprint", price: 150, desc: "White lines on drafting blue." },
-  { id: "skin-ember", kind: "skin", name: "Ember", price: 150, desc: "Rust arrows on warm paper." }
+  { id: "probe", kind: "item", price: 40, icon: "probe" },
+  { id: "heart", kind: "item", price: 60, icon: "heartPlus" },
+  { id: "skip", kind: "item", price: 120, icon: "skip" },
+  { id: "lane", kind: "unlock", price: 300, icon: "lane" },
+  { id: "skin-rainbow", kind: "skin", price: 250 },
+  { id: "skin-blueprint", kind: "skin", price: 150 },
+  { id: "skin-ember", kind: "skin", price: 150 }
 ];
+SHOP.forEach((s) => { s.name = _t("item." + s.id); s.desc = _t("item." + s.id + ".desc"); });
 const PRICE = {}; SHOP.forEach((s) => (PRICE[s.id] = s.price));
 const PAGE = 40;
 
@@ -125,7 +129,7 @@ function starValue(t, st) { const b = TIER_PTS[t] || 0; return st >= 3 ? b : st 
 function flawValue(t) { return Math.round((TIER_PTS[t] || 0) * 0.25); }
 function fmtDate(s) {
   const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  return new Date(y, m - 1, d).toLocaleDateString(I18n.lang === "nl" ? "nl-NL" : "en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
 const Store = {
@@ -232,7 +236,7 @@ const Store = {
       const changed = JSON.stringify(merged) !== JSON.stringify(this.merge(remoteData, null));
       this.data = merged;
       lsSet(LS_DATA, merged); lsSet(LS_PROGRESS, merged.tiers);
-      $("#syncNote").textContent = "Progress, points and purchases sync to your Claude account, so they follow you across devices.";
+      $("#syncNote").textContent = _t("sync.claude");
       if (changed) this.push();
       if (App.view === "home") Home.render(); else Game.renderHud();
     } catch (e) { this.remote = null; }
@@ -627,9 +631,9 @@ function surfaceFromBox(b) {
 function makeLevel(tier, level, seedKey) {
   const k = kindOf(tier);
   if (k === "flat") { const f = G.generate(tier, level, seedKey); f.kind = "flat"; f.label = f.W + "×" + f.H; return f; }
-  if (k === "box") { const b = G3.generate(tier, level, seedKey); return { kind: "surface", tier, level, S: surfaceFromBox(b), snakes: b.snakes, label: b.shape + " " + b.dims.join("×") }; }
+  if (k === "box") { const b = G3.generate(tier, level, seedKey); return { kind: "surface", tier, level, S: surfaceFromBox(b), snakes: b.snakes, label: _t("shape." + b.shape) + " " + b.dims.join("×") }; }
   const s = GS.generate(tier, level, seedKey);
-  return { kind: "surface", tier, level, S: s.S, snakes: s.snakes, label: s.label + " " + s.S.dims.join("×") };
+  return { kind: "surface", tier, level, S: s.S, snakes: s.snakes, label: _t("shape." + s.shape) + " " + s.S.dims.join("×") };
 }
 
 /* ---------- 3D board ---------- */
@@ -1084,11 +1088,11 @@ const Game = {
     Overlay.hide(); Shop.close();
     App.show("game");
     const tierName = ALL_TIERS[tier].name + MODE_LABEL[kind];
-    const pill = this.daily ? "Daily · " + tierName : tierName;
+    const pill = this.daily ? _t("dailyPill", { tier: tierName }) : tierName;
     $("#gTier").textContent = pill;
-    $("#gLevel").textContent = this.daily ? fmtDate(this.daily) : "Level " + level;
+    $("#gLevel").textContent = this.daily ? fmtDate(this.daily) : _t("level", { n: level });
     $("#zoomFit").innerHTML = three ? ICON.reset3d : ICON.fit;
-    $("#zoomFit").setAttribute("aria-label", three ? "Reset view" : "Fit board");
+    $("#zoomFit").setAttribute("aria-label", _t(three ? "zoomReset" : "zoomFit"));
     $("#boardCanvas").hidden = three;
     $("#glCanvas").hidden = !three;
     this.renderHud();
@@ -1101,7 +1105,7 @@ const Game = {
       } catch (e) {
         $("#loading").hidden = true;
         if (token !== this.token) return;
-        Overlay.show({ tier: "3D", title: "3D couldn't start", stars: null, text: "The 3D engine didn't load, or this browser has WebGL turned off. Check your connection and try again.", actions: [{ label: "Try again", primary: true, fn: () => this.start(tier, level, opts) }, { label: "All levels", fn: () => App.show("home") }] });
+        Overlay.show({ tier: "3D", title: _t("err3d.title"), stars: null, text: _t("err3d.text"), actions: [{ label: _t("tryAgain"), primary: true, fn: () => this.start(tier, level, opts) }, { label: "All levels", fn: () => App.show("home") }] });
         return;
       }
     }
@@ -1124,29 +1128,29 @@ const Game = {
       this.board.draw();
     }
     this.renderHud();
-    if (three && !this.shown3dTip) { this.shown3dTip = true; this.toast("Drag to turn the shape. Tap an arrow to send it."); }
+    if (three && !this.shown3dTip) { this.shown3dTip = true; this.toast(_t("tip3d")); }
   },
   renderHud() {
     const hb = $("#hearts");
     if (hb.children.length !== this.maxHearts) hb.innerHTML = ICON.heart.repeat(this.maxHearts);
     [...hb.children].forEach((el, i) => el.classList.toggle("lost", i >= this.hearts));
-    hb.setAttribute("aria-label", this.hearts + (this.hearts === 1 ? " heart left" : " hearts left"));
+    hb.setAttribute("aria-label", _t("heartsLeft", { n: this.hearts }));
     const n = this.board && this.board.lv ? this.board.aliveCount : 0;
-    $("#leftCount").textContent = n + (n === 1 ? " arrow left" : " arrows left");
+    $("#leftCount").textContent = _t("arrowsLeft", { n });
     $("#hintBtn").disabled = this.hintUsed || this.over;
-    $("#hintText").textContent = this.hintUsed ? "Hint used" : "Hint";
-    $("#hintSub").textContent = this.hintUsed ? "Best now: 2 stars" : "1 left this level";
+    $("#hintText").textContent = _t(this.hintUsed ? "hint.used" : "hint");
+    $("#hintSub").textContent = _t(this.hintUsed ? "hint.usedSub" : "hint.sub");
     const item = (el, icon, id, label, disabled, pressed) => {
       const c = Store.count(id);
       el.innerHTML = ICON[icon] + '<span class="badge">' + c + "</span>";
       el.classList.toggle("empty", c === 0);
       el.disabled = disabled;
-      el.setAttribute("aria-label", label + ", " + c + " left");
+      el.setAttribute("aria-label", _t("itemLeft", { label, n: c }));
       if (pressed != null) el.setAttribute("aria-pressed", String(pressed));
     };
-    item($("#itemProbe"), "probe", "probe", "Probe", this.over, this.probeArmed);
-    item($("#itemHeart"), "heartPlus", "heart", "Extra heart", this.over || this.heartUsed);
-    item($("#itemSkip"), "skip", "skip", "Skip pass", this.over || !!this.daily);
+    item($("#itemProbe"), "probe", "probe", _t("item.probe"), this.over, this.probeArmed);
+    item($("#itemHeart"), "heartPlus", "heart", _t("item.heart"), this.over || this.heartUsed);
+    item($("#itemSkip"), "skip", "skip", _t("item.skip"), this.over || !!this.daily);
   },
   toast(msg, ms) {
     const t = $("#toast");
@@ -1174,16 +1178,16 @@ const Game = {
       const lostEl = [...$("#hearts").children][this.hearts];
       if (lostEl) { lostEl.classList.remove("hit"); void lostEl.offsetWidth; lostEl.classList.add("hit"); }
       if (this.hearts <= 0) { this.over = true; b.bump(id, () => setTimeout(() => this.lose(), 250)); }
-      else { b.bump(id); this.toast(this.hearts === 1 ? "Blocked. Last heart." : "Blocked. " + this.hearts + " hearts left."); }
+      else { b.bump(id); this.toast(this.hearts === 1 ? _t("blocked.last") : _t("blocked", { n: this.hearts })); }
       this.renderHud();
     }
   },
   useProbe() {
     if (this.over) return;
-    if (this.probeArmed) { this.probeArmed = false; this.renderHud(); this.toast("Probe put away."); return; }
+    if (this.probeArmed) { this.probeArmed = false; this.renderHud(); this.toast(_t("probe.away")); return; }
     if (Store.count("probe") < 1) { Shop.open("probe"); return; }
     this.probeArmed = true; this.renderHud();
-    this.toast("Tap an arrow to test it. Nothing moves.", 2600);
+    this.toast(_t("probe.armed"), 2600);
   },
   probe(id) {
     const b = this.board;
@@ -1191,8 +1195,8 @@ const Game = {
     if (!Store.use("probe")) { this.renderHud(); return; }
     b.showLane(id);
     setTimeout(() => { if (b.laneId === id) b.hideLane(); }, 1800);
-    if (b.isFree(id)) { b.markGood(id); this.toast("Free. Tap it to send it.", 2400); }
-    else { b.flashPair(id); this.toast("Blocked. That would have cost a heart.", 2400); }
+    if (b.isFree(id)) { b.markGood(id); this.toast(_t("probe.free"), 2400); }
+    else { b.flashPair(id); this.toast(_t("probe.blocked"), 2400); }
     this.renderHud();
   },
   useHeart() {
@@ -1201,15 +1205,15 @@ const Game = {
     if (!Store.use("heart")) return;
     this.heartUsed = true; this.maxHearts = 4; this.hearts++;
     this.renderHud();
-    this.toast("Extra heart added for this level.");
+    this.toast(_t("heart.added"));
   },
   askSkip() {
     if (this.over || this.daily) return;
     if (Store.count("skip") < 1) { Shop.open("skip"); return; }
     Overlay.show({
-      tier: ALL_TIERS[this.tier].name + MODE_LABEL[kindOf(this.tier)], title: "Skip level " + this.level + "?", stars: null,
-      text: "Uses 1 skip pass (" + Store.count("skip") + " left). The level counts as cleared with 1 star, and you can come back for 3 later.",
-      actions: [{ label: "Skip level", primary: true, fn: () => this.skip() }, { label: "Keep playing", fn: () => Overlay.hide() }]
+      tier: ALL_TIERS[this.tier].name + MODE_LABEL[kindOf(this.tier)], title: _t("skip.title", { n: this.level }), stars: null,
+      text: _t("skip.text", { n: Store.count("skip") }),
+      actions: [{ label: _t("skip.ok"), primary: true, fn: () => this.skip() }, { label: _t("skip.keep"), fn: () => Overlay.hide() }]
     });
   },
   skip() {
@@ -1235,7 +1239,7 @@ const Game = {
     if (bestId < 0) return;
     this.hintUsed = true;
     b.showHint(bestId);
-    this.toast(kindOf(this.tier) !== "flat" ? "Turned to the glowing arrow. It can leave." : "The glowing arrow can leave.");
+    this.toast(_t(kindOf(this.tier) !== "flat" ? "hint.turned" : "hint.glow"));
     this.renderHud();
   },
   key(e) {
@@ -1249,28 +1253,28 @@ const Game = {
     if (this.daily) {
       gained = Store.recordDaily(this.daily, stars);
       const st = Store.streakAt(this.daily);
-      text = "Daily puzzle cleared." + (st > 1 ? " Streak: " + st + " days." : "") + " A new one appears tomorrow.";
-      actions = [{ label: "Back to levels", primary: true, fn: () => App.show("home") }];
+      text = _t("win.daily") + (st > 1 ? _t("win.streak", { n: st }) : "") + _t("win.tomorrow");
+      actions = [{ label: _t("backToLevels"), primary: true, fn: () => App.show("home") }];
     } else {
       const r = Store.record(this.tier, this.level, stars, flawless);
       gained = r.gained;
-      text = this.hintUsed ? "Cleared with the hint. Replay without it for the third star." : "Cleared without the hint.";
-      text += this.mistakes ? " " + this.mistakes + (this.mistakes === 1 ? " heart lost." : " hearts lost.") : " No hearts lost.";
-      if (r.prev > stars) text += " Your best here is still " + r.prev + " stars.";
+      text = _t(this.hintUsed ? "win.withHint" : "win.noHint");
+      text += this.mistakes ? _t("win.lost", { n: this.mistakes }) : _t("win.noLoss");
+      if (r.prev > stars) text += _t("win.prev", { n: r.prev });
       actions = [
-        { label: "Next level", primary: true, fn: () => this.start(this.tier, this.level + 1) },
-        { row: [{ label: "Replay", fn: () => this.start(this.tier, this.level) }, { label: "All levels", fn: () => App.show("home") }] }
+        { label: _t("nextLevel"), primary: true, fn: () => this.start(this.tier, this.level + 1) },
+        { row: [{ label: _t("replay"), fn: () => this.start(this.tier, this.level) }, { label: _t("allLevels"), fn: () => App.show("home") }] }
       ];
     }
-    Overlay.show({ tier: this.daily ? "Daily · " + tn : tn, title: (this.daily ? fmtDate(this.daily) : "Level " + this.level) + " cleared", stars, text, gained, actions });
+    Overlay.show({ tier: this.daily ? _t("dailyPill", { tier: tn }) : tn, title: _t("cleared", { what: this.daily ? fmtDate(this.daily) : _t("level", { n: this.level }) }), stars, text, gained, actions });
   },
   lose() {
     const tn = ALL_TIERS[this.tier].name + MODE_LABEL[kindOf(this.tier)];
-    const actions = [{ label: "Try again", primary: true, fn: () => this.start(this.tier, this.level, { daily: this.daily }) }];
-    if (!this.daily && Store.count("skip") > 0) actions.push({ label: "Use a skip pass (" + Store.count("skip") + " left)", fn: () => this.skip() });
-    actions.push({ label: "All levels", fn: () => App.show("home") });
-    Overlay.show({ tier: this.daily ? "Daily · " + tn : tn, title: "Out of hearts", stars: null,
-      text: (this.daily ? "Today's puzzle" : "Level " + this.level) + " starts over. It's the same layout, so what you learned still counts.", actions });
+    const actions = [{ label: _t("tryAgain"), primary: true, fn: () => this.start(this.tier, this.level, { daily: this.daily }) }];
+    if (!this.daily && Store.count("skip") > 0) actions.push({ label: _t("useSkip", { n: Store.count("skip") }), fn: () => this.skip() });
+    actions.push({ label: _t("allLevels"), fn: () => App.show("home") });
+    Overlay.show({ tier: this.daily ? _t("dailyPill", { tier: tn }) : tn, title: _t("out.title"), stars: null,
+      text: _t("out.text", { what: this.daily ? _t("todays") : _t("level", { n: this.level }) }), actions });
   },
   snapshot() {
     const b = this.board;
@@ -1291,7 +1295,7 @@ const Overlay = {
     st.innerHTML = o.stars == null ? "" : [0, 1, 2].map((i) => ICON.star.replace("<svg", '<svg class="' + (i < o.stars ? "on" : "") + '"')).join("");
     const p = $("#ovText");
     p.textContent = o.text;
-    if (o.gained > 0) { const g = document.createElement("span"); g.className = "gplus"; g.textContent = "+" + o.gained + " points"; p.appendChild(document.createElement("br")); p.appendChild(g); }
+    if (o.gained > 0) { const g = document.createElement("span"); g.className = "gplus"; g.textContent = _t("pointsN", { n: o.gained }); p.appendChild(document.createElement("br")); p.appendChild(g); }
     const box = $("#ovActions"); box.innerHTML = "";
     const mk = (a) => { const b = document.createElement("button"); b.type = "button"; b.className = "btn" + (a.primary ? " primary" : ""); b.textContent = a.label; b.onclick = a.fn; return b; };
     for (const a of o.actions) {
@@ -1345,8 +1349,8 @@ const Shop = {
   render(focus) {
     const bal = Store.balance();
     $("#shopPoints").textContent = bal;
-    const buyBtn = (it) => '<button type="button" class="buy" data-act="buy" data-id="' + it.id + '"' + (bal < it.price ? " disabled" : "") + ' aria-label="Buy ' + it.name + " for " + it.price + ' points">' + ICON.gem + " " + it.price + "</button>";
-    const wearBtn = (skin) => { const on = Skin.id === skin; return '<button type="button" class="buy ' + (on ? "on" : "ghost") + '" data-act="wear" data-id="' + skin + '"' + (on ? " disabled" : "") + ">" + (on ? "In use" : "Use") + "</button>"; };
+    const buyBtn = (it) => '<button type="button" class="buy" data-act="buy" data-id="' + it.id + '"' + (bal < it.price ? " disabled" : "") + ' aria-label="' + _t("shop.buy", { name: it.name, price: it.price }) + '">' + ICON.gem + " " + it.price + "</button>";
+    const wearBtn = (skin) => { const on = Skin.id === skin; return '<button type="button" class="buy ' + (on ? "on" : "ghost") + '" data-act="wear" data-id="' + skin + '"' + (on ? " disabled" : "") + ">" + _t(on ? "shop.inUse" : "shop.use") + "</button>"; };
     const row = (it) => {
       let ic, right;
       if (it.kind === "skin") {
@@ -1355,17 +1359,17 @@ const Shop = {
         right = Store.owns(it.id) ? wearBtn(skin) : buyBtn(it);
       } else {
         ic = '<span class="ic">' + ICON[it.icon] + "</span>";
-        right = it.kind === "unlock" && Store.owns(it.id) ? '<button type="button" class="buy on" disabled>Owned</button>' : buyBtn(it);
+        right = it.kind === "unlock" && Store.owns(it.id) ? '<button type="button" class="buy on" disabled>' + _t("shop.owned") + "</button>" : buyBtn(it);
       }
-      const own = it.kind === "item" ? '<span class="own num">You have ' + Store.count(it.id) + "</span>" : "";
+      const own = it.kind === "item" ? '<span class="own num">' + _t("shop.youHave", { n: Store.count(it.id) }) + "</span>" : "";
       return '<div class="shop-row"' + (focus === it.id ? ' style="border-color:var(--accent)"' : "") + ">" + ic + "<div><strong>" + it.name + "</strong><small>" + it.desc + "</small>" + own + "</div>" + right + "</div>";
     };
-    const inkRow = '<div class="shop-row">' + this.swatch("ink") + "<div><strong>Ink</strong><small>The default look. Follows light and dark mode.</small></div>" + wearBtn("ink") + "</div>";
+    const inkRow = '<div class="shop-row">' + this.swatch("ink") + "<div><strong>" + _t("skin.ink") + "</strong><small>" + _t("skin.ink.desc") + "</small></div>" + wearBtn("ink") + "</div>";
     $("#shopBody").innerHTML =
-      '<p class="earn">Earn points by clearing levels. 3 stars pays the tier\'s full points and 2 stars pays 60%. The first clear of a level without losing a heart adds 25%. The daily puzzle pays 60 plus a streak bonus.</p>' +
-      '<section class="shop-sec"><h3>Power-ups</h3>' + SHOP.filter((x) => x.kind === "item").map(row).join("") + "</section>" +
-      '<section class="shop-sec"><h3>Upgrades</h3>' + SHOP.filter((x) => x.kind === "unlock").map(row).join("") + "</section>" +
-      '<section class="shop-sec"><h3>Arrow skins</h3>' + inkRow + SHOP.filter((x) => x.kind === "skin").map(row).join("") + "</section>";
+      '<p class="earn">' + _t("shop.earn") + "</p>" +
+      '<section class="shop-sec"><h3>' + _t("shop.powerups") + "</h3>" + SHOP.filter((x) => x.kind === "item").map(row).join("") + "</section>" +
+      '<section class="shop-sec"><h3>' + _t("shop.upgrades") + "</h3>" + SHOP.filter((x) => x.kind === "unlock").map(row).join("") + "</section>" +
+      '<section class="shop-sec"><h3>' + _t("shop.skins") + "</h3>" + inkRow + SHOP.filter((x) => x.kind === "skin").map(row).join("") + "</section>";
   }
 };
 
@@ -1381,13 +1385,13 @@ const Home = {
     $("#dailyBtn").onclick = () => { const d = todayStr(), cfg = DAILY[new Date().getDay()]; Game.start(cfg.tier, cfg.level, { daily: d }); };
     $("#smartTap").onclick = () => { Store.settings.smartTap = !Store.settings.smartTap; Store.saveSettings(); this.renderSettings(); };
     $("#laneTrace").onclick = () => { Store.settings.laneTrace = !Store.settings.laneTrace; Store.saveSettings(); this.renderSettings(); };
-    const tb = { auto: [ICON.auto, "Auto"], light: [ICON.sun, "Light"], dark: [ICON.moon, "Dark"] };
+    const tb = { auto: [ICON.auto, _t("theme.auto")], light: [ICON.sun, _t("theme.light")], dark: [ICON.moon, _t("theme.dark")] };
     for (const b of document.querySelectorAll("#themeSeg button")) {
       const [ic, label] = tb[b.dataset.themeOpt];
       b.innerHTML = ic + "<span>" + label + "</span>";
       b.onclick = () => { Store.settings.theme = b.dataset.themeOpt; Store.saveSettings(); Theme.apply(Store.settings.theme); this.renderSettings(); };
     }
-    const mb = { flat: [ICON.flat, "Flat"], "3d": [ICON.cube, "Boxes"], shapes: [ICON.shapes, "Shapes"] };
+    const mb = { flat: [ICON.flat, _t("mode.flat")], "3d": [ICON.cube, _t("mode.3d")], shapes: [ICON.shapes, _t("mode.shapes")] };
     for (const b of document.querySelectorAll("#modeSeg button")) {
       const [ic, label] = mb[b.dataset.mode];
       b.innerHTML = ic + "<span>" + label + "</span>";
@@ -1418,9 +1422,9 @@ const Home = {
   renderDaily() {
     const d = todayStr(), cfg = DAILY[new Date().getDay()], k = kindOf(cfg.tier);
     const st = Store.data.daily[d] || 0, streak = Store.currentStreak();
-    $("#dailyEyebrow").textContent = "Daily puzzle · " + fmtDate(d);
-    $("#dailyTitle").textContent = ALL_TIERS[cfg.tier].name + (k === "flat" ? " board" : k === "box" ? " box" : " shape");
-    $("#dailyMeta").textContent = (st ? "Cleared with " + st + " stars. " : "60 points plus a streak bonus. ") + (streak ? "Streak: " + streak + (streak === 1 ? " day." : " days.") : "Start a streak today.");
+    $("#dailyEyebrow").textContent = _t("dailyDate", { date: fmtDate(d) });
+    $("#dailyTitle").textContent = _t("dailyKind." + k, { tier: ALL_TIERS[cfg.tier].name });
+    $("#dailyMeta").textContent = (st ? _t("dailyMeta.cleared", { n: st }) : _t("dailyMeta.pays")) + (streak ? _t("dailyMeta.streak", { n: streak }) : _t("dailyMeta.start"));
     const b = $("#dailyBtn");
     b.textContent = st ? "Replay" : "Play";
     b.classList.toggle("done", !!st);
@@ -1434,23 +1438,21 @@ const Home = {
       const pips = Array.from({ length: maxPips }, (_, i) => '<i class="' + (i < info.pips ? "on" : "") + '"></i>').join("");
       return '<button type="button" class="tab" role="tab" data-tier="' + t + '" aria-selected="' + (t === cur) + '">' +
         '<span class="tab-name">' + ALL_TIERS[t].name + '</span><span class="pips" aria-hidden="true">' + pips + '</span>' +
-        '<span class="tab-meta num">' + (done ? done + " cleared · " + stars + "★" : "Not started") + '</span></button>';
+        '<span class="tab-meta num">' + (done ? _t("tab.meta", { n: done, s: stars }) : _t("tab.new")) + '</span></button>';
     }).join("");
     const T = ALL_TIERS[cur];
-    $("#tierName").textContent = T.name + (kind === "box" ? " boxes" : kind === "shape" ? " shapes" : "");
+    $("#tierName").textContent = kind === "flat" ? T.name : _t("tierName." + kind, { tier: T.name });
     const s0 = kind === "box" ? G3.sizeFor(cur, 1) : kind === "shape" ? GS.sizeFor(cur, 1) : G.sizeFor(cur, 1), s1 = T.cap;
-    $("#tierDesc").textContent = TIER_INFO[cur].desc + (kind === "flat"
-      ? " Boards grow from " + s0 + "×" + s0 + " to " + s1 + "×" + s1 + "."
-      : " Sizes grow from " + s0 + " to " + s1 + " cells.") + " " + TIER_PTS[cur] + " points per 3-star clear.";
+    $("#tierDesc").textContent = _t("desc." + cur) + _t(kind === "flat" ? "grow.flat" : "grow.cells", { a: s0, b: s1 }) + _t("tierPts", { n: TIER_PTS[cur] });
     const next = Store.unlocked(cur);
-    $("#playBtn").innerHTML = ICON.play + '<span class="num">' + (next === 1 ? "Start level 1" : "Play level " + next) + "</span>";
+    $("#playBtn").innerHTML = ICON.play + '<span class="num">' + (next === 1 ? _t("play.start") : _t("play.level", { n: next })) + "</span>";
     const p = Store.data.tiers[cur] || {};
     let done = 0, stars = 0, perfect = 0;
     for (const k in p) { if (p[k] > 0) done++; stars += p[k]; if (p[k] === 3) perfect++; }
     $("#tierStats").innerHTML =
-      '<span><b class="num">' + done + '</b>cleared</span>' +
-      '<span><b class="num">' + stars + '</b>of ' + done * 3 + ' stars</span>' +
-      '<span><b class="num">' + perfect + '</b>without hint</span>';
+      '<span><b class="num">' + done + "</b>" + _t("stat.cleared") + "</span>" +
+      '<span><b class="num">' + stars + "</b>" + _t("stat.stars", { n: done * 3 }) + "</span>" +
+      '<span><b class="num">' + perfect + "</b>" + _t("stat.perfect") + "</span>";
     this.renderGrid();
     this.renderSettings();
     this.renderPoints();
@@ -1469,7 +1471,7 @@ const Home = {
       const st = Store.stars(cur, lv), locked = lv > next;
       const cls = "lvl" + (locked ? " locked" : "") + (lv === next ? " next" : "") + (st === 3 ? " perfect" : "");
       const stars = st ? '<span class="st" aria-hidden="true">' + [0, 1, 2].map((i) => ICON.star.replace("<svg", '<svg style="color:var(' + (i < st ? "--star" : "--star-off") + ')"')).join("") + "</span>" : "";
-      const label = "Level " + lv + (locked ? ", locked" : st ? ", " + st + (st === 1 ? " star" : " stars") : lv === next ? ", next to play" : "");
+      const label = locked ? _t("lvl.locked", { n: lv }) : st ? _t("lvl.stars", { n: lv, s: st }) : lv === next ? _t("lvl.next", { n: lv }) : _t("lvl", { n: lv });
       html += '<button type="button" class="' + cls + '" data-lv="' + lv + '" aria-label="' + label + '"' + (locked ? ' aria-disabled="true"' : "") + '><span class="n num">' + lv + "</span>" + stars + "</button>";
     }
     $("#grid").innerHTML = html;

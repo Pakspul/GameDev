@@ -11,73 +11,73 @@
 </head>
 <body data-kind="sudoku">
 
-<section id="home" class="view" aria-label="Puzzles">
+<section id="home" class="view" data-i18n-attr="aria-label:home">
   <div class="wrap">
     <div class="topline">
-      <button type="button" class="ghost" id="arcadeBtn"><span class="ico" data-icon="back"></span>Arcade</button>
-      <button type="button" class="round" id="settingsBtn" aria-label="Settings"><span class="ico" data-icon="gear"></span></button>
+      <button type="button" class="ghost" id="arcadeBtn"><span class="ico" data-icon="back"></span><span data-i18n="arcade"></span></button>
+      <button type="button" class="round" id="settingsBtn" data-i18n-attr="aria-label:settings"><span class="ico" data-icon="gear"></span></button>
     </div>
 
     <header class="hero">
       <h1 class="wordmark">Graphite</h1>
-      <p class="tagline">Four pencil-and-paper logic puzzles, endlessly generated. Every puzzle has exactly one solution.</p>
+      <p class="tagline" data-i18n="tagline"></p>
     </header>
 
     <section class="today" aria-labelledby="todayTitle">
       <div class="section-head">
-        <h2 id="todayTitle">Today</h2>
+        <h2 id="todayTitle" data-i18n="today"></h2>
         <span class="streak" id="streak"></span>
       </div>
       <div class="today-row" id="todayRow"></div>
     </section>
 
-    <nav class="kinds" id="kinds" role="tablist" aria-label="Puzzle type"></nav>
+    <nav class="kinds" id="kinds" role="tablist" data-i18n-attr="aria-label:kindTabs"></nav>
 
     <section class="panel" id="panel" role="tabpanel">
       <div class="panel-head">
         <h2 id="kindName"></h2>
         <p id="kindDesc"></p>
       </div>
-      <div class="tiers" id="tiers" role="radiogroup" aria-label="Difficulty"></div>
+      <div class="tiers" id="tiers" role="radiogroup" data-i18n-attr="aria-label:difficulty"></div>
       <div class="playrow">
         <p class="tier-meta" id="tierMeta"></p>
         <button type="button" class="play-btn" id="playBtn"></button>
       </div>
       <div class="levels-head">
-        <h3>Levels</h3>
+        <h3 data-i18n="levels"></h3>
         <div class="pager">
-          <button type="button" class="round small" id="prevPage" aria-label="Previous levels"><span class="ico" data-icon="chevL"></span></button>
+          <button type="button" class="round small" id="prevPage" data-i18n-attr="aria-label:prevLevels"><span class="ico" data-icon="chevL"></span></button>
           <span id="pageLabel"></span>
-          <button type="button" class="round small" id="nextPage" aria-label="Next levels"><span class="ico" data-icon="chevR"></span></button>
+          <button type="button" class="round small" id="nextPage" data-i18n-attr="aria-label:nextLevels"><span class="ico" data-icon="chevR"></span></button>
         </div>
       </div>
       <div class="grid" id="levelGrid"></div>
     </section>
 
     <details class="rules" id="rules">
-      <summary>How to play <span id="rulesName"></span></summary>
+      <summary><span data-i18n="howTo"></span> <span id="rulesName"></span></summary>
       <div id="rulesBody"></div>
     </details>
 
     <footer class="foot">
-      <p>Puzzles are generated on this phone from a seed, so level 12 is the same puzzle for everyone. Your progress is saved on this device only.</p>
+      <p data-i18n="foot"></p>
     </footer>
   </div>
 </section>
 
-<section id="game" class="view" aria-label="Puzzle" hidden>
+<section id="game" class="view" data-i18n-attr="aria-label:puzzle" hidden>
   <header class="gbar">
-    <button type="button" class="round" id="backBtn" aria-label="Back to levels"><span class="ico" data-icon="back"></span></button>
+    <button type="button" class="round" id="backBtn" data-i18n-attr="aria-label:backToLevels"><span class="ico" data-icon="back"></span></button>
     <div class="gtitle">
       <span class="pill" id="gPill"></span>
       <h1 id="gTitle"></h1>
     </div>
-    <span class="timer" id="timer" aria-label="Time"></span>
-    <button type="button" class="round" id="restartBtn" aria-label="Start this puzzle over"><span class="ico" data-icon="restart"></span></button>
+    <span class="timer" id="timer" data-i18n-attr="aria-label:time"></span>
+    <button type="button" class="round" id="restartBtn" data-i18n-attr="aria-label:restartAria"><span class="ico" data-icon="restart"></span></button>
   </header>
   <div class="boardwrap" id="boardWrap">
-    <canvas id="board" aria-label="Puzzle board"></canvas>
-    <div class="loading" id="loading" hidden><span class="pencil"></span>Sharpening pencils…</div>
+    <canvas id="board" data-i18n-attr="aria-label:board"></canvas>
+    <div class="loading" id="loading" hidden><span class="pencil"></span><span id="loadingText" data-i18n="sharpening"></span></div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
   <div class="pad" id="pad"></div>
@@ -97,37 +97,43 @@
 <div class="overlay" id="settings" hidden>
   <div class="card sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <div class="sheet-head">
-      <h2 id="setTitle">Settings</h2>
-      <button type="button" class="round" id="settingsClose" aria-label="Close settings"><span class="ico" data-icon="close"></span></button>
+      <h2 id="setTitle" data-i18n="settings"></h2>
+      <button type="button" class="round" id="settingsClose" data-i18n-attr="aria-label:closeSettings"><span class="ico" data-icon="close"></span></button>
     </div>
     <div class="setting">
-      <div><strong>Appearance</strong></div>
-      <div class="seg" id="themeSeg" role="radiogroup" aria-label="Appearance">
-        <button type="button" role="radio" data-theme-opt="auto">Auto</button>
-        <button type="button" role="radio" data-theme-opt="light">Light</button>
-        <button type="button" role="radio" data-theme-opt="dark">Dark</button>
+      <div><strong data-i18n="appearance"></strong></div>
+      <div class="seg" id="themeSeg" role="radiogroup" data-i18n-attr="aria-label:appearance">
+        <button type="button" role="radio" data-theme-opt="auto" data-i18n="theme.auto"></button>
+        <button type="button" role="radio" data-theme-opt="light" data-i18n="theme.light"></button>
+        <button type="button" role="radio" data-theme-opt="dark" data-i18n="theme.dark"></button>
       </div>
     </div>
     <div class="setting">
-      <div><strong id="lblMistakes">Show clashes</strong><small>Mark numbers and symbols that break a rule, like two 5s in one row. It never peeks at the solution.</small></div>
+      <div><strong id="lblLang" data-i18n="language"></strong><small data-i18n="language.note"></small></div>
+      <div class="seg" id="langSeg" role="radiogroup" aria-labelledby="lblLang"></div>
+    </div>
+    <div class="setting">
+      <div><strong id="lblMistakes" data-i18n="set.mistakes"></strong><small data-i18n="set.mistakes.note"></small></div>
       <button type="button" class="switch" role="switch" data-setting="mistakes" aria-labelledby="lblMistakes"></button>
     </div>
     <div class="setting">
-      <div><strong id="lblTimer">Show timer</strong><small>Your time is always recorded. This only hides the clock while you play.</small></div>
+      <div><strong id="lblTimer" data-i18n="set.timer"></strong><small data-i18n="set.timer.note"></small></div>
       <button type="button" class="switch" role="switch" data-setting="timer" aria-labelledby="lblTimer"></button>
     </div>
     <div class="setting">
-      <div><strong id="lblAutodot">Auto-dots (Star Battle)</strong><small>Placing a star puts dots on the cells around it.</small></div>
+      <div><strong id="lblAutodot" data-i18n="set.autodot"></strong><small data-i18n="set.autodot.note"></small></div>
       <button type="button" class="switch" role="switch" data-setting="autodot" aria-labelledby="lblAutodot"></button>
     </div>
     <div class="setting">
-      <div><strong id="lblSound">Sounds</strong><small>A soft pencil tick, and a chime when you solve a puzzle.</small></div>
+      <div><strong id="lblSound" data-i18n="set.sound"></strong><small data-i18n="set.sound.note"></small></div>
       <button type="button" class="switch" role="switch" data-setting="sound" aria-labelledby="lblSound"></button>
     </div>
   </div>
 </div>
 
 <script src="../../shared/js/platform.js"></script>
+<script src="../../shared/js/i18n.js"></script>
+<script src="strings.js"></script>
 <script src="levels/common.js"></script>
 <script src="levels/sudoku.js"></script>
 <script src="levels/takuzu.js"></script>

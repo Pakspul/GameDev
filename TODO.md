@@ -13,14 +13,14 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 ## Decisions (no rush, but before the deadline in brackets)
 
 - [ ] **App ID**, e.g. `io.github.pakspul.arcade` *(before the first Play Console upload; can never change)*
-- [ ] **Language:** Unscrew is Dutch and the others English. Translate it, or make every game NL + EN? *(before the store listing)*
+- [x] **Language:** every game in English and Dutch, picked on the hub (English by default)
 - [ ] **Name of the collection:** see [docs/NAMING.md](docs/NAMING.md) *(before going public; can still change later)*
 - [ ] **Developer name** in the store, e.g. "Pakspul" *(when creating the Play account)*
 
 ## Games
 
 - [ ] "Back to arcade" button in each game's own menu, calling `Platform.home()` (styled per game)
-- [ ] Language work for Unscrew, per the decision above
+- [x] Language work for Unscrew, per the decision above
 - [ ] Colour-blind check: can Unscrew's screws and boxes be told apart without colour?
 - [ ] Battery: pause rendering when nothing moves or the app is in the background
 - [ ] Optional cleanup: remove the `window.claude` leftovers from the artifact days

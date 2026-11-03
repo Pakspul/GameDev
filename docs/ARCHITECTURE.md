@@ -51,12 +51,12 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 
 | Game | Language | JS lines | Rendering | Saves under (localStorage) | Notable |
 |---|---|---|---|---|---|
-| Jade Pavilion | English | ~610 | three.js 3D table | `jade-pavilion-v1` | Seeded generator, daily challenge, table themes |
-| Nuts & Bolts | English | ~1,320 | three.js + 2D canvas particles | `nutsbolts:*` | Solver runs in a Web Worker (built from a Blob), washers currency |
-| Outbound | English | ~2,650 | 2D canvas, three.js loaded on demand for 3D modes | `outbound.*` | Three level generators (flat, box, shapes), light/dark theme, haptics, shop |
-| Unscrew | **Dutch** | ~790 | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators, coins and shop |
-| Graphite | English | ~2,200 | 2D canvas, redraws only on change | `graphite.v1` | Four logic puzzle types, generators in a Web Worker, logic-based hints, four dailies |
-| Camper Crew | English | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
+| Jade Pavilion | English + Dutch | ~610 | three.js 3D table | `jade-pavilion-v1` | Seeded generator, daily challenge, table themes |
+| Nuts & Bolts | English + Dutch | ~1,320 | three.js + 2D canvas particles | `nutsbolts:*` | Solver runs in a Web Worker (built from a Blob), washers currency |
+| Outbound | English + Dutch | ~2,650 | 2D canvas, three.js loaded on demand for 3D modes | `outbound.*` | Three level generators (flat, box, shapes), light/dark theme, haptics, shop |
+| Unscrew | English + Dutch | ~790 | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators, coins and shop |
+| Graphite | English + Dutch | ~2,200 | 2D canvas, redraws only on change | `graphite.v1` | Four logic puzzle types, generators in a Web Worker, logic-based hints, four dailies |
+| Camper Crew | English + Dutch | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
 
 Graphite came later and was written for this repository directly, not as an artifact. It already uses `Platform.home()` and `Platform.haptic()`, draws nothing while the board is idle, and has no three.js at all.
 
@@ -119,10 +119,13 @@ Not yet. Plain files keep the setup simple: edit, refresh, done. Add Vite when o
 
 ### 5. Languages
 
-Unscrew is in Dutch, the others in English. For a store release, pick one of these:
+Every page is in English (the default) and Dutch. The player picks the language on the hub (Graphite's Settings has the same switch), and every game follows it.
 
-- **Simple:** translate Unscrew to English.
-- **Better:** a tiny `strings.js` per game with `en` and `nl`, chosen from `navigator.language`. The hub and store listing can be translated the same way (Play Console supports per-language listings).
+- `shared/js/i18n.js` is the shared part: `I18n.t(key, vars)`, the `data-i18n` attributes for markup, and the stored choice (`honest-arcade.lang` in localStorage). Switching reloads the page, so nothing stays behind in the old language.
+- Each game keeps its text in `games/<name>/strings.js`, with `en` and `nl` side by side. Game code uses a local alias, `const _t = I18n.t`. Plurals and word order that differ per language are small functions in the dictionary.
+- Never translate anything that feeds a seed. Jade Pavilion's level names, for example, are stored as word indices (`"3.5.2"`), and `strings.js` turns those into "Floating Pavilion of Quiet Rain" or "Het Zwevende Paviljoen van Stille Regen".
+- To add a language: add it to `LANGS` in `i18n.js`, then add a block to every `strings.js`. `npm test` opens every page in every language and fails on a missing key.
+
 
 ## Why links say `index.html` explicitly
 

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#16130f" media="(prefers-color-scheme: dark)">
 <title>Honest Arcade</title>
-<meta name="description" content="Puzzle games that are free to play for real: no ads, no tracking, no pay-to-win.">
+<meta name="description" content="Puzzle games that are free to play for real: no ads, no tracking, no pay-to-win." data-i18n-attr="content:hub.metaDesc">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="shared/icons/icon.svg" type="image/svg+xml">
 <style>
@@ -38,6 +38,11 @@ main{
 }
 header h1{font-size:clamp(1.9rem,7vw,2.6rem);line-height:1.05;letter-spacing:-.02em;margin:0 0 6px;font-weight:800}
 header p{margin:0;color:var(--muted);max-width:34em}
+.topline{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 16px}
+.langs{display:flex;padding:3px;gap:2px;border-radius:99px;background:var(--chip);border:1px solid var(--line)}
+.langs button{font:inherit;font-size:.82rem;font-weight:700;color:var(--muted);background:none;border:0;border-radius:99px;padding:5px 12px;min-height:32px;cursor:pointer}
+.langs button[aria-checked="true"]{background:var(--ink);color:var(--bg)}
+.langs button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .pledge{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 26px;padding:0;list-style:none}
 .pledge li{background:var(--chip);border:1px solid var(--line);border-radius:99px;padding:3px 11px;font-size:.82rem;font-weight:600}
 
@@ -82,59 +87,136 @@ footer{margin-top:22px;color:var(--muted);font-size:.8rem}
 <body>
 <main>
   <header>
-    <h1>Honest Arcade</h1>
-    <p>Puzzle games that are actually free to play. You play, nothing interrupts you, and that's the whole deal.</p>
-    <ul class="pledge" aria-label="Our promise">
-      <li>No ads</li><li>No tracking</li><li>No pay-to-win</li><li>Works offline</li>
+    <div class="topline">
+      <h1>Honest Arcade</h1>
+      <div class="langs" id="langs" role="radiogroup" data-i18n-attr="aria-label:hub.language"></div>
+    </div>
+    <p data-i18n="hub.intro"></p>
+    <ul class="pledge" data-i18n-attr="aria-label:hub.promise">
+      <li data-i18n="hub.noAds"></li><li data-i18n="hub.noTracking"></li><li data-i18n="hub.noP2W"></li><li data-i18n="hub.offline"></li>
     </ul>
   </header>
 
-  <nav class="games" aria-label="Games">
+  <nav class="games" data-i18n-attr="aria-label:hub.games">
     <a class="card g-jade" href="games/jade-pavilion/index.html">
       <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
-      <div class="meta"><span>3D</span><span>Mahjong</span></div>
+      <div class="meta"><span>3D</span><span data-i18n="tag.mahjong"></span></div>
       <h2>Jade Pavilion</h2>
-      <p>Clear the lantern-lit table by matching pairs of free tiles.</p>
+      <p data-i18n="jade.blurb"></p>
     </a>
     <a class="card g-nuts" href="games/nuts-and-bolts/index.html">
       <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
-      <div class="meta"><span>3D</span><span>Sorting</span></div>
+      <div class="meta"><span>3D</span><span data-i18n="tag.sorting"></span></div>
       <h2>Nuts &amp; Bolts</h2>
-      <p>Screw the nuts from bolt to bolt until every colour has a bolt of its own.</p>
+      <p data-i18n="nuts.blurb"></p>
     </a>
     <a class="card g-out" href="games/outbound/index.html">
       <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
-      <div class="meta"><span>2D + 3D</span><span>Logic</span></div>
+      <div class="meta"><span>2D + 3D</span><span data-i18n="tag.logic"></span></div>
       <h2>Outbound</h2>
-      <p>Every arrow leaves the way it points. Find the order that clears the board.</p>
+      <p data-i18n="out.blurb"></p>
     </a>
-    <a class="card g-uns" href="games/unscrew/index.html" hreflang="nl">
+    <a class="card g-uns" href="games/unscrew/index.html">
       <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
-      <div class="meta"><span>3D</span><span>Nederlands</span></div>
+      <div class="meta"><span>3D</span><span data-i18n="tag.sorting"></span></div>
       <h2>Unscrew</h2>
-      <p>Take it apart screw by screw, and drop each one in the box of its colour.</p>
+      <p data-i18n="uns.blurb"></p>
     </a>
     <a class="card g-graph" href="games/graphite/index.html">
       <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
-      <div class="meta"><span>2D</span><span>Logic</span><span>Daily</span></div>
+      <div class="meta"><span>2D</span><span data-i18n="tag.logic"></span><span data-i18n="tag.daily"></span></div>
       <h2>Graphite</h2>
-      <p>Sudoku, Takuzu, Star Battle and Calcudoku: endless pencil puzzles, each with one solution.</p>
+      <p data-i18n="graph.blurb"></p>
     </a>
     <a class="card g-camp" href="games/camper-crew/index.html">
       <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
-      <div class="meta"><span>3D</span><span>Action</span><span>Prototype</span></div>
+      <div class="meta"><span>3D</span><span data-i18n="tag.action"></span><span data-i18n="tag.prototype"></span></div>
       <h2>Camper Crew</h2>
-      <p>You're the only crew on a self-driving camper. Steer, refuel, cook and patch your way to camp before sunset.</p>
+      <p data-i18n="camp.blurb"></p>
     </a>
   </nav>
 
   <details>
-    <summary>Why are there no ads?</summary>
-    <p>Most "free" mobile games are built to sell your attention: an ad after every level, timers you can skip for money, and tracking you never agreed to. These games are made the other way round. They are free because they are free: no ads, no data collection, no paid shortcuts, and no internet connection needed.</p>
-    <p>The code is open, so anyone can check that promise, learn from it, or build on it.</p>
+    <summary data-i18n="hub.whyQ"></summary>
+    <p data-i18n="hub.why1"></p>
+    <p data-i18n="hub.why2"></p>
   </details>
-  <footer>Made with three.js. Progress is stored on this device only.</footer>
+  <footer data-i18n="hub.footer"></footer>
 </main>
 <script src="shared/js/platform.js"></script>
+<script src="shared/js/i18n.js"></script>
+<script>
+I18n.add({
+  en: {
+    "hub.metaDesc": "Puzzle games that are free to play for real: no ads, no tracking, no pay-to-win.",
+    "hub.language": "Language",
+    "hub.intro": "Puzzle games that are actually free to play. You play, nothing interrupts you, and that's the whole deal.",
+    "hub.promise": "Our promise",
+    "hub.noAds": "No ads",
+    "hub.noTracking": "No tracking",
+    "hub.noP2W": "No pay-to-win",
+    "hub.offline": "Works offline",
+    "hub.games": "Games",
+    "tag.mahjong": "Mahjong",
+    "tag.sorting": "Sorting",
+    "tag.logic": "Logic",
+    "tag.daily": "Daily",
+    "tag.action": "Action",
+    "tag.prototype": "Prototype",
+    "jade.blurb": "Clear the lantern-lit table by matching pairs of free tiles.",
+    "nuts.blurb": "Screw the nuts from bolt to bolt until every colour has a bolt of its own.",
+    "out.blurb": "Every arrow leaves the way it points. Find the order that clears the board.",
+    "uns.blurb": "Take it apart screw by screw, and drop each one in the box of its colour.",
+    "graph.blurb": "Sudoku, Takuzu, Star Battle and Calcudoku: endless pencil puzzles, each with one solution.",
+    "camp.blurb": "You're the only crew on a self-driving camper. Steer, refuel, cook and patch your way to camp before sunset.",
+    "hub.whyQ": "Why are there no ads?",
+    "hub.why1": "Most \"free\" mobile games are built to sell your attention: an ad after every level, timers you can skip for money, and tracking you never agreed to. These games are made the other way round. They are free because they are free: no ads, no data collection, no paid shortcuts, and no internet connection needed.",
+    "hub.why2": "The code is open, so anyone can check that promise, learn from it, or build on it.",
+    "hub.footer": "Made with three.js. Progress is stored on this device only.",
+  },
+  nl: {
+    "hub.metaDesc": "Puzzelspellen die echt gratis zijn: geen advertenties, geen tracking, geen pay-to-win.",
+    "hub.language": "Taal",
+    "hub.intro": "Puzzelspellen die echt gratis zijn. Jij speelt, niets onderbreekt je, en dat is alles.",
+    "hub.promise": "Onze belofte",
+    "hub.noAds": "Geen advertenties",
+    "hub.noTracking": "Geen tracking",
+    "hub.noP2W": "Geen pay-to-win",
+    "hub.offline": "Werkt offline",
+    "hub.games": "Spellen",
+    "tag.mahjong": "Mahjong",
+    "tag.sorting": "Sorteren",
+    "tag.logic": "Logica",
+    "tag.daily": "Dagelijks",
+    "tag.action": "Actie",
+    "tag.prototype": "Prototype",
+    "jade.blurb": "Maak de tafel bij lantaarnlicht leeg door paren vrije stenen te combineren.",
+    "nuts.blurb": "Draai de moeren van bout naar bout tot elke kleur een eigen bout heeft.",
+    "out.blurb": "Elke pijl vertrekt de kant op die hij wijst. Vind de volgorde die het bord leegmaakt.",
+    "uns.blurb": "Haal het schroef voor schroef uit elkaar en gooi elke schroef in de doos van zijn kleur.",
+    "graph.blurb": "Sudoku, Takuzu, Star Battle en Calcudoku: eindeloze potloodpuzzels, elk met één oplossing.",
+    "camp.blurb": "Je bent de enige bemanning van een zelfrijdende camper. Stuur, tank, kook en repareer je een weg naar de camping voor zonsondergang.",
+    "hub.whyQ": "Waarom zijn er geen advertenties?",
+    "hub.why1": "De meeste \"gratis\" mobiele spellen zijn gemaakt om je aandacht te verkopen: een advertentie na elk level, wachttijden die je met geld kunt overslaan, en tracking waar je nooit mee hebt ingestemd. Deze spellen zijn andersom gemaakt. Ze zijn gratis omdat ze gratis zijn: geen advertenties, geen dataverzameling, geen betaalde shortcuts en geen internetverbinding nodig.",
+    "hub.why2": "De code is open, dus iedereen kan die belofte controleren, ervan leren of erop voortbouwen.",
+    "hub.footer": "Gemaakt met three.js. Je voortgang blijft alleen op dit apparaat.",
+  },
+});
+I18n.apply();
+// Language picker: the choice is shared by every game.
+(function () {
+  var box = document.getElementById("langs");
+  I18n.languages.forEach(function (l) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", String(l.code === I18n.lang));
+    b.lang = l.code;
+    b.textContent = l.name;
+    b.addEventListener("click", function () { I18n.set(l.code); });
+    box.appendChild(b);
+  });
+})();
+</script>
 </body>
 </html>

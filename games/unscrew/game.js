@@ -12,8 +12,8 @@ const srgb=hex=>new THREE.Color(hex).convertSRGBToLinear();
 function shade(hex,k){const c=new THREE.Color(hex);const h={};c.getHSL(h);c.setHSL(h.h,h.s,Math.max(0,Math.min(1,h.l*k)));return '#'+c.getHexString()}
 
 const SCREW_COLORS=[
-  {hex:'#ff3d9a',name:'Roze'},{hex:'#7b4dff',name:'Paarse'},{hex:'#8fd61f',name:'Limoen'},{hex:'#ffcc1a',name:'Gele'},
-  {hex:'#1f7bff',name:'Blauwe'},{hex:'#14c8e6',name:'Cyaan'},{hex:'#ff7a12',name:'Oranje'},{hex:'#e8283a',name:'Rode'},{hex:'#f3f5f9',name:'Witte'}];
+  {hex:'#ff3d9a',id:'pink'},{hex:'#7b4dff',id:'purple'},{hex:'#8fd61f',id:'lime'},{hex:'#ffcc1a',id:'yellow'},
+  {hex:'#1f7bff',id:'blue'},{hex:'#14c8e6',id:'cyan'},{hex:'#ff7a12',id:'orange'},{hex:'#e8283a',id:'red'},{hex:'#f3f5f9',id:'white'}];
 const PALS=[
   {main:'#7cc68d',dark:'#4f9e64',light:'#b8e3b5',trim:'#3d7f50',accent:'#f2e8d4'},
   {main:'#f2b880',dark:'#d48a52',light:'#f8dcbc',trim:'#a7643a',accent:'#fff3e2'},
@@ -345,7 +345,7 @@ function genRobot(R,cfg){
   const ant=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.6,10),partMat('#9aa6b5'));ant.position.y=0.37;decor(tpp,ant);
   const ball=new THREE.Mesh(new THREE.SphereGeometry(0.13,16,12),new THREE.MeshStandardMaterial({color:srgb('#ff6b6b'),emissive:srgb('#ff3b3b'),emissiveIntensity:.5}));ball.position.y=0.72;decor(tpp,ball)
 }
-const GENS3D=[['Huisje',genCottage],['Kamer',genRoom],['Molen',genMill],['Kasteel',genCastle],['Raket',genRocket],['Robot',genRobot]];
+const GENS3D=[['cottage',genCottage],['room',genRoom],['mill',genMill],['castle',genCastle],['rocket',genRocket],['robot',genRobot]];
 function pick3D(diff,level,salt){const n=GENS3D.length,cyc=Math.floor((level-1)/n);const ord=rng(`cyc|${diff}|${cyc}|${salt}`).shuffle([...Array(n).keys()]);return GENS3D[ord[(level-1)%n]]}
 
 /* ----- 2D generator: opaque plates stacked flush ----- */
@@ -456,7 +456,7 @@ function finalize(R,cfg,mode){
   return{group:BLD.group,parts:liveParts,screws:order,queue,center:sph.center,radius:sph.radius,bbox:bb,mode,S,bounds:BLD.bounds}}
 function buildLevel(mode,diff,level,cfg,salt=''){
   for(let attempt=0;attempt<10;attempt++){
-    const R=rng(`${mode}|${diff}|${level}|${salt}|${attempt}`);BLD={group:new THREE.Group(),parts:[]};let name='Platen';
+    const R=rng(`${mode}|${diff}|${level}|${salt}|${attempt}`);BLD={group:new THREE.Group(),parts:[]};let name='plates';
     if(mode==='2d')gen2D(R,cfg);else{const[nm,fn]=pick3D(diff,level,salt);name=nm;fn(R,cfg)}
     const res=finalize(R,cfg,mode);if(res){res.name=name;return res}disposeTree(BLD.group)}
   throw new Error('Level generation failed')}
@@ -464,22 +464,23 @@ function buildLevel(mode,diff,level,cfg,salt=''){
 
 /* ================= runtime ================= */
 const $=s=>document.querySelector(s);
+const _t=I18n.t;
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const SKEY='unscrew.v2';
 let save={};try{save=JSON.parse(localStorage.getItem(SKEY))||{}}catch(e){}
 save={best:{},runs:{},sound:true,sel:{mode:'3d',diff:'normal'},coins:250,inv:{drill:1,xray:1},...save};
 function persist(){try{localStorage.setItem(SKEY,JSON.stringify(save))}catch(e){}}
-const DIFFS=[['easy','Makkelijk'],['normal','Normaal'],['hard','Moeilijk'],['expert','Meester']];
-const DIFF_LABEL=Object.fromEntries(DIFFS);
-const fmt=n=>n.toLocaleString('nl-NL');
+const DIFFS=['easy','normal','hard','expert'];
+const fmt=n=>n.toLocaleString(I18n.lang);
 const COIN='<svg class="coin" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10.6" r="8.6" fill="#c98a00"/><circle cx="10" cy="9.6" r="8.6" fill="#ffc21a"/><circle cx="10" cy="9.6" r="6" fill="none" stroke="#e8a400" stroke-width="1.4"/><path d="M7.4 7l5.2 5.2M12.6 7l-5.2 5.2" stroke="#9a6400" stroke-width="1.8" stroke-linecap="round"/></svg>';
 const TOOLS={
-  drill:{name:'Boor',price:60,desc:'Boort een extra gat in de rail. Max. 2 per level.',icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M3 8.5h11.5l3 2.2v3.6l-3 2.2H9.5L8.4 23H4.6l1.2-6.5H3z" fill="#ff6a13"/><rect x="4.5" y="10" width="7" height="2.5" rx="1" fill="#ffd0b0"/><path d="M17.5 12.5h6" stroke="#5b6270" stroke-width="2.4" stroke-linecap="round"/><path d="M19 10.8l1 3.4M21.5 10.8l1 3.4" stroke="#8a95a5" stroke-width="1"/></svg>'},
-  hammer:{name:'Hamer',price:120,desc:'Tik daarna een onderdeel aan: alle schroeven erin springen eruit.',icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M5 22l10-10" stroke="#a9744a" stroke-width="3.4" stroke-linecap="round"/><path d="M11.5 5.5l5-2.5 6.5 6.5-2.5 2.5-3-1.4-2.5 2.5-5-5z" fill="#5b6270"/><path d="M16.5 3l6.5 6.5" stroke="#8a95a5" stroke-width="1.5"/></svg>'},
-  chest:{name:'Kist',price:150,desc:'Zet voor dit level een extra doos klaar.',icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M9 9V6.5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 17 6.5V9" fill="none" stroke="#5b6270" stroke-width="2.2"/><rect x="3" y="9" width="20" height="13" rx="2.5" fill="#e8283a"/><rect x="3" y="13" width="20" height="2.6" fill="#a81c2a"/><rect x="11" y="12" width="4" height="4.6" rx="1" fill="#ffc21a"/></svg>'},
-  magnet:{name:'Magneet',price:80,desc:'Trekt alle bereikbare schroeven eruit die in een doos passen.',icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M6.5 4v9a6.5 6.5 0 0 0 13 0V4" fill="none" stroke="#e8283a" stroke-width="4.4"/><path d="M6.5 3.5v4M19.5 3.5v4" stroke="#c9d0da" stroke-width="4.4"/><path d="M2 12h2M22 12h2M4 17l1.6-1M22 17l-1.6-1" stroke="#1f7bff" stroke-width="1.6" stroke-linecap="round"/></svg>'},
-  xray:{name:'Röntgen',price:40,desc:'Toont 8 seconden lang alle verborgen schroeven.',icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="8" cy="13" r="5" fill="#bdf3ff" stroke="#17212e" stroke-width="2"/><circle cx="18" cy="13" r="5" fill="#bdf3ff" stroke="#17212e" stroke-width="2"/><path d="M11.2 11.6c1.2-1 2.4-1 3.6 0" fill="none" stroke="#17212e" stroke-width="2"/><circle cx="8" cy="13" r="1.8" fill="#ff3d9a"/><circle cx="18" cy="13" r="1.8" fill="#ffcc1a"/></svg>'}};
+  drill:{price:60,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M3 8.5h11.5l3 2.2v3.6l-3 2.2H9.5L8.4 23H4.6l1.2-6.5H3z" fill="#ff6a13"/><rect x="4.5" y="10" width="7" height="2.5" rx="1" fill="#ffd0b0"/><path d="M17.5 12.5h6" stroke="#5b6270" stroke-width="2.4" stroke-linecap="round"/><path d="M19 10.8l1 3.4M21.5 10.8l1 3.4" stroke="#8a95a5" stroke-width="1"/></svg>'},
+  hammer:{price:120,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M5 22l10-10" stroke="#a9744a" stroke-width="3.4" stroke-linecap="round"/><path d="M11.5 5.5l5-2.5 6.5 6.5-2.5 2.5-3-1.4-2.5 2.5-5-5z" fill="#5b6270"/><path d="M16.5 3l6.5 6.5" stroke="#8a95a5" stroke-width="1.5"/></svg>'},
+  chest:{price:150,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M9 9V6.5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 17 6.5V9" fill="none" stroke="#5b6270" stroke-width="2.2"/><rect x="3" y="9" width="20" height="13" rx="2.5" fill="#e8283a"/><rect x="3" y="13" width="20" height="2.6" fill="#a81c2a"/><rect x="11" y="12" width="4" height="4.6" rx="1" fill="#ffc21a"/></svg>'},
+  magnet:{price:80,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M6.5 4v9a6.5 6.5 0 0 0 13 0V4" fill="none" stroke="#e8283a" stroke-width="4.4"/><path d="M6.5 3.5v4M19.5 3.5v4" stroke="#c9d0da" stroke-width="4.4"/><path d="M2 12h2M22 12h2M4 17l1.6-1M22 17l-1.6-1" stroke="#1f7bff" stroke-width="1.6" stroke-linecap="round"/></svg>'},
+  xray:{price:40,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="8" cy="13" r="5" fill="#bdf3ff" stroke="#17212e" stroke-width="2"/><circle cx="18" cy="13" r="5" fill="#bdf3ff" stroke="#17212e" stroke-width="2"/><path d="M11.2 11.6c1.2-1 2.4-1 3.6 0" fill="none" stroke="#17212e" stroke-width="2"/><circle cx="8" cy="13" r="1.8" fill="#ff3d9a"/><circle cx="18" cy="13" r="1.8" fill="#ffcc1a"/></svg>'}};
 const TOOL_ORDER=['drill','hammer','chest','magnet','xray'];
+for(const id of TOOL_ORDER){TOOLS[id].name=_t('tool.'+id);TOOLS[id].desc=_t('tool.'+id+'.desc')}
 
 /* --- audio --- */
 let AC=null,master=null,noiseBuf=null;
@@ -599,8 +600,8 @@ let toastT=0;function toast(t,ms=1700){const el=$('#toast');el.textContent=t;el.
 /* --- HUD --- */
 $('#coinIco').innerHTML=COIN;
 const HEART='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.5S2.5 12.7 2.5 7.4A4 4 0 0 1 10 5.3a4 4 0 0 1 7.5 2.1c0 5.3-7.5 10.1-7.5 10.1z" fill="FILL"/></svg>';
-function renderTop(){$('#lvN').textContent=G.level;$('#lvS').textContent=`${CUR?CUR.name:''} · ${DIFF_LABEL[G.diff]} · ${G.mode.toUpperCase()}`;
-  $('#hearts').innerHTML=[0,1,2].map(i=>HEART.replace('FILL',i<G.hearts?'#ff4d6d':'rgba(23,33,46,.18)')).join('');$('#hearts').setAttribute('aria-label',`${G.hearts} levens`);renderScore();renderProgress();renderCoins()}
+function renderTop(){$('#lvN').textContent=G.level;$('#lvS').textContent=`${CUR?_t('obj.'+CUR.name):''} · ${_t('diff.'+G.diff)} · ${G.mode.toUpperCase()}`;
+  $('#hearts').innerHTML=[0,1,2].map(i=>HEART.replace('FILL',i<G.hearts?'#ff4d6d':'rgba(23,33,46,.18)')).join('');$('#hearts').setAttribute('aria-label',_t('lives',{n:G.hearts}));renderScore();renderProgress();renderCoins()}
 function runScore(){return Math.max(0,G.score+(LS?LS.levelScore:0))}
 function renderScore(){$('#scoreN').textContent=fmt(runScore())}
 function renderCoins(){$('#coinN').textContent=fmt(save.coins);const sc=$('#stCoins');if(sc)sc.textContent=fmt(save.coins)}
@@ -608,7 +609,7 @@ function renderProgress(){const p=LS?LS.removed/LS.total*100:0;$('#progFill').st
 function fillBay(i,pop){const bay=$('#boxes').children[i],b=LS.boxes[i];bay.innerHTML='';
   if(!b){bay.innerHTML='<div class="box empty"></div>';return}
   const c=SCREW_COLORS[b.c],el=document.createElement('div');el.className='box';el.style.setProperty('--c',c.hex);el.style.setProperty('--cd',shade(c.hex,0.72));
-  el.setAttribute('role','img');el.setAttribute('aria-label',`${c.name} doos`);
+  el.setAttribute('role','img');el.setAttribute('aria-label',_t('box.'+c.id));
   el.innerHTML=`<span class="handle"></span><span class="plate"></span>${[0,1,2].map(k=>`<span class="h h${k}">${k<b.arrived?tokHTML(b.c):''}</span>`).join('')}<span class="lid"></span>`;
   bay.appendChild(el);b.el=el;if(pop&&!reduceMotion)el.animate([{transform:'scale(.5)',opacity:0},{transform:'scale(1.08)',opacity:1,offset:.7},{transform:'scale(1)'}],{duration:300,easing:'ease-out'})}
 function renderBoxes(){const w=$('#boxes');while(w.children.length<LS.boxes.length){const d=document.createElement('div');d.className='bay';w.appendChild(d)}while(w.children.length>LS.boxes.length)w.lastChild.remove();LS.boxes.forEach((_,i)=>fillBay(i))}
@@ -618,8 +619,8 @@ function renderRail(newSlot){const r=$('#rail');if(r.children.length!==LS.cap){r
 function renderTools(){const el=$('#tools');if(!el.children.length){el.innerHTML=TOOL_ORDER.map(id=>`<button class="tool" data-tool="${id}">${TOOLS[id].icon}<b>${TOOLS[id].name}</b><small></small><span class="badge" hidden></span></button>`).join('');
     el.querySelectorAll('.tool').forEach(b=>b.onclick=()=>useTool(b.dataset.tool))}
   el.querySelectorAll('.tool').forEach(b=>{const id=b.dataset.tool,own=save.inv[id]||0,bd=b.querySelector('.badge');bd.hidden=!own;bd.textContent=own;
-    b.querySelector('small').innerHTML=own?'in bezit':`${COIN}${TOOLS[id].price}`;b.disabled=!canUse(id);b.classList.toggle('on',!!LS&&LS.target===id);
-    b.setAttribute('aria-label',`${TOOLS[id].name}: ${own?own+' in bezit':TOOLS[id].price+' munten'}`)});
+    b.querySelector('small').innerHTML=own?_t('owned'):`${COIN}${TOOLS[id].price}`;b.disabled=!canUse(id);b.classList.toggle('on',!!LS&&LS.target===id);
+    b.setAttribute('aria-label',`${TOOLS[id].name}: ${own?_t('ownedN',{n:own}):_t('priceN',{n:TOOLS[id].price})}`)});
   $('#viewBtn').hidden=!(state==='play'&&CUR&&CUR.mode==='3d')}
 
 /* --- level flow --- */
@@ -643,7 +644,7 @@ function addCoins(n){save.coins+=n;if(LS)LS.coinsEarned+=n;renderCoins();persist
 function tapScrew(s){
   if(s.state!=='in'||s.hidden)return;const blk=firstBlocker(s,LS.meshes);s.blocker=blk;
   if(blk){shakeScrew(s);flashPart(blk);sfx.lock();return}
-  if(!pullScrew(s)){shakeScrew(s);sfx.lock();const r=$('#rail');r.classList.remove('alarm');void r.offsetWidth;r.classList.add('alarm');toast('De gatenrail is vol')}}
+  if(!pullScrew(s)){shakeScrew(s);sfx.lock();const r=$('#rail');r.classList.remove('alarm');void r.offsetWidth;r.classList.add('alarm');toast(_t('toast.railFull'))}}
 function freeSlot(){const used=new Set(LS.buffer.map(i=>i.slot));for(let j=0;j<LS.cap;j++)if(!used.has(j))return j;return -1}
 function pullScrew(s,delay=0){
   const box=bestBox(s.color);let dest;
@@ -660,7 +661,7 @@ function flyTo(c,from,dest){LS.busy++;
 function arriveBox(b,k){b.arrived++;const h=b.el&&b.el.querySelectorAll('.h')[k];if(h)h.innerHTML=tokHTML(b.c);sfx.tink();if(b.arrived===3)completeBox(b);checkSoon()}
 function completeBox(b){LS.busy++;b.state='leaving';const now=performance.now();LS.combo=now-LS.lastBox<3500?Math.min(5,LS.combo+1):1;LS.lastBox=now;
   addScore(25*LS.combo);addCoins(1);const ls=LS,i=LS.boxes.indexOf(b),bay=$('#boxes').children[i];
-  if(LS.combo>1){const t=document.createElement('div');t.className='combo';t.textContent='COMBO ×'+LS.combo;bay.appendChild(t);t.animate([{transform:'translate(-50%,0)',opacity:1},{transform:'translate(-50%,-26px)',opacity:0}],{duration:900,easing:'ease-out',fill:'forwards'})}
+  if(LS.combo>1){const t=document.createElement('div');t.className='combo';t.textContent=_t('combo',{n:LS.combo});bay.appendChild(t);t.animate([{transform:'translate(-50%,0)',opacity:1},{transform:'translate(-50%,-26px)',opacity:0}],{duration:900,easing:'ease-out',fill:'forwards'})}
   setTimeout(()=>{if(ls!==LS)return;sfx.box(LS.combo);const lid=b.el.querySelector('.lid');
     lid.animate([{transform:'translateY(-24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:reduceMotion?1:180,fill:'forwards',easing:'ease-in'});
     const an=b.el.animate([{transform:'none',opacity:1},{transform:'translateY(4px) scale(1.04)',opacity:1,offset:.35},{transform:'translateY(-46px) scale(.7)',opacity:0}],{duration:reduceMotion?1:420,delay:reduceMotion?0:200,easing:'ease-in',fill:'forwards'});
@@ -682,23 +683,23 @@ function canUse(id){if(!LS||LS.done)return false;if(id==='drill')return LS.drill
 function affordable(id){return(save.inv[id]||0)>0||save.coins>=TOOLS[id].price}
 function pay(id){if((save.inv[id]||0)>0)save.inv[id]--;else{save.coins-=TOOLS[id].price;renderCoins()}persist();renderTools()}
 function useTool(id){ensureAudio();if(state!=='play'||!LS||LS.done||LS.paused)return;
-  if(LS.target===id){LS.target=null;renderTools();toast('Hamer opgeborgen');return}
-  if(!canUse(id))return toast(id==='drill'?'Maximaal 2 extra gaten per level':'Kan nu niet');
-  if(!affordable(id))return toast(`Nog ${TOOLS[id].price-save.coins} munten nodig`);
-  if(id==='hammer'){LS.target='hammer';renderTools();toast('Tik op een onderdeel om het los te slaan',2600);return}
+  if(LS.target===id){LS.target=null;renderTools();toast(_t('toast.hammerAway'));return}
+  if(!canUse(id))return toast(_t(id==='drill'?'toast.maxDrills':'toast.cantNow'));
+  if(!affordable(id))return toast(_t('toast.needCoins',{n:TOOLS[id].price-save.coins}));
+  if(id==='hammer'){LS.target='hammer';renderTools();toast(_t('toast.hammerTap'),2600);return}
   if(TOOL_FN[id]())pay(id)}
 const TOOL_FN={
-  drill(){LS.cap++;LS.drills++;renderRail(LS.cap-1);sfx.drill();requestAnimationFrame(()=>fitCamera(false));toast('Extra gat geboord');checkSoon();return true},
-  chest(){const b=nextBox();if(!b){toast('Geen dozen meer in de wachtrij');return false}LS.chestUsed=true;LS.boxes.push(b);renderBoxes();fillBay(LS.boxes.length-1,true);
-    requestAnimationFrame(()=>{fitCamera(false);tryAbsorb();checkSoon()});toast('Extra doos klaargezet');return true},
+  drill(){LS.cap++;LS.drills++;renderRail(LS.cap-1);sfx.drill();requestAnimationFrame(()=>fitCamera(false));toast(_t('toast.drilled'));checkSoon();return true},
+  chest(){const b=nextBox();if(!b){toast(_t('toast.noBoxes'));return false}LS.chestUsed=true;LS.boxes.push(b);renderBoxes();fillBay(LS.boxes.length-1,true);
+    requestAnimationFrame(()=>{fitCamera(false);tryAbsorb();checkSoon()});toast(_t('toast.chest'));return true},
   magnet(){let n=0;for(const s of LS.screws)if(s.state==='in'&&!s.blocker&&!s.hidden&&bestBox(s.color)){pullScrew(s,n*90);n++}
-    if(!n){toast('Geen bereikbare schroeven die in een doos passen');return false}toast(`Magneet pakt ${n} schroef${n>1?'en':''}`);return true},
+    if(!n){toast(_t('toast.magnetNone'));return false}toast(_t('toast.magnet',{n}));return true},
   xray(){LS.xrayUntil=performance.now()+8000;const ls=LS;LS.screws.forEach(look);setTimeout(()=>{if(ls===LS)LS.screws.forEach(look)},8050);
-    const n=LS.screws.filter(s=>s.state==='in'&&s.hidden).length;toast(n?`${n} verborgen schroeven zichtbaar`:'Geen verborgen schroeven meer',2400);return true}};
+    const n=LS.screws.filter(s=>s.state==='in'&&s.hidden).length;toast(n?_t('toast.xray',{n}):_t('toast.xrayNone'),2400);return true}};
 function routeOk(colors){const boxes=LS.boxes.map(b=>b&&b.state==='ready'?{c:b.c,n:b.n}:null);let free=LS.cap-LS.buffer.length;
   for(const c of colors){const b=bestBoxOf(boxes,c);if(b)b.n++;else if(free>0)free--;else return false}return true}
 function hammerHit(p){if(!p||!p.alive)return;const list=p.screws.filter(s=>s.state==='in');if(!list.length)return;
-  if(!routeOk(list.map(s=>s.color))){toast(`Te weinig plek voor ${list.length} schroeven`);return}
+  if(!routeOk(list.map(s=>s.color))){toast(_t('toast.noRoom',{n:list.length}));return}
   LS.target=null;pay('hammer');sfx.hammer();flashPart(p);list.forEach((s,i)=>pullScrew(s,120+i*110));renderTools()}
 
 /* --- 3D animations --- */
@@ -725,22 +726,22 @@ function modal(title,body,actions){$('#mTitle').textContent=title;$('#mBody').in
 function closeModal(){$('#modal').hidden=true}
 function openShop(after){
   const draw=()=>{$('#mBody').innerHTML=`<div class="wallet">${COIN}<span>${fmt(save.coins)}</span></div><div class="shop">${TOOL_ORDER.map(id=>{const t=TOOLS[id],own=save.inv[id]||0;
-    return`<div class="srow">${t.icon}<div><span class="nm">${t.name}</span>${own?`<span class="own">×${own}</span>`:''}<div class="ds">${t.desc}</div></div><button class="sbuy" data-buy="${id}" ${save.coins<t.price?'disabled':''} aria-label="Koop ${t.name} voor ${t.price} munten">${COIN}${t.price}</button></div>`}).join('')}</div>`;
+    return`<div class="srow">${t.icon}<div><span class="nm">${t.name}</span>${own?`<span class="own">×${own}</span>`:''}<div class="ds">${t.desc}</div></div><button class="sbuy" data-buy="${id}" ${save.coins<t.price?'disabled':''} aria-label="${_t('shop.buy',{name:t.name,price:t.price})}">${COIN}${t.price}</button></div>`}).join('')}</div>`;
     $('#mBody').querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const id=b.dataset.buy,t=TOOLS[id];if(save.coins<t.price)return;ensureAudio();save.coins-=t.price;save.inv[id]=(save.inv[id]||0)+1;persist();sfx.coin();draw();renderCoins();if(LS)renderTools()})};
-  modal('Winkel','',[['Klaar',after,'primary']]);draw()}
-function openPause(){if(!LS)return;LS.paused=true;const soundBtn=()=>save.sound?'Geluid: aan':'Geluid: uit';
-  modal('Pauze',`<p>Level ${G.level} · ${LS.removed} van ${LS.total} schroeven los.</p>`,[
-    ['Verder spelen',()=>{LS.paused=false;checkSoon()},'primary'],
-    ['Winkel',()=>{openShop(()=>{LS.paused=false;checkSoon()});return'keep'}],
-    ['Level opnieuw',()=>startLevel()],
+  modal(_t('shop.title'),'',[[_t('done'),after,'primary']]);draw()}
+function openPause(){if(!LS)return;LS.paused=true;const soundBtn=()=>_t(save.sound?'sound.on':'sound.off');
+  modal(_t('pause'),`<p>${_t('pause.body',{level:G.level,removed:LS.removed,total:LS.total})}</p>`,[
+    [_t('pause.resume'),()=>{LS.paused=false;checkSoon()},'primary'],
+    [_t('menu.shop'),()=>{openShop(()=>{LS.paused=false;checkSoon()});return'keep'}],
+    [_t('pause.restart'),()=>startLevel()],
     [soundBtn(),()=>{save.sound=!save.sound;persist();$('#mActions').children[3].textContent=soundBtn();return'keep'}],
-    ['Naar menu',()=>showMenu()]])}
+    [_t('toMenu'),()=>showMenu()]])}
 function stuck(){LS.paused=true;sfx.fail();const acts=[];const resume=()=>{LS.paused=false};
-  const label=id=>(save.inv[id]||0)>0?`${TOOLS[id].name} gebruiken (×${save.inv[id]})`:`${TOOLS[id].name} kopen · ${COIN}${TOOLS[id].price}`;
+  const label=id=>(save.inv[id]||0)>0?_t('stuck.use',{name:TOOLS[id].name,n:save.inv[id]}):_t('stuck.buy',{name:TOOLS[id].name,price:COIN+TOOLS[id].price});
   if(canUse('drill')&&affordable('drill'))acts.push([label('drill'),()=>{resume();useTool('drill')},'primary']);
   if(canUse('chest')&&affordable('chest'))acts.push([label('chest'),()=>{resume();useTool('chest')},acts.length?'':'primary']);
-  acts.push(['Opnieuw (−1 leven)',()=>loseLife(),acts.length?'':'primary']);
-  modal('Rail vol',`<p>Er past geen bereikbare schroef meer bij een doos of in de rail.${acts.length>1?' Gereedschap kan je nog redden.':''}</p>`,acts)}
+  acts.push([_t('stuck.retry'),()=>loseLife(),acts.length?'':'primary']);
+  modal(_t('stuck.title'),`<p>${_t('stuck.body')}${acts.length>1?_t('stuck.toolHint'):''}</p>`,acts)}
 function loseLife(){G.hearts--;if(G.hearts<=0)return gameOver();save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist();startLevel()}
 function levelComplete(){LS.done=true;const secs=(performance.now()-LS.start)/1000,m=LS.cfg.mult;
   const base=LS.levelScore,time=Math.round(Math.max(0,LS.total*4-secs)*2*m),bonus=Math.round((150+G.level*20)*m),coins=LS.cfg.coins+Math.floor(G.level*1.5);
@@ -748,24 +749,24 @@ function levelComplete(){LS.done=true;const secs=(performance.now()-LS.start)/10
   const b=save.best[key()]||{score:0,level:0};b.score=Math.max(b.score,G.score);b.level=Math.max(b.level,done);save.best[key()]=b;
   save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist();sfx.win();renderScore();
   const mm=Math.floor(secs/60),ss=String(Math.floor(secs%60)).padStart(2,'0'),earned=LS.coinsEarned;
-  setTimeout(()=>modal(`Level ${done} klaar!`,`<div class="rows"><div><span>Schroeven &amp; dozen</span><span>${fmt(base)}</span></div><div><span>Tijdbonus (${mm}:${ss})</span><span>+${fmt(time)}</span></div><div><span>Levelbonus</span><span>+${fmt(bonus)}</span></div><div class="tot"><span>Totaal</span><span>${fmt(G.score)}</span></div><div class="gold"><span>Munten verdiend</span><span>${COIN} +${earned}</span></div></div>`,
-    [['Volgend level',()=>startLevel(),'primary'],['Winkel',()=>{openShop(()=>startLevel());return'keep'}],['Naar menu',()=>showMenu()]]),reduceMotion?50:650)}
+  setTimeout(()=>modal(_t('win.title',{n:done}),`<div class="rows"><div><span>${_t('win.screws')}</span><span>${fmt(base)}</span></div><div><span>${_t('win.time',{t:mm+':'+ss})}</span><span>+${fmt(time)}</span></div><div><span>${_t('win.level')}</span><span>+${fmt(bonus)}</span></div><div class="tot"><span>${_t('win.total')}</span><span>${fmt(G.score)}</span></div><div class="gold"><span>${_t('win.coins')}</span><span>${COIN} +${earned}</span></div></div>`,
+    [[_t('win.next'),()=>startLevel(),'primary'],[_t('menu.shop'),()=>{openShop(()=>startLevel());return'keep'}],[_t('toMenu'),()=>showMenu()]]),reduceMotion?50:650)}
 function gameOver(){const b=save.best[key()]||{score:0,level:0};const reached=G.level-1;const isBest=G.score>0&&G.score>=b.score;b.score=Math.max(b.score,G.score);b.level=Math.max(b.level,reached);save.best[key()]=b;
   delete save.runs[key()];persist();
-  modal('Run voorbij',`<p>Je haalde level ${G.level} met ${fmt(G.score)} punten. Je munten en gereedschap blijven bewaard.</p>${isBest?'<span class="newbest">NIEUW RECORD</span>':`<p style="margin-top:6px">Record: ${fmt(b.score)}</p>`}`,
-    [['Nieuwe run',()=>{newRun();startLevel()},'primary'],['Naar menu',()=>showMenu()]])}
+  modal(_t('over.title'),`<p>${_t('over.body',{level:G.level,score:fmt(G.score)})}</p>${isBest?`<span class="newbest">${_t('over.newBest')}</span>`:`<p style="margin-top:6px">${_t('over.best',{n:fmt(b.score)})}</p>`}`,
+    [[_t('menu.newRun'),()=>{newRun();startLevel()},'primary'],[_t('toMenu'),()=>showMenu()]])}
 
 /* --- menu --- */
 function newRun(){Object.assign(G,{mode:save.sel.mode,diff:save.sel.diff,level:1,score:0,hearts:3})}
 function renderMenu(){const sel=save.sel;
   document.querySelectorAll('#modeSeg .opt').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===sel.mode)));
-  $('#diffs').innerHTML=DIFFS.map(([id,lab])=>{const c=cfgFor(id,1);
-    return`<button class="opt" data-diff="${id}" aria-pressed="${id===sel.diff}"><span><span class="t">${lab}</span><br><span class="d">${c.K} dozen · ${c.B} gaten · ${c.C}–${c.Cmax} kleuren</span></span>
+  $('#diffs').innerHTML=DIFFS.map(id=>{const c=cfgFor(id,1);
+    return`<button class="opt" data-diff="${id}" aria-pressed="${id===sel.diff}"><span><span class="t">${_t('diff.'+id)}</span><br><span class="d">${_t('menu.diffInfo',{k:c.K,b:c.B,c:c.C,cmax:c.Cmax})}</span></span>
       <span class="pips" aria-hidden="true"><span>${'<i></i>'.repeat(c.K)}</span><span class="hole">${'<i></i>'.repeat(c.B)}</span></span></button>`}).join('');
   document.querySelectorAll('#diffs .opt').forEach(b=>b.onclick=()=>{save.sel.diff=b.dataset.diff;persist();renderMenu()});
   const b=save.best[key(sel.mode,sel.diff)];$('#stBest').textContent=b?fmt(b.score):'—';$('#stLvl').textContent=b&&b.level?b.level:'—';renderCoins();
   const r=save.runs[key(sel.mode,sel.diff)],cb=$('#contBtn');cb.hidden=!r;
-  if(r)cb.innerHTML=`Doorgaan · level ${r.level} <span aria-label="${r.hearts} levens">${'♥'.repeat(r.hearts)}</span>`;
+  if(r)cb.innerHTML=`${_t('menu.continue',{n:r.level})} <span aria-label="${_t('lives',{n:r.hearts})}">${'♥'.repeat(r.hearts)}</span>`;
   $('#newBtn').className='btn'+(r?'':' primary')}
 document.querySelectorAll('#modeSeg .opt').forEach(b=>b.onclick=()=>{if(save.sel.mode===b.dataset.mode)return;save.sel.mode=b.dataset.mode;persist();renderMenu();buildDemo()});
 $('#contBtn').onclick=()=>{ensureAudio();const r=save.runs[key(save.sel.mode,save.sel.diff)];if(!r)return;Object.assign(G,{mode:save.sel.mode,diff:save.sel.diff,level:r.level,score:r.score,hearts:r.hearts});startLevel()};

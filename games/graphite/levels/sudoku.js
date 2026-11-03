@@ -283,18 +283,17 @@
 
   /**
    * Next logical step for a hint, from the player's current (correct) values.
-   * Returns {cell, value, text}.
+   * Returns {cell, value, how, unit, after}: how = "hidden" (the only spot for value in
+   * its unit) or "naked" (the only value left for the cell), unit = "row" | "column" | "box",
+   * after = true when other candidates had to be ruled out first. The game turns this into
+   * text in the player's language.
    */
   function hint(values) {
     const s = makeState(values);
     for (let pass = 0; pass < 40; pass++) {
       const hit = findSingle(s);
       if (hit && !hit.bad) {
-        const v = hit.value;
-        let text;
-        if (hit.how === "hidden") text = pass ? `After ruling out a few candidates, this is the only spot left for ${v} in its ${UNIT_NAME(hit.unit)}.` : `This is the only spot left for ${v} in its ${UNIT_NAME(hit.unit)}.`;
-        else text = pass ? `After ruling out a few candidates, only ${v} fits here.` : `Every other number already appears in this cell's row, column or box. Only ${v} fits.`;
-        return { cell: hit.cell, value: v, text };
+        return { cell: hit.cell, value: hit.value, how: hit.how, unit: hit.how === "hidden" ? UNIT_NAME(hit.unit) : null, after: pass > 0 };
       }
       if (!(lockedCandidates(s) || subsets(s) || wings(s))) break;
     }

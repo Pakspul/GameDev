@@ -126,10 +126,12 @@ function dealOrder(P,topo,r,indices){
   }
   return order;
 }
-const NAME_A=['Floating','Hidden','Western','Upper','Old','Lesser','Northern','Quiet','Crimson','Sunken'];
-const NAME_P=['Pavilion','Terrace','Gate','Garden','Bridge','Pagoda','Courtyard','Tower','Hall','Pond','Grotto','Orchard','Pass','Shrine','Library','Market','Harbor','Teahouse','Cloister','Observatory'];
-const NAME_O=['Quiet Rain','Falling Plum','Nine Dragons','the Jade Moon','Silver Carp','Drifting Clouds','Red Lanterns','the White Crane','Bamboo Wind','Morning Frost','the Sleeping Tiger','Autumn Ink','Golden Koi','Hidden Stars','the Willow','Distant Thunder','Peach Blossom','Ten Thousand Steps','Paper Kites','Mountain Mist','the Silk Road','Lotus Smoke','the Iron Bell','Winter Plum'];
-function levelName(r){return (r()<0.4?pick(r,NAME_A)+' ':'')+pick(r,NAME_P)+' of '+pick(r,NAME_O);}
+// A level's name is three picks from word lists: an optional adjective, a place and an "of ...".
+// Only the indices are stored ("a.p.o", a = -1 when there's no adjective); strings.js holds the
+// words per language. The list lengths (10, 20, 24) are part of the seed: keep them as they are.
+const NAME_A=10,NAME_P=20,NAME_O=24;
+const nameIdx=n=>[...Array(n).keys()];
+function levelName(r){return (r()<0.4?pick(r,nameIdx(NAME_A)):-1)+'.'+pick(r,nameIdx(NAME_P))+'.'+pick(r,nameIdx(NAME_O));}
 function generateLevel(diffKey,level,tall,seed){
   const d=DIFFS[diffKey],r=rngFor(seed);
   const target=levelTarget(d,level),layers=levelLayers(d,level);

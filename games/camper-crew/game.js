@@ -12,6 +12,7 @@
 
   var L = window.CamperLevels;
   var $ = function (id) { return document.getElementById(id); };
+  var _t = I18n.t;
   var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
   var DEG = Math.PI / 180;
 
@@ -70,18 +71,19 @@
 
   // ---------- Camper interior ----------
   // Every piece of furniture is an axis-aligned box on the floor (x0..x1, z0..z1, height h).
+  // label: true gives it a floating name tag; the text is "st.<id>" in strings.js.
   var OB = [
     { id: "dash", x0: 4.4, x1: 5.0, z0: -2.3, z1: 2.3, h: 0.9, color: 0x5d636e },
-    { id: "wheel", x0: 3.3, x1: 4.1, z0: -2.2, z1: -0.6, h: 0.55, color: 0x8d99ae, label: "Wheel" },
+    { id: "wheel", x0: 3.3, x1: 4.1, z0: -2.2, z1: -0.6, h: 0.55, color: 0x8d99ae, label: true },
     { id: "passenger", x0: 3.3, x1: 4.1, z0: 0.6, z1: 2.2, h: 0.55, color: 0x8d99ae },
-    { id: "counter", x0: 0.2, x1: 1.5, z0: -2.3, z1: -1.4, h: 0.9, color: 0xbfc5cc, label: "Counter" },
-    { id: "stove", x0: 1.5, x1: 2.6, z0: -2.3, z1: -1.4, h: 0.9, color: 0x9aa1a9, label: "Stove" },
-    { id: "fridge", x0: -1.0, x1: 0.2, z0: -2.3, z1: -1.35, h: 1.7, color: 0xe5e7eb, label: "Fridge" },
-    { id: "fuel", x0: 0.7, x1: 1.4, z0: 1.95, z1: 2.3, h: 0.9, color: 0xc0504d, label: "Fuel filler" },
-    { id: "table", x0: -2.3, x1: -0.9, z0: 0.8, z1: 2.3, h: 0.75, color: 0xcdbf9f, label: "Table" },
-    { id: "crate", x0: -4.1, x1: -3.0, z0: 1.3, z1: 2.3, h: 0.6, color: 0x8a6d4b, label: "Fuel cans" },
-    { id: "shelf", x0: -5.0, x1: -4.35, z0: -1.6, z1: 1.2, h: 0.9, color: 0x6f6252, label: "Luggage" },
-    { id: "tools", x0: -4.1, x1: -3.0, z0: -2.3, z1: -1.4, h: 0.8, color: 0xbfc5cc, label: "Tools" },
+    { id: "counter", x0: 0.2, x1: 1.5, z0: -2.3, z1: -1.4, h: 0.9, color: 0xbfc5cc, label: true },
+    { id: "stove", x0: 1.5, x1: 2.6, z0: -2.3, z1: -1.4, h: 0.9, color: 0x9aa1a9, label: true },
+    { id: "fridge", x0: -1.0, x1: 0.2, z0: -2.3, z1: -1.35, h: 1.7, color: 0xe5e7eb, label: true },
+    { id: "fuel", x0: 0.7, x1: 1.4, z0: 1.95, z1: 2.3, h: 0.9, color: 0xc0504d, label: true },
+    { id: "table", x0: -2.3, x1: -0.9, z0: 0.8, z1: 2.3, h: 0.75, color: 0xcdbf9f, label: true },
+    { id: "crate", x0: -4.1, x1: -3.0, z0: 1.3, z1: 2.3, h: 0.6, color: 0x8a6d4b, label: true },
+    { id: "shelf", x0: -5.0, x1: -4.35, z0: -1.6, z1: 1.2, h: 0.9, color: 0x6f6252, label: true },
+    { id: "tools", x0: -4.1, x1: -3.0, z0: -2.3, z1: -1.4, h: 0.8, color: 0xbfc5cc, label: true },
   ];
   var OBI = {};
   OB.forEach(function (o) { OBI[o.id] = o; });
@@ -218,7 +220,7 @@
     return el;
   }
   var stationLabels = OB.filter(function (o) { return o.label; }).map(function (o) {
-    return { el: makeLabel("", o.label), x: (o.x0 + o.x1) / 2, y: o.h + 0.15, z: (o.z0 + o.z1) / 2, ob: o };
+    return { el: makeLabel("", _t("st." + o.id)), x: (o.x0 + o.x1) / 2, y: o.h + 0.15, z: (o.z0 + o.z1) / 2, ob: o };
   });
   var tmpV = new THREE.Vector3();
   function project(x, y, z, el, dy) {
@@ -371,21 +373,21 @@
   defStation("shelf", {
     slots: slotList([[-4.67, -1.25], [-4.67, -0.55], [-4.67, 0.15], [-4.67, 0.85]], OBI.shelf.h),
     accepts: function (it) { return it.type === "box" && !!freeSlot(this); },
-    receive: function (it, x, z) { placeOn(this, it, x, z); if (G.time > 1) pop("Stowed", it.x, it.z); },
+    receive: function (it, x, z) { placeOn(this, it, x, z); if (G.time > 1) pop(_t("pop.stowed"), it.x, it.z); },
   });
   defStation("fridge", { give: function () { return spawnItem("food", -0.4, -1.1); }, giveLabel: "food" });
   defStation("crate", { give: function () { return spawnItem("can", -3.5, 1.1); }, giveLabel: "can" });
   defStation("fuel", {
     aim: true,
     accepts: function (it) { return it.type === "can"; },
-    receive: function (it) { removeItem(it); G.fuel = Math.min(100, G.fuel + T.fuelCan); pop("+Fuel", 1.0, 1.8); Platform.haptic(15); },
+    receive: function (it) { removeItem(it); G.fuel = Math.min(100, G.fuel + T.fuelCan); pop(_t("pop.fuel"), 1.0, 1.8); Platform.haptic(15); },
   });
   defStation("passenger", {
     aim: true,
     accepts: function (it) { return it.type === "food" && it.cook >= 1 && it.cook < T.burnAt && G.hungry; },
     receive: function (it) {
       removeItem(it); G.hungry = false; G.waited = 0; G.mood = Math.min(100, G.mood + T.feed); G.fed++;
-      pop("Yum!", 3.7, 1.4); Platform.haptic(15);
+      pop(_t("pop.yum"), 3.7, 1.4); Platform.haptic(15);
     },
   });
   defStation("wheel", {});
@@ -868,11 +870,11 @@
     if (t.kind === "patch") {
       t.leak.prog += dt / T.patchTime;
       G.work = t;
-      if (t.leak.prog >= 1) { t.leak.active = false; t.leak.label.classList.add("hidden"); pop("Patched", t.leak.x, t.leak.z); Platform.haptic(15); }
+      if (t.leak.prog >= 1) { t.leak.active = false; t.leak.label.classList.add("hidden"); pop(_t("pop.patched"), t.leak.x, t.leak.z); Platform.haptic(15); }
     } else if (t.kind === "spray") {
       G.fire.prog += dt / T.sprayTime;
       G.work = t;
-      if (G.fire.prog >= 1) { G.fire = null; pop("Fire out", 2.05, -1.85); Platform.haptic(15); }
+      if (G.fire.prog >= 1) { G.fire = null; pop(_t("pop.fireOut"), 2.05, -1.85); Platform.haptic(15); }
     }
   }
 
@@ -1008,15 +1010,15 @@
     // Alerts, most urgent first
     var a = [];
     var bend = L.nextBend(level, G.s, G.v * 4.5 + 12);
-    if (!G.seated && G.off) a.push(["Off the road! Take the wheel", true]);
-    else if (!G.seated && bend) a.push([(bend.inside ? "In a bend" : "Bend ahead") + " (" + (bend.dir > 0 ? "left" : "right") + "): take the wheel!", true]);
-    if (G.fire) a.push(["Fire on the stove! Grab the extinguisher", true]);
-    if (G.fuel <= 0) a.push(["Out of fuel! Throw a can into the filler", true]);
-    else if (G.fuel < 20) a.push(["Fuel low: get a can from the crate", false]);
-    if (G.hungry && G.waited > 4) a.push(["Passenger is hungry: fridge → stove → passenger", G.waited > 15]);
-    if (leaks.some(function (l) { return l.active; })) a.push(["Roof leak! Patch it with the kit", false]);
+    if (!G.seated && G.off) a.push([_t("alert.offRoad"), true]);
+    else if (!G.seated && bend) a.push([_t(bend.inside ? "alert.bendIn" : "alert.bendAhead", { dir: _t(bend.dir > 0 ? "dir.left" : "dir.right") }), true]);
+    if (G.fire) a.push([_t("alert.fire"), true]);
+    if (G.fuel <= 0) a.push([_t("alert.noFuel"), true]);
+    else if (G.fuel < 20) a.push([_t("alert.lowFuel"), false]);
+    if (G.hungry && G.waited > 4) a.push([_t("alert.hungry"), G.waited > 15]);
+    if (leaks.some(function (l) { return l.active; })) a.push([_t("alert.leak"), false]);
     var floorBoxes = items.filter(function (it) { return it.type === "box" && it.state === "floor"; }).length;
-    if (floorBoxes >= 2) a.push(["Luggage on the floor: back on the shelf", false]);
+    if (floorBoxes >= 2) a.push([_t("alert.luggage"), false]);
     a = a.slice(0, 2);
     var key = a.map(function (x) { return x[0] + x[1]; }).join("|");
     if (key !== lastAlerts) {
@@ -1034,29 +1036,29 @@
       sl.stove.classList.remove("hidden");
       var c = pan.cook, burning = c > 1.6;
       sl.stove.className = "lbl state" + (burning ? " hot" : c >= 1 ? " good" : "");
-      sl.stove.innerHTML = (c < 1 ? "Cooking" : burning ? "Burning!" : "Ready") + '<span class="bar"><b style="width:' + Math.min(100, (c < 1 ? c : (c - 1) / (T.burnAt - 1)) * 100) + '%"></b></span>';
+      sl.stove.innerHTML = _t(c < 1 ? "lbl.cooking" : burning ? "lbl.burning" : "lbl.ready") + '<span class="bar"><b style="width:' + Math.min(100, (c < 1 ? c : (c - 1) / (T.burnAt - 1)) * 100) + '%"></b></span>';
       project(2.05, 1.6, -1.85, sl.stove);
     } else sl.stove.classList.add("hidden");
     if (G.hungry) {
       sl.passenger.classList.remove("hidden");
       sl.passenger.className = "lbl state" + (G.waited > 15 ? " hot" : "");
-      sl.passenger.textContent = G.waited > 15 ? "Starving!" : "Hungry";
+      sl.passenger.textContent = _t(G.waited > 15 ? "lbl.starving" : "lbl.hungry");
       project(3.75, 2.1, 1.4, sl.passenger);
     } else sl.passenger.classList.add("hidden");
     if (G.seated || bend || G.off) {
       sl.wheel.classList.remove("hidden");
       sl.wheel.className = "lbl state" + (!G.seated ? " hot" : " good");
-      sl.wheel.textContent = G.seated ? "Driving" : "Take the wheel!";
+      sl.wheel.textContent = _t(G.seated ? "lbl.driving" : "lbl.takeWheel");
       project(3.7, 2.0, -1.4, sl.wheel);
     } else sl.wheel.classList.add("hidden");
     if (G.fire) {
       sl.fire.classList.remove("hidden");
-      sl.fire.innerHTML = "Fire!" + (G.fire.prog > 0 ? '<span class="bar"><b style="width:' + G.fire.prog * 100 + '%"></b></span>' : "");
+      sl.fire.innerHTML = _t("lbl.fire") + (G.fire.prog > 0 ? '<span class="bar"><b style="width:' + G.fire.prog * 100 + '%"></b></span>' : "");
       project(2.05, 1.95, -1.85, sl.fire);
     } else sl.fire.classList.add("hidden");
     leaks.forEach(function (l) {
       if (!l.active) return;
-      l.label.innerHTML = "Leak" + (l.prog > 0 ? '<span class="bar"><b style="width:' + l.prog * 100 + '%"></b></span>' : "");
+      l.label.innerHTML = _t("lbl.leak") + (l.prog > 0 ? '<span class="bar"><b style="width:' + l.prog * 100 + '%"></b></span>' : "");
       project(l.x, 1.2, l.z, l.label);
     });
     for (var i = pops.length - 1; i >= 0; i--) {
@@ -1071,9 +1073,9 @@
   var btnGrab = $("btnGrab"), btnUse = $("btnUse");
   var lastBtn = "";
   function setButtons(g, u) {
-    var gl = !g ? (G.held ? "Drop" : "Grab") : g.kind === "put" ? "Put" : g.kind === "drop" ? "Drop" : "Grab";
+    var gl = _t(!g ? (G.held ? "btn.drop" : "btn.grab") : g.kind === "put" ? "btn.put" : g.kind === "drop" ? "btn.drop" : "btn.grab");
     if (G.seated) gl = "Stand";
-    var ul = !u ? "Use" : { stand: "Stand", sit: "Drive", throw: "Throw", patch: "Patch", spray: "Spray" }[u.kind];
+    var ul = _t(!u ? "btn.use" : "btn." + u.kind);
     var key = gl + "|" + ul + "|" + !!g + "|" + !!u;
     if (key === lastBtn) return;
     lastBtn = key;
@@ -1130,17 +1132,17 @@
       save.unlocked = Math.max(save.unlocked, G.n + 1);
       writeSave();
     }
-    $("resultTitle").textContent = arrived ? "Made it to camp!" : "The sun has set";
+    $("resultTitle").textContent = _t(arrived ? "res.arrived" : "res.sunset");
     $("resultStars").innerHTML = [0, 1, 2].map(function (i) { return '<span class="' + (i < stars ? "" : "off") + '">★</span>'; }).join("");
     $("resultText").textContent = arrived
-      ? "Daylight left: " + fmtTime(spare) + " · Mood: " + Math.round(G.mood) + "% · Meals served: " + G.fed
-      : "You got " + Math.round(100 * G.s / level.length) + "% of the way. Off-road for " + Math.round(G.offroadTime) + " s.";
+      ? _t("res.arrivedText", { t: fmtTime(spare), m: Math.round(G.mood), f: G.fed })
+      : _t("res.sunsetText", { p: Math.round(100 * G.s / level.length), s: Math.round(G.offroadTime) });
     show("nextBtn", arrived);
     setTimeout(function () { setState("result"); }, arrived ? 600 : 300);
   }
 
   function refreshMenu() {
-    $("roadName").textContent = "Road " + menuRoad;
+    $("roadName").textContent = _t("road", { n: menuRoad });
     var b = save.best[menuRoad] || 0;
     $("roadStars").textContent = b ? "★".repeat(b) + "☆".repeat(3 - b) : "";
     $("prevRoad").disabled = menuRoad <= 1;

@@ -1,6 +1,8 @@
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
+const _t=I18n.t;
+const fmt=n=>n.toLocaleString(I18n.lang);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const reduceMotion=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const lin=h=>new THREE.Color(h).convertSRGBToLinear();
@@ -13,7 +15,12 @@ try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.v===1){save=Object.a
 function persist(){try{localStorage.setItem(STORE,JSON.stringify(save));}catch(e){}}
 const totalStars=k=>Object.values(save.prog[k].stars).reduce((a,b)=>a+b,0);
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
-const prettyDate=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
+const prettyDate=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString(I18n.lang==='nl'?'nl-NL':'en-GB',{day:'numeric',month:'short'});};
+for(const k in DIFFS){DIFFS[k].name=_t('diff.'+k);DIFFS[k].desc=_t('diff.'+k+'.desc');}
+// G.name holds the level's name id from levels.js ("a.p.o"); progress saved before names were
+// translated still holds the English text, which is shown as it is.
+const levelTitle=id=>{const m=/^(-?\d+)\.(\d+)\.(\d+)$/.exec(id||'');return m?_t('levelName',{a:+m[1],p:+m[2],o:+m[3]}):id||'';};
+const displayName=()=>G.daily?_t('dailyName',{date:prettyDate(G.dateStr)}):levelTitle(G.name);
 const isTall=()=>innerWidth/innerHeight<0.8;
 
 /* ---------- Themes ---------- */
@@ -206,7 +213,7 @@ function startLevel(diffKey,level){
   const lv=generateLevel(diffKey,daily?1:level,tall,seed);
   if(!daily){save.lastDiff=diffKey;}
   save.resume=null;persist();
-  setupGame({diffKey,level:daily?1:level,daily,dateStr,name:daily?'Daily · '+prettyDate(dateStr):lv.name,spec:lv.tiles.map(p=>[p.x,p.y,p.z,p.face,1,p.golden?1:0])},true);
+  setupGame({diffKey,level:daily?1:level,daily,dateStr,name:daily?'':lv.name,spec:lv.tiles.map(p=>[p.x,p.y,p.z,p.face,1,p.golden?1:0])},true);
   showBanner();
 }
 
@@ -240,7 +247,7 @@ function match(a,b){
 }
 function undo(){
   if(G.state!=='play'&&G.state!=='stuck')return;if(G.dealing>0)return;
-  const u=G.undo.pop();if(!u){toast('Nothing to undo');return;}
+  const u=G.undo.pop();if(!u){toast(_t('toast.noUndo'));return;}
   if(u.type==='m'){[u.a,u.b].forEach(i=>{const t=G.tiles[i];t.alive=true;t.group.visible=true;t.group.position.set(t.wx,t.baseY,t.wz);t.pivot.rotation.set(0,0,0);t.drop=1.6;t.group.scale.setScalar(0.6);tween(0.35,e=>{t.drop=1.6*(1-e);t.group.scale.setScalar(0.6+0.4*e);},null,ease.back);});G.score=u.score;G.matches=u.matches;G.goldBonus=u.goldBonus;G.timeLeft=u.timeLeft;}
   else if(u.type==='s'){flipTo(u.faces);}
   G.combo=0;G.comboT=0;G.sel=null;G.hint=null;G.undos++;Sfx.clack();
@@ -249,7 +256,7 @@ function undo(){
 }
 function hint(){
   if(G.state!=='play'||G.dealing>0)return;
-  const left=G.d.hints-G.hintsUsed;if(left<=0){toast('No hints left on this level');Sfx.thud();return;}
+  const left=G.d.hints-G.hintsUsed;if(left<=0){toast(_t('toast.noHints'));Sfx.thud();return;}
   const p=findPair();if(!p){openStuck();return;}
   G.hintsUsed++;G.hint=p;G.hintT=3;G.sel=null;Sfx.hint();hud();saveResume();
 }
@@ -269,7 +276,7 @@ function shuffle(fromStuck){
   G.combo=0;G.comboT=0;G.sel=null;G.hint=null;
   if(G.state==='stuck'){G.state='play';closeOverlays();}
   flipTo(nf);Sfx.clack();for(let k=1;k<6;k++)setTimeout(()=>Sfx.clack(),k*70);
-  if(cost)toast(`Shuffled for ${cost} points`);
+  if(cost)toast(_t('toast.shuffled',{n:cost}));
   hud();
 }
 function flipTo(faces){
@@ -292,17 +299,17 @@ function win(){
   else{const p=save.prog[G.diffKey];prevBest=p.best[G.level]||0;p.unlocked=Math.max(p.unlocked,G.level+1);p.stars[G.level]=Math.max(p.stars[G.level]||0,stars);p.best[G.level]=Math.max(prevBest,total);}
   save.resume=null;persist();
   Sfx.win();celebrate();
-  $('#winName').textContent=G.name;
-  $('#winEyebrow').textContent=G.daily?'Daily challenge cleared':`${d.name} · Level ${G.level} cleared`;
-  $('#winRows').innerHTML=[['Matches & combos',matchPts],['Golden pair',G.goldBonus],[d.timed?'Incense left':'Time bonus',timeBonus],['No hints or shuffles',clean]].map(([k,v])=>`<div><dt>${k}</dt><dd>${v?'+'+v.toLocaleString():'—'}</dd></div>`).join('')+`<div class="tot"><dt>Total</dt><dd>${total.toLocaleString()}</dd></div>`;
-  $('#winMeta').textContent=`Cleared in ${fmtTime(G.elapsed)} · best combo ×${G.bestCombo}`+(total>prevBest&&prevBest>0?' · new best':prevBest?` · best ${prevBest.toLocaleString()}`:'');
+  $('#winName').textContent=displayName();
+  $('#winEyebrow').textContent=G.daily?_t('win.daily'):_t('win.level',{diff:d.name,n:G.level});
+  $('#winRows').innerHTML=[[_t('win.matches'),matchPts],[_t('win.gold'),G.goldBonus],[_t(d.timed?'win.incense':'win.time'),timeBonus],[_t('win.clean'),clean]].map(([k,v])=>`<div><dt>${k}</dt><dd>${v?'+'+fmt(v):'—'}</dd></div>`).join('')+`<div class="tot"><dt>${_t('win.total')}</dt><dd>${fmt(total)}</dd></div>`;
+  $('#winMeta').textContent=_t('win.meta',{t:fmtTime(G.elapsed),c:G.bestCombo})+(total>prevBest&&prevBest>0?_t('win.newBest'):prevBest?_t('best',{n:fmt(prevBest)}):'');
   [...document.querySelectorAll('#stars svg')].forEach((s,i)=>{s.classList.toggle('on',i<stars);s.style.animationDelay=(0.35+i*0.18)+'s';});
   $('#winNext').hidden=G.daily;
   setTimeout(()=>openOverlay('win'),1300);
 }
 function celebrate(){const th=THEMES[save.settings.theme],cols=[th.css['--accent'],'#ffffff','#ff8a6a','#8af0c0','#ffd76a'];const span=Math.max(bounds.x1,bounds.z1);for(let k=0;k<16;k++)setTimeout(()=>{burst(new THREE.Vector3((Math.random()-0.5)*span*1.6,2+Math.random()*3,(Math.random()-0.5)*span*1.2),cols,60,{speed:6,cone:Math.PI,grav:-3,life:1.6,size:0.3});},k*140);}
-function openStuck(){if(G.state!=='play')return;G.state='stuck';G.sel=null;const left=G.d.shuffles-G.shufflesUsed;$('#stuckText').textContent=`${aliveCount()} tiles remain, but no free pair matches.`;$('#stuckShuffle').textContent=left>0?(isFinite(left)?`Shuffle (${left} left)`:'Shuffle'):'Shuffle for 250 points';$('#stuckUndo').disabled=!G.undo.length;Sfx.thud();openOverlay('stuck');}
-function timeout(){G.state='timeout';save.resume=null;persist();Sfx.lose();$('#timeoutText').textContent=`${aliveCount()} tiles were left on ${G.name}.`;openOverlay('timeout');}
+function openStuck(){if(G.state!=='play')return;G.state='stuck';G.sel=null;const left=G.d.shuffles-G.shufflesUsed;$('#stuckText').textContent=_t('stuck.text',{n:aliveCount()});$('#stuckShuffle').textContent=left>0?(isFinite(left)?_t('stuck.shuffleLeft',{n:left}):_t('stuck.shuffle')):_t('stuck.shuffleCost');$('#stuckUndo').disabled=!G.undo.length;Sfx.thud();openOverlay('stuck');}
+function timeout(){G.state='timeout';save.resume=null;persist();Sfx.lose();$('#timeoutText').textContent=_t('timeout.text',{n:aliveCount(),name:displayName()});openOverlay('timeout');}
 
 /* ---------- Camera ---------- */
 const cam={yaw:0,pitch:1.1,zoom:1,tYaw:0,tPitch:1.1,tZoom:1,base:20};
@@ -342,19 +349,19 @@ function recenter(){cam.tYaw=0;cam.tPitch=defaultPitch();cam.tZoom=1;}
 const fmtTime=s=>{s=Math.max(0,Math.floor(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
 function hud(){
   if(!G.loaded)return;
-  $('#hudDiff').textContent=G.daily?'Daily challenge':G.d.name;
-  $('#hudLevel').textContent=G.daily?prettyDate(G.dateStr):'Level '+G.level;
-  $('#hudName').textContent=G.daily?'One layout for everyone, today':G.name;
-  $('#hudScore').textContent=G.score.toLocaleString();
+  $('#hudDiff').textContent=G.daily?_t('dailyChallenge'):G.d.name;
+  $('#hudLevel').textContent=G.daily?prettyDate(G.dateStr):_t('level',{n:G.level});
+  $('#hudName').textContent=G.daily?_t('dailyTagline'):displayName();
+  $('#hudScore').textContent=fmt(G.score);
   $('#hudCombo').textContent='×'+Math.max(1,G.combo);
   $('#hudTiles').textContent=aliveCount();
   $('#hudMoves').textContent=G.moves;$('#statMoves').classList.toggle('low',G.moves<=1&&aliveCount()>0);
-  $('#hudTimeK').textContent=G.d.timed?'Incense':'Time';
+  $('#hudTimeK').textContent=_t(G.d.timed?'stat.incense':'stat.time');
   const hl=G.d.hints-G.hintsUsed,sl=G.d.shuffles-G.shufflesUsed;
   $('#nHint').textContent=isFinite(hl)?hl:'∞';$('#btnHint').classList.toggle('empty',hl<=0);
   $('#nShuffle').textContent=sl>0?(isFinite(sl)?sl:'∞'):'−250';
   $('#btnUndo').disabled=!G.undo.length;
-  const hb=$('#btnHighlight');hb.disabled=!!G.d.noHighlight;hb.setAttribute('aria-pressed',String(save.settings.highlight&&!G.d.noHighlight));hb.title=G.d.noHighlight?'Emperor hides the free-tile glow':'Dim blocked tiles (F)';
+  const hb=$('#btnHighlight');hb.disabled=!!G.d.noHighlight;hb.setAttribute('aria-pressed',String(save.settings.highlight&&!G.d.noHighlight));hb.title=_t(G.d.noHighlight?'tool.glow.off':'tool.glow.tip');
   $('#btnSound').setAttribute('aria-pressed',String(save.settings.sound));
 }
 let lastSec=-1;
@@ -370,21 +377,21 @@ function openOverlay(id){document.querySelectorAll('.overlay').forEach(o=>o.hidd
 function closeOverlays(){cam.tYaw=0;document.querySelectorAll('.overlay').forEach(o=>o.hidden=true);}
 let toastT=0;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},1900);}
 function popup(pos,text,cls){const v=pos.clone().project(camera),el=document.createElement('div');el.className='pop '+(cls||'');el.textContent=text;el.style.left=((v.x+1)/2*innerWidth)+'px';el.style.top=((1-v.y)/2*innerHeight)+'px';$('#fx').appendChild(el);setTimeout(()=>el.remove(),1200);}
-function showBanner(){const b=$('#banner');$('#bannerEyebrow').textContent=G.daily?'Daily challenge':`${G.d.name} · Level ${G.level}`;$('#bannerName').textContent=G.daily?prettyDate(G.dateStr):G.name;$('#bannerMeta').textContent=`${G.tiles.length} tiles${G.d.timed?' · '+fmtTime(G.limit)+' of incense':''}`;b.hidden=false;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>{b.hidden=true;},2600);}
+function showBanner(){const b=$('#banner');$('#bannerEyebrow').textContent=G.daily?_t('dailyChallenge'):_t('banner.level',{diff:G.d.name,n:G.level});$('#bannerName').textContent=G.daily?prettyDate(G.dateStr):displayName();$('#bannerMeta').textContent=_t('banner.tiles',{n:G.tiles.length})+(G.d.timed?_t('banner.incense',{t:fmtTime(G.limit)}):'');b.hidden=false;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>{b.hidden=true;},2600);}
 
 /* ---------- Menu ---------- */
 let menuSel=save.lastDiff,menuLevel=save.prog[menuSel]?save.prog[menuSel].unlocked:1;
 const GLYPHC={breeze:'#1c1a17',garden:'#bb2a2a',dragon:'#16704a',emperor:'#1f4c98'};
 function renderMenu(){
-  $('#diffs').innerHTML=['breeze','garden','dragon','emperor'].map(k=>{const d=DIFFS[k],p=save.prog[k],st=totalStars(k);return `<button class="diff" role="radio" aria-checked="${k===menuSel}" data-k="${k}"><span class="mini" style="color:${GLYPHC[k]}">${d.glyph}</span><span class="dtx"><span class="nm">${d.name}</span><span class="ds">${d.desc}</span></span><span class="pg"><b>Lv ${p.unlocked}</b>★ ${st}</span></button>`;}).join('');
+  $('#diffs').innerHTML=['breeze','garden','dragon','emperor'].map(k=>{const d=DIFFS[k],p=save.prog[k],st=totalStars(k);return `<button class="diff" role="radio" aria-checked="${k===menuSel}" data-k="${k}"><span class="mini" style="color:${GLYPHC[k]}">${d.glyph}</span><span class="dtx"><span class="nm">${d.name}</span><span class="ds">${d.desc}</span></span><span class="pg"><b>${_t('lv',{n:p.unlocked})}</b>★ ${st}</span></button>`;}).join('');
   document.querySelectorAll('.diff').forEach(b=>b.onclick=()=>{menuSel=b.dataset.k;menuLevel=save.prog[menuSel].unlocked;Sfx.click();renderMenu();});
   const p=save.prog[menuSel];menuLevel=clamp(menuLevel,1,p.unlocked);
-  $('#lvOut').textContent='Level '+menuLevel;$('#lvPrev').disabled=menuLevel<=1;$('#lvNext').disabled=menuLevel>=p.unlocked;
-  const st=p.stars[menuLevel];$('#lvStars').textContent=st?'★'.repeat(st)+'☆'.repeat(3-st)+' · best '+(p.best[menuLevel]||0).toLocaleString():'Not cleared yet';
+  $('#lvOut').textContent=_t('level',{n:menuLevel});$('#lvPrev').disabled=menuLevel<=1;$('#lvNext').disabled=menuLevel>=p.unlocked;
+  const st=p.stars[menuLevel];$('#lvStars').textContent=st?'★'.repeat(st)+'☆'.repeat(3-st)+_t('best',{n:fmt(p.best[menuLevel]||0)}):_t('notCleared');
   const inGame=G.loaded&&G.state==='play'&&!G.fresh;
   $('#resumeBtn').hidden=!inGame;
-  if(inGame)$('#resumeBtn').innerHTML=`<span>Resume</span><small>${G.daily?'Daily':G.d.name} · ${G.daily?prettyDate(G.dateStr):'Lv '+G.level} · ${aliveCount()} tiles left</small>`;
-  const db=save.daily[todayStr()];$('#dailyMeta').textContent=prettyDate(todayStr())+(db?' · best '+db.toLocaleString():' · not played');
+  if(inGame)$('#resumeBtn').innerHTML=`<span>${_t('resume')}</span><small>${G.d.name} · ${G.daily?prettyDate(G.dateStr):_t('lv',{n:G.level})} · ${_t('tilesLeft',{n:aliveCount()})}</small>`;
+  const db=save.daily[todayStr()];$('#dailyMeta').textContent=prettyDate(todayStr())+(db?_t('best',{n:fmt(db)}):_t('notPlayed'));
   document.querySelectorAll('[data-theme-k]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themeK===save.settings.theme)));
   $('#optSound').setAttribute('aria-pressed',String(save.settings.sound));$('#optHighlight').setAttribute('aria-pressed',String(save.settings.highlight));
 }

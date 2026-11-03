@@ -233,6 +233,7 @@ function NBCore() {
 (function () {
   "use strict";
   const C = NBCore();
+  const _t = I18n.t;
   const RM = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const SPEED = RM ? 0.6 : 1;
 
@@ -253,32 +254,36 @@ function NBCore() {
   ];
   const DIFF_KEYS = C.DIFF_KEYS;
   const DIFF_INFO = {
-    easy:   { name: "Easy",   meta: "3–6 colours, roomy",         star: 8 },
-    medium: { name: "Medium", meta: "4–8 colours, 2 empty bolts", star: 15 },
-    hard:   { name: "Hard",   meta: "5–10 colours, tight",        star: 25 },
-    expert: { name: "Expert", meta: "6–12 colours, very tight",   star: 40 }
+    easy:   { star: 8 },
+    medium: { star: 15 },
+    hard:   { star: 25 },
+    expert: { star: 40 }
   };
-  const TYPE_NAME = { mixed: "Mixed bolts", tall: "Tall bolts", short: "Short bolts", mystery: "Mystery nuts" };
+  for (const k in DIFF_INFO) { DIFF_INFO[k].name = _t("diff." + k); DIFF_INFO[k].meta = _t("diff." + k + ".meta"); }
+  const TYPE_NAME = {};
+  for (const k of ["mixed", "tall", "short", "mystery"]) TYPE_NAME[k] = _t("type." + k);
   const HINT_COST = 15;
   const SPARE_COSTS = [40, 80];
   const DAILY_STAR = 50, DAILY_STREAK = 10, DAILY_STREAK_CAP = 10;
 
   const BOARDS = [
-    { id: "night",     name: "Night shift", price: 0,   pat: "pegs",   v: { board: "#241940", deep: "#150e27", peg: "#120a22", glow: "rgba(140,104,220,0.22)", panel: "#2f2352", line: "#463872", muted: "#b8a7da" } },
-    { id: "blueprint", name: "Blueprint",   price: 200, pat: "grid",   v: { board: "#143563", deep: "#0b2041", peg: "rgba(170,210,255,0.13)", glow: "rgba(120,180,255,0.18)", panel: "#1b3d6d", line: "#2f5a90", muted: "#a6c4e8" } },
-    { id: "garage",    name: "Garage",      price: 350, pat: "pegs",   v: { board: "#0f3b3d", deep: "#082426", peg: "#06201f", glow: "rgba(70,210,190,0.16)", panel: "#164649", line: "#256466", muted: "#9fd2cc" } },
-    { id: "bench",     name: "Workbench",   price: 500, pat: "planks", v: { board: "#4a2e1d", deep: "#2c1a10", peg: "rgba(20,10,4,0.55)", glow: "rgba(255,190,120,0.16)", panel: "#4f3424", line: "#6e4a33", muted: "#dcbfa5" } },
-    { id: "redline",   name: "Redline",     price: 600, pat: "grid",   v: { board: "#4a1424", deep: "#2b0a14", peg: "rgba(255,150,170,0.1)", glow: "rgba(255,90,120,0.16)", panel: "#521a2b", line: "#74304a", muted: "#e3aebb" } },
-    { id: "plate",     name: "Tread plate", price: 800, pat: "plate",  v: { board: "#2b2e35", deep: "#17191d", peg: "rgba(255,255,255,0.06)", glow: "rgba(200,210,230,0.12)", panel: "#30343c", line: "#4a4f5a", muted: "#b5bcc9" } }
+    { id: "night",     price: 0,   pat: "pegs",   v: { board: "#241940", deep: "#150e27", peg: "#120a22", glow: "rgba(140,104,220,0.22)", panel: "#2f2352", line: "#463872", muted: "#b8a7da" } },
+    { id: "blueprint", price: 200, pat: "grid",   v: { board: "#143563", deep: "#0b2041", peg: "rgba(170,210,255,0.13)", glow: "rgba(120,180,255,0.18)", panel: "#1b3d6d", line: "#2f5a90", muted: "#a6c4e8" } },
+    { id: "garage",    price: 350, pat: "pegs",   v: { board: "#0f3b3d", deep: "#082426", peg: "#06201f", glow: "rgba(70,210,190,0.16)", panel: "#164649", line: "#256466", muted: "#9fd2cc" } },
+    { id: "bench",     price: 500, pat: "planks", v: { board: "#4a2e1d", deep: "#2c1a10", peg: "rgba(20,10,4,0.55)", glow: "rgba(255,190,120,0.16)", panel: "#4f3424", line: "#6e4a33", muted: "#dcbfa5" } },
+    { id: "redline",   price: 600, pat: "grid",   v: { board: "#4a1424", deep: "#2b0a14", peg: "rgba(255,150,170,0.1)", glow: "rgba(255,90,120,0.16)", panel: "#521a2b", line: "#74304a", muted: "#e3aebb" } },
+    { id: "plate",     price: 800, pat: "plate",  v: { board: "#2b2e35", deep: "#17191d", peg: "rgba(255,255,255,0.06)", glow: "rgba(200,210,230,0.12)", panel: "#30343c", line: "#4a4f5a", muted: "#b5bcc9" } }
   ];
   const FINISHES = [
-    { id: "gunmetal", name: "Gunmetal",      price: 0,   shaft: "#555a6b", base: "#3d4150", spec: 0x5a5a5a, shine: 60 },
-    { id: "oxide",    name: "Black oxide",   price: 150, shaft: "#3c3e48", base: "#2a2b32", spec: 0x6a6a6a, shine: 90 },
-    { id: "bronze",   name: "Bronze",        price: 300, shaft: "#8f6c3c", base: "#634726", spec: 0x8a7050, shine: 80 },
-    { id: "copper",   name: "Copper",        price: 450, shaft: "#a85c3a", base: "#713a22", spec: 0x9a6a50, shine: 85 },
-    { id: "blued",    name: "Blued steel",   price: 550, shaft: "#3e5385", base: "#2a3659", spec: 0x7080a0, shine: 90 },
-    { id: "chrome",   name: "Bright chrome", price: 700, shaft: "#d9dde8", base: "#c9ccd6", spec: 0x9a9a9a, shine: 95 }
+    { id: "gunmetal", price: 0,   shaft: "#555a6b", base: "#3d4150", spec: 0x5a5a5a, shine: 60 },
+    { id: "oxide",    price: 150, shaft: "#3c3e48", base: "#2a2b32", spec: 0x6a6a6a, shine: 90 },
+    { id: "bronze",   price: 300, shaft: "#8f6c3c", base: "#634726", spec: 0x8a7050, shine: 80 },
+    { id: "copper",   price: 450, shaft: "#a85c3a", base: "#713a22", spec: 0x9a6a50, shine: 85 },
+    { id: "blued",    price: 550, shaft: "#3e5385", base: "#2a3659", spec: 0x7080a0, shine: 90 },
+    { id: "chrome",   price: 700, shaft: "#d9dde8", base: "#c9ccd6", spec: 0x9a9a9a, shine: 95 }
   ];
+  BOARDS.forEach(b => { b.name = _t("board." + b.id); });
+  FINISHES.forEach(f => { f.name = _t("finish." + f.id); });
 
   // ================================================================ storage
   const store = {
@@ -340,7 +345,8 @@ function NBCore() {
   const fx = fxCanvas.getContext("2d");
   const starSvg = (on, cls) => '<svg class="' + (on ? "on" : "off") + (cls ? " " + cls : "") + '"><use href="#i-star"/></svg>';
   const washerSvg = '<svg class="washer"><use href="#i-washer"/></svg>';
-  const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+  const plural = (n, w) => _t(w + "s", { n }); // "move" → the "moves" key, which handles 1 vs. many
+  const shortDate = (d, o) => d.toLocaleDateString(I18n.lang === "nl" ? "nl-NL" : "en-GB", o);
 
   // ================================================================ three
   const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, alpha: true });
@@ -897,7 +903,7 @@ function NBCore() {
   function flashChip(cls) { const chip = $("washerChip"); chip.classList.remove("bump", "deny"); void chip.offsetWidth; chip.classList.add(cls); }
   function canPay(cost) {
     if (eco.washers >= cost) return true;
-    toast("You need " + cost + " washers and have " + eco.washers + ". Clear levels to earn more.");
+    toast(_t("toast.poor", { cost, n: eco.washers }));
     flashChip("deny");
     return false;
   }
@@ -917,7 +923,7 @@ function NBCore() {
     hintBusy = false; updateHud();
     if (!M || v !== version) return;
     if (!res || !res.solved) {
-      toast("No way out found from here, so no washers were charged. Undo a few moves and try again.");
+      toast(_t("toast.noWay"));
       return;
     }
     pay(HINT_COST);
@@ -937,7 +943,7 @@ function NBCore() {
   }
   function addSpare() {
     if (!M || loading || isSolved()) return;
-    if (M.spares >= SPARE_COSTS.length) { toast("Two spare bolts is the limit for one level."); return; }
+    if (M.spares >= SPARE_COSTS.length) { toast(_t("toast.spareMax")); return; }
     const cost = SPARE_COSTS[M.spares];
     if (!canPay(cost)) return;
     pay(cost);
@@ -948,7 +954,7 @@ function NBCore() {
     layout();
     bv.group.scale.setScalar(0.01);
     addEffect(0, 0.35, p => { bv.group.scale.setScalar(0.01 + ease.out(p) * 0.99); });
-    toast("Spare bolt added. It holds one nut.");
+    toast(_t("toast.spare"));
     changed();
   }
   function restart() {
@@ -984,22 +990,22 @@ function NBCore() {
     if (!M) return;
     if (M.mode === "daily") {
       const d = new Date(M.day + "T12:00:00");
-      $("diffPill").textContent = "Daily · " + TYPE_NAME[M.type];
-      $("levelTitle").textContent = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      $("diffPill").textContent = _t("dailyPill", { type: TYPE_NAME[M.type] });
+      $("levelTitle").textContent = shortDate(d, { day: "numeric", month: "short" });
     } else {
       $("diffPill").textContent = DIFF_INFO[M.diff].name + " · " + TYPE_NAME[M.type];
-      $("levelTitle").textContent = "Level " + M.level;
+      $("levelTitle").textContent = _t("level", { n: M.level });
     }
     $("moveCount").textContent = plural(M.history.length, "move");
     $("parCount").textContent = M.par;
     const s = liveStars();
     $("liveStars").innerHTML = [1, 2, 3].map(k => starSvg(k <= s)).join("");
-    $("liveStars").setAttribute("aria-label", s + " of 3 stars if you finish now");
+    $("liveStars").setAttribute("aria-label", _t("liveStars", { s }));
     $("undoBtn").disabled = !M.history.length;
     $("hintBtn").disabled = hintBusy || isSolved();
     const maxed = M.spares >= SPARE_COSTS.length;
     $("spareBtn").disabled = maxed || isSolved();
-    $("spareCost").textContent = maxed ? "max" : SPARE_COSTS[M.spares];
+    $("spareCost").textContent = maxed ? _t("max") : SPARE_COSTS[M.spares];
   }
   function snapshotM() {
     return M && { mode: M.mode, diff: M.diff, level: M.level, type: M.type, par: M.par, day: M.day, caps: M.caps, bolts: M.bolts, hid: M.hid, counts: M.counts, history: M.history, spares: M.spares, hints: M.hints, initial: M.initial, won: M.won };
@@ -1036,13 +1042,13 @@ function NBCore() {
     const gen = await call(msg);
     if (token !== loadToken) return;
     loading = false; veil.hidden = true;
-    if (!gen) { toast("This puzzle could not be built. Try the next one."); return; }
+    if (!gen) { toast(_t("toast.genFailed")); return; }
     adopt(Object.assign({ caps: gen.caps, bolts: gen.bolts, hid: hiddenMask(gen.bolts, gen.type), counts: gen.counts, type: gen.type, par: gen.par }, meta));
   }
   function startLevel(diff, level) {
     current = { mode: "level", diff, level }; store.set("current", current);
     $("diffPill").textContent = DIFF_INFO[diff].name + " · " + TYPE_NAME[C.typeFor(level)];
-    $("levelTitle").textContent = "Level " + level;
+    $("levelTitle").textContent = _t("level", { n: level });
     loadPuzzle({ type: "gen", diff, level }, { mode: "level", diff, level });
   }
   function startDaily() {
@@ -1055,8 +1061,8 @@ function NBCore() {
       if (isSolved()) setTimeout(showWin, 300);
       return;
     }
-    $("diffPill").textContent = "Daily · " + TYPE_NAME[dailyType(day)];
-    $("levelTitle").textContent = "Today";
+    $("diffPill").textContent = _t("dailyPill", { type: TYPE_NAME[dailyType(day)] });
+    $("levelTitle").textContent = _t("today");
     loadPuzzle({ type: "gen", diff: "hard", level: 16, ltype: dailyType(day), seed: "daily:" + day }, { mode: "daily", diff: "hard", level: 16, day });
   }
   function resumeLevels() {
@@ -1087,9 +1093,9 @@ function NBCore() {
         gain = DAILY_STAR * (stars - prev);
         eco.daily.done[day] = stars;
       }
-      $("winTitle").textContent = "Daily puzzle solved";
-      meta = plural(M.history.length, "move") + ", par " + M.par + " · streak " + plural(eco.daily.streak, "day") + "<br>A new daily puzzle arrives at midnight.";
-      $("nextBtn").textContent = "Back to levels";
+      $("winTitle").textContent = _t("win.daily");
+      meta = _t("win.dailyMeta", { moves: plural(M.history.length, "move"), par: M.par, days: plural(eco.daily.streak, "day") });
+      $("nextBtn").textContent = _t("backToLevels");
     } else {
       const key = M.diff + ":" + M.level, prev = eco.best[key] || 0;
       if (stars > prev) {
@@ -1100,10 +1106,10 @@ function NBCore() {
       }
       progress[M.diff] = Math.max(progress[M.diff] || 1, M.level + 1);
       store.set("progress", progress);
-      $("winTitle").textContent = "Level " + M.level + " cleared";
-      meta = plural(M.history.length, "move") + ", par " + M.par + (prev ? " · best before: " + plural(prev, "star") : "");
+      $("winTitle").textContent = _t("win.level", { n: M.level });
+      meta = _t("win.meta", { moves: plural(M.history.length, "move"), par: M.par }) + (prev ? _t("win.bestBefore", { stars: plural(prev, "star") }) : "");
       if (M.hints || M.spares) meta += "<br>Solve it without a hint or spare bolt for the third star.";
-      $("nextBtn").textContent = "Next level";
+      $("nextBtn").textContent = _t("nextLevel");
     }
     if (gain) { eco.washers += gain; eco.earned += gain; }
     saveEco();
@@ -1111,7 +1117,7 @@ function NBCore() {
     renderWashers(gain);
     $("winStars").innerHTML = [1, 2, 3].map(k => starSvg(k <= stars, k <= stars ? "pop" : "")).join("");
     [...$("winStars").children].forEach((el, k) => (el.style.animationDelay = (0.15 + k * 0.18) + "s"));
-    $("winReward").innerHTML = gain ? washerSvg + "+" + gain + " washers" : '<span class="none">No new stars this time</span>';
+    $("winReward").innerHTML = gain ? washerSvg + _t("win.gain", { n: gain }) : '<span class="none">' + _t("win.none") + "</span>";
     $("winMeta").innerHTML = meta;
     $("win").hidden = false;
     if (firstWin) {
@@ -1165,12 +1171,12 @@ function NBCore() {
     try {
       if (fsElement()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
       else await (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
-    } catch (e) { toast("Full screen isn't allowed here. Open the page on its own to use it."); }
+    } catch (e) { toast(_t("fs.denied")); }
   }
   function updateFsIcon() {
     const on = !!fsElement();
     $("fsIcon").innerHTML = on ? '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>' : '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>';
-    $("fsBtn").setAttribute("aria-label", on ? "Exit full screen" : "Full screen");
+    $("fsBtn").setAttribute("aria-label", _t(on ? "fs.exit" : "fs"));
   }
   $("fsBtn").addEventListener("click", toggleFs);
   document.addEventListener("fullscreenchange", updateFsIcon);
@@ -1190,7 +1196,7 @@ function NBCore() {
     DIFF_KEYS.forEach((k, i) => {
       const b = document.createElement("button");
       b.className = "diff"; b.type = "button"; b.setAttribute("aria-pressed", String(k === menuDiff));
-      b.innerHTML = '<span class="name">' + DIFF_INFO[k].name + '<span class="pips">' + [0, 1, 2, 3].map(j => '<b class="' + (j <= i ? "on" : "") + '"></b>').join("") + '</span></span><span class="meta">' + DIFF_INFO[k].meta + '</span><span class="reach">Unlocked to level ' + maxLevel(k) + "</span>";
+      b.innerHTML = '<span class="name">' + DIFF_INFO[k].name + '<span class="pips">' + [0, 1, 2, 3].map(j => '<b class="' + (j <= i ? "on" : "") + '"></b>').join("") + '</span></span><span class="meta">' + DIFF_INFO[k].meta + '</span><span class="reach">' + _t("unlockedTo", { n: maxLevel(k) }) + "</span>";
       b.addEventListener("click", () => { menuDiff = k; setLevelInput(current.mode === "level" && k === current.diff ? current.level : maxLevel(k)); renderDiffs(); });
       box.appendChild(b);
     });
@@ -1201,16 +1207,16 @@ function NBCore() {
     const inp = $("levelInput");
     inp.value = v; inp.max = max;
     $("lvlMinus").disabled = v <= 1; $("lvlPlus").disabled = v >= max;
-    $("levelType").innerHTML = "Level " + v + " · <b>" + TYPE_NAME[C.typeFor(v)] + "</b>";
+    $("levelType").innerHTML = _t("levelType", { n: v, type: TYPE_NAME[C.typeFor(v)] });
     const best = eco.best[menuDiff + ":" + v] || 0;
-    $("levelBest").innerHTML = best ? '<span class="stars">' + [1, 2, 3].map(k => starSvg(k <= best)).join("") + "</span>" : v === max ? "<b>New</b>" : "";
+    $("levelBest").innerHTML = best ? '<span class="stars">' + [1, 2, 3].map(k => starSvg(k <= best)).join("") + "</span>" : v === max ? "<b>" + _t("new") + "</b>" : "";
   }
   function renderDaily() {
     const d = new Date(), day = today();
-    $("calMonth").textContent = d.toLocaleDateString("en-GB", { month: "short" });
+    $("calMonth").textContent = shortDate(d, { month: "short" });
     $("calDay").textContent = d.getDate();
     const done = eco.daily.done[day], streak = liveStreak();
-    $("dailyMeta").textContent = TYPE_NAME[dailyType(day)] + " · " + (done ? "solved with " + plural(done, "star") : streak ? "streak " + plural(streak, "day") : "start a streak");
+    $("dailyMeta").textContent = TYPE_NAME[dailyType(day)] + " · " + (done ? _t("daily.solved", { stars: plural(done, "star") }) : streak ? _t("daily.streak", { days: plural(streak, "day") }) : _t("daily.start"));
   }
   function renderStats() {
     $("stCleared").textContent = eco.cleared;
@@ -1243,9 +1249,9 @@ function NBCore() {
   function itemButton(kind, it) {
     const owned = eco.owned[kind].includes(it.id), on = eco.equip[kind] === it.id;
     if (on) return '<button class="on" disabled>Equipped</button>';
-    if (owned) return '<button class="equip" data-k="' + kind + '" data-id="' + it.id + '">Use</button>';
+    if (owned) return '<button class="equip" data-k="' + kind + '" data-id="' + it.id + '">' + _t("use") + "</button>";
     const short = eco.washers < it.price;
-    return '<button class="' + (short ? "short" : "") + '" data-k="' + kind + '" data-id="' + it.id + '" aria-label="Buy ' + it.name + " for " + it.price + ' washers">' + washerSvg + it.price + "</button>";
+    return '<button class="' + (short ? "short" : "") + '" data-k="' + kind + '" data-id="' + it.id + '" aria-label="' + _t("buy", { name: it.name, price: it.price }) + '">' + washerSvg + it.price + "</button>";
   }
   function renderShop() {
     $("shopBalance").textContent = eco.washers;
@@ -1261,7 +1267,7 @@ function NBCore() {
     const kind = b.dataset.k, id = b.dataset.id;
     const it = (kind === "board" ? BOARDS : FINISHES).find(x => x.id === id);
     if (!eco.owned[kind].includes(id)) {
-      if (eco.washers < it.price) { toast(it.name + " costs " + it.price + " washers. You have " + eco.washers + "."); flashChip("deny"); return; }
+      if (eco.washers < it.price) { toast(_t("toast.cost", { name: it.name, price: it.price, n: eco.washers })); flashChip("deny"); return; }
       eco.washers -= it.price; eco.owned[kind].push(id);
     }
     eco.equip[kind] = id;

@@ -11,7 +11,7 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Jade Pavilion** | Mahjong solitaire on a lantern-lit 3D table |
 | **Nuts & Bolts** | Screw nuts from bolt to bolt until every colour is sorted |
 | **Outbound** | Every arrow leaves the way it points; find the order that clears the board (2D and 3D shapes) |
-| **Unscrew** | Take 3D objects apart screw by screw (in Dutch for now) |
+| **Unscrew** | Take 3D objects apart screw by screw |
 | **Graphite** | Pencil-and-paper logic puzzles: Sudoku, Takuzu, Star Battle and Calcudoku, endlessly generated, each with exactly one solution |
 | **Camper Crew** *(prototype)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
 
