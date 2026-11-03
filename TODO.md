@@ -26,6 +26,8 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] Graphite: play every type and tier on the phone. Are the tiers well spaced? Is Star Battle Expert (10×10, 2 stars) quick enough to generate on an older phone?
 - [ ] Graphite: is the name a keeper? (Same checks as in [docs/NAMING.md](docs/NAMING.md).)
 - [ ] Graphite: a next puzzle type (ideas in the roadmap: Nonograms, Kakuro, …)
+- [ ] Pick the next game from [docs/BACKLOG.md](docs/BACKLOG.md)
+- [ ] Action game: choose a concept (Camper Crew, Moving Day, Short Order) and build a grey-box prototype to test if it's fun
 
 ## Android app (see [docs/ANDROID.md](docs/ANDROID.md), part 2)
 
