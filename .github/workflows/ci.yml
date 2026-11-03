@@ -1,0 +1,26 @@
+# Runs on every push and pull request: builds dist/, then opens every game in a
+# headless phone-sized Chromium (see tests/smoke.mjs). Screenshots of every game
+# are attached to the run under "Artifacts" so you can look without installing anything.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: test-results/

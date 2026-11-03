@@ -4,19 +4,35 @@
 //
 // No bundler needed (yet): the games are plain HTML/CSS/JS, so a build is a clean copy
 // of the files the player needs, leaving out tooling and source-only files.
-import { cp, rm, mkdir, readdir, stat } from "node:fs/promises";
+//
+//   npm run build                       the collection: hub + every game
+//   npm run build -- --game outbound    one game on its own (for a standalone app later):
+//                                       no hub, the app opens straight into the game
+import { cp, rm, mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
-const INCLUDE = ["index.html", "manifest.webmanifest", "games", "shared"];
+const gi = process.argv.indexOf("--game");
+const ONLY = gi > 0 ? process.argv[gi + 1] : null;
+const INCLUDE = ONLY ? [`games/${ONLY}`, "shared"] : ["index.html", "manifest.webmanifest", "games", "shared"];
 const SKIP_FILES = new Set(["google-fonts.txt", "README.md", ".DS_Store"]); // source-only files
+if (gi > 0 && !(await readdir(join(ROOT, "games"))).includes(ONLY)) {
+  console.error(`Unknown game "${ONLY}". Choose one of: ${(await readdir(join(ROOT, "games"))).join(", ")}`);
+  process.exit(1);
+}
 
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST);
 for (const entry of INCLUDE) {
   await cp(join(ROOT, entry), join(DIST, entry), { recursive: true, filter: (src) => !SKIP_FILES.has(basename(src)) });
+}
+if (ONLY) {
+  // Start page that jumps straight into the game. location.replace keeps it out of the
+  // history, so the Android back button doesn't bounce back into this page.
+  await writeFile(join(DIST, "index.html"),
+    `<!doctype html><meta charset="utf-8"><script>location.replace("games/${ONLY}/index.html")</script>\n`);
 }
 
 // Report size per top-level part so growth is visible over time.
@@ -28,7 +44,7 @@ async function size(p) {
   return n;
 }
 const kb = (b) => (b / 1024).toFixed(0).padStart(5) + " KB";
-console.log("dist/ built:");
+console.log(ONLY ? `dist/ built (standalone: ${ONLY}):` : "dist/ built:");
 for (const g of await readdir(join(DIST, "games"))) console.log(`  games/${g.padEnd(16)} ${kb(await size(join(DIST, "games", g)))}`);
 console.log(`  shared/                ${kb(await size(join(DIST, "shared")))}`);
 console.log(`  total                  ${kb(await size(DIST))}`);
