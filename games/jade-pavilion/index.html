@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Jade Pavilion Mahjong</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+  <canvas id="scene" aria-label="Mahjong table"></canvas>
+  <div id="fx"></div>
+  <div id="incense" hidden><i></i></div>
+  <header class="hud-top">
+    <div class="lvl">
+      <div class="lvl-meta"><b id="hudDiff">Garden</b><span id="hudLevel">Level 1</span></div>
+      <div class="lvl-name" id="hudName">Setting the table…</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Score</span><span class="v" id="hudScore">0</span></div>
+      <div class="stat combo"><span class="k">Combo</span><span class="v" id="hudCombo">×1</span><span class="combo-bar"><i id="comboBar"></i></span></div>
+      <div class="stat"><span class="k">Tiles</span><span class="v" id="hudTiles">–</span></div>
+      <div class="stat" id="statMoves"><span class="k">Moves</span><span class="v" id="hudMoves">–</span></div>
+      <div class="stat" id="statTime"><span class="k" id="hudTimeK">Time</span><span class="v" id="hudTime">0:00</span></div>
+    </div>
+  </header>
+
+  <nav class="toolbar" aria-label="Game tools">
+    <button class="tool" id="btnMenu" title="Menu (Esc)"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Menu</button>
+    <button class="tool" id="btnUndo" title="Undo (Z)"><svg viewBox="0 0 24 24"><path d="M9 5 4 10l5 5"/><path d="M4 10h10.5a5 5 0 0 1 0 10H11"/></svg>Undo</button>
+    <button class="tool" id="btnHint" title="Hint (H)"><svg viewBox="0 0 24 24"><rect x="7" y="6" width="10" height="12" rx="5"/><path d="M9 3h6M12 6v12M12 18v3M10 21h4"/></svg>Hint<span class="n" id="nHint">5</span></button>
+    <button class="tool" id="btnShuffle" title="Shuffle remaining tiles (S)"><svg viewBox="0 0 24 24"><path d="M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4"/><path d="M18 4l3 3-3 3M18 14l3 3-3 3"/></svg>Shuffle<span class="n" id="nShuffle">3</span></button>
+    <button class="tool" id="btnHighlight" aria-pressed="true" title="Dim blocked tiles (F)"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Glow</button>
+    <button class="tool" id="btnView" title="Recenter view (R). Drag to tilt, scroll or pinch to zoom."><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22"/></svg>View</button>
+    <button class="tool" id="btnSound" aria-pressed="true" title="Sound (M)"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="mute" d="M16 9l5 6M21 9l-5 6"/></svg>Sound</button>
+  </nav>
+
+  <div id="toast" hidden></div>
+  <div id="banner" hidden><div><div id="bannerEyebrow"></div><div id="bannerName"></div><div id="bannerMeta"></div></div></div>
+
+  <section class="overlay" id="menu" aria-label="Main menu">
+    <div class="sheet">
+      <div>
+        <div class="eyebrow">Mahjong solitaire · endless levels</div>
+        <h1 class="title">Jade Pavilion</h1>
+        <p class="lede">Clear the table by matching pairs of <b>free</b> tiles: nothing resting on top, and the left or right side open. Flowers match any flower, seasons any season. Every level is built from its number and dealt so it can always be cleared.</p>
+      </div>
+      <div class="diffs" id="diffs" role="radiogroup" aria-label="Difficulty"></div>
+      <div class="launch">
+        <div class="stepper"><button id="lvPrev" aria-label="Previous level">‹</button><div><output id="lvOut">Level 1</output><span id="lvStars">Not cleared yet</span></div><button id="lvNext" aria-label="Next level">›</button></div>
+        <button class="btn primary" id="playBtn" data-autofocus>Play</button>
+      </div>
+      <div class="row">
+        <button class="btn grow" id="resumeBtn" hidden>Resume</button>
+        <button class="btn grow" id="dailyBtn"><span>Daily challenge</span><small id="dailyMeta">–</small></button>
+      </div>
+      <div class="settings">
+        <span>Table</span>
+        <div class="seg" role="group" aria-label="Table theme"><button data-theme-k="jade">Jade</button><button data-theme-k="lacquer">Lacquer</button><button data-theme-k="moon">Moonlight</button></div>
+        <button class="pill" id="optSound">Sound</button>
+        <button class="pill" id="optHighlight">Dim blocked tiles</button>
+      </div>
+      <div class="keys"><kbd>H</kbd>hint &nbsp; <kbd>Z</kbd>undo &nbsp; <kbd>S</kbd>shuffle &nbsp; <kbd>F</kbd>glow &nbsp; <kbd>R</kbd>recenter &nbsp; <kbd>Esc</kbd>menu · drag to tilt, scroll or pinch to zoom. Match quickly to build combos up to ×9, and look for the gold-backed pair.</div>
+    </div>
+  </section>
+
+  <section class="overlay" id="win" hidden aria-label="Level cleared">
+    <div class="sheet narrow">
+      <div>
+        <div class="eyebrow" id="winEyebrow">Level cleared</div>
+        <h2 class="title" id="winName">–</h2>
+      </div>
+      <div id="stars" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.2 6.6.8-4.9 4.6 1.3 6.6L12 17.4l-5.9 3.3 1.3-6.6L2.5 9.5l6.6-.8z"/></svg><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.2 6.6.8-4.9 4.6 1.3 6.6L12 17.4l-5.9 3.3 1.3-6.6L2.5 9.5l6.6-.8z"/></svg><svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.2 6.6.8-4.9 4.6 1.3 6.6L12 17.4l-5.9 3.3 1.3-6.6L2.5 9.5l6.6-.8z"/></svg></div>
+      <dl id="winRows"></dl>
+      <p id="winMeta"></p>
+      <div class="row"><button class="btn primary" id="winNext" data-autofocus>Next level</button><button class="btn" id="winReplay">Replay</button><button class="btn" id="winMenu">Menu</button></div>
+    </div>
+  </section>
+
+  <section class="overlay" id="stuck" hidden aria-label="No moves left">
+    <div class="sheet narrow">
+      <div><div class="eyebrow">Blocked</div><h2 class="title">No moves left</h2><p class="lede" id="stuckText">–</p></div>
+      <div class="row"><button class="btn primary" id="stuckShuffle" data-autofocus>Shuffle</button><button class="btn" id="stuckUndo">Undo</button><button class="btn" id="stuckRestart">Restart</button></div>
+    </div>
+  </section>
+
+  <section class="overlay" id="timeout" hidden aria-label="Time is up">
+    <div class="sheet narrow">
+      <div><div class="eyebrow">Emperor</div><h2 class="title">The incense has burned out</h2><p class="lede" id="timeoutText">–</p></div>
+      <div class="row"><button class="btn primary" id="toRetry" data-autofocus>Try again</button><button class="btn" id="toMenu">Menu</button></div>
+    </div>
+  </section>
+</div>
+<script src="../../shared/js/platform.js"></script>
+<script src="../../shared/vendor/three/three.min.js"></script>
+<script src="levels.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

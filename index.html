@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16130f" media="(prefers-color-scheme: dark)">
+<title>Honest Arcade</title>
+<meta name="description" content="Puzzle games that are free to play for real: no ads, no tracking, no pay-to-win.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="shared/icons/icon.svg" type="image/svg+xml">
+<style>
+/* The hub is deliberately quiet: each card borrows its game's own colours and display font,
+   so the games keep their identity and the shell stays out of the way. */
+@font-face{font-family:"Shippori Mincho B1";font-weight:800;font-display:swap;src:url(games/jade-pavilion/fonts/shippori-mincho-b1-800-latin.woff2) format("woff2")}
+@font-face{font-family:"Lilita One";font-display:swap;src:url(games/nuts-and-bolts/fonts/lilita-one-latin.woff2) format("woff2")}
+@font-face{font-family:"Bricolage Grotesque";font-weight:200 800;font-display:swap;src:url(games/outbound/fonts/bricolage-grotesque-latin.woff2) format("woff2")}
+@font-face{font-family:"Bungee";font-display:swap;src:url(games/unscrew/fonts/bungee-latin.woff2) format("woff2")}
+
+:root{
+  --bg:#f4efe6; --ink:#1d1a16; --muted:#6b645a; --line:#e2d9c9; --chip:#ebe3d5;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#16130f; --ink:#f3ece0; --muted:#a59c8e; --line:#2c2720; --chip:#241f19; color-scheme:dark}
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background:var(--bg);color:var(--ink);
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+main{
+  max-width:880px;margin:0 auto;
+  padding:calc(env(safe-area-inset-top,0px) + 28px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 32px) max(16px,env(safe-area-inset-left,0px));
+}
+header h1{font-size:clamp(1.9rem,7vw,2.6rem);line-height:1.05;letter-spacing:-.02em;margin:0 0 6px;font-weight:800}
+header p{margin:0;color:var(--muted);max-width:34em}
+.pledge{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 26px;padding:0;list-style:none}
+.pledge li{background:var(--chip);border:1px solid var(--line);border-radius:99px;padding:3px 11px;font-size:.82rem;font-weight:600}
+
+.games{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:14px}
+.card{
+  position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;
+  min-height:168px;padding:20px 20px 18px;border-radius:20px;overflow:hidden;
+  color:var(--c-ink);background:var(--c-bg);text-decoration:none;
+  box-shadow:0 1px 0 rgba(0,0,0,.06),0 8px 24px -14px rgba(0,0,0,.45);
+  transition:transform .15s ease;
+}
+.card:active{transform:scale(.98)}
+.card:focus-visible{outline:3px solid var(--c-accent);outline-offset:3px}
+.card::after{content:"";position:absolute;inset:0;background:var(--c-art);pointer-events:none}
+.card>*{position:relative;z-index:1}
+.card h2{margin:0;font:var(--c-font);line-height:1;letter-spacing:var(--c-track,0)}
+.card p{margin:0;opacity:.82;font-size:.95rem;max-width:30em}
+.meta{display:flex;gap:6px;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.meta span{padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--c-accent) 22%,transparent);color:var(--c-ink)}
+.play{position:absolute;right:18px;top:18px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--c-accent);color:var(--c-accent-ink)}
+
+/* Per-game identity — colours taken from each game's own style.css */
+.g-jade{--c-bg:#0c1612;--c-ink:#f1e7cf;--c-accent:#dcb760;--c-accent-ink:#1d1606;--c-font:800 2rem/1 "Shippori Mincho B1",Georgia,serif;
+  --c-art:radial-gradient(120% 90% at 85% 0%,rgba(45,138,102,.55),transparent 60%)}
+.g-nuts{--c-bg:#241940;--c-ink:#fbf6ff;--c-accent:#ffc93c;--c-accent-ink:#4b2a00;--c-font:400 2.1rem/1 "Lilita One","Arial Rounded MT Bold",sans-serif;
+  --c-art:radial-gradient(circle at 88% 8%,rgba(140,104,220,.45),transparent 55%)}
+.g-out{--c-bg:#dfe8e4;--c-ink:#1f2c34;--c-accent:#d9581c;--c-accent-ink:#fff;--c-font:800 2.1rem/1 "Bricolage Grotesque",system-ui,sans-serif;--c-track:-.03em;
+  --c-art:repeating-linear-gradient(135deg,transparent 0 22px,rgba(31,44,52,.05) 22px 24px)}
+.g-uns{--c-bg:#c9d8e6;--c-ink:#17212e;--c-accent:#ff6a13;--c-accent-ink:#fff;--c-font:400 1.7rem/1 "Bungee",Impact,sans-serif;
+  --c-art:radial-gradient(circle,rgba(23,33,46,.13) 0 2.4px,transparent 3px) 0 0/24px 24px}
+
+details{margin-top:30px;border-top:1px solid var(--line);padding-top:18px}
+summary{cursor:pointer;font-weight:700}
+details p{color:var(--muted);max-width:40em}
+footer{margin-top:22px;color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Honest Arcade</h1>
+    <p>Puzzle games that are actually free to play. You play, nothing interrupts you, and that's the whole deal.</p>
+    <ul class="pledge" aria-label="Our promise">
+      <li>No ads</li><li>No tracking</li><li>No pay-to-win</li><li>Works offline</li>
+    </ul>
+  </header>
+
+  <nav class="games" aria-label="Games">
+    <a class="card g-jade" href="games/jade-pavilion/index.html">
+      <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
+      <div class="meta"><span>3D</span><span>Mahjong</span></div>
+      <h2>Jade Pavilion</h2>
+      <p>Clear the lantern-lit table by matching pairs of free tiles.</p>
+    </a>
+    <a class="card g-nuts" href="games/nuts-and-bolts/index.html">
+      <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
+      <div class="meta"><span>3D</span><span>Sorting</span></div>
+      <h2>Nuts &amp; Bolts</h2>
+      <p>Screw the nuts from bolt to bolt until every colour has a bolt of its own.</p>
+    </a>
+    <a class="card g-out" href="games/outbound/index.html">
+      <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
+      <div class="meta"><span>2D + 3D</span><span>Logic</span></div>
+      <h2>Outbound</h2>
+      <p>Every arrow leaves the way it points. Find the order that clears the board.</p>
+    </a>
+    <a class="card g-uns" href="games/unscrew/index.html" hreflang="nl">
+      <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
+      <div class="meta"><span>3D</span><span>Nederlands</span></div>
+      <h2>Unscrew</h2>
+      <p>Take it apart screw by screw, and drop each one in the box of its colour.</p>
+    </a>
+  </nav>
+
+  <details>
+    <summary>Why are there no ads?</summary>
+    <p>Most "free" mobile games are built to sell your attention: an ad after every level, timers you can skip for money, and tracking you never agreed to. These games are made the other way round. They are free because they are free: no ads, no data collection, no paid shortcuts, and no internet connection needed.</p>
+    <p>The code is open, so anyone can check that promise, learn from it, or build on it.</p>
+  </details>
+  <footer>Made with three.js. Progress is stored on this device only.</footer>
+</main>
+<script src="shared/js/platform.js"></script>
+</body>
+</html>

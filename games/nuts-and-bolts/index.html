@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Nuts &amp; Bolts</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-washer" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="#ffc93c"/><circle cx="12" cy="12" r="10.5" fill="none" stroke="#d48f0b" stroke-width="1.5"/><circle cx="12" cy="12" r="4.2" fill="#4b2a00"/><path d="M5.5 9.5a7 7 0 0 1 5-4.6" fill="none" stroke="#fff3c4" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.2l2.9 6 6.6.8-4.9 4.6 1.3 6.5L12 16.9l-5.9 3.2 1.3-6.5L2.5 9l6.6-.8z" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div id="app" class="pat-pegs">
+  <header class="topbar">
+    <div class="left">
+      <button id="menuBtn" class="hexbtn" aria-label="Levels, daily puzzle and stats" title="Menu (M)">
+        <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span>
+      </button>
+    </div>
+    <div class="title">
+      <span id="diffPill" class="pill">Medium · Mixed bolts</span>
+      <h1 id="levelTitle">Level 1</h1>
+    </div>
+    <div class="right">
+      <button id="restartBtn" class="hexbtn" aria-label="Restart level" title="Restart level (R)">
+        <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4.5 4v4.5H9"/></svg></span>
+      </button>
+      <button id="fsBtn" class="hexbtn" aria-label="Full screen" title="Full screen (F)">
+        <span class="face"><svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="status">
+    <button id="washerChip" class="chip" aria-label="Washers. Open the shop" title="Shop (S)">
+      <svg class="washer"><use href="#i-washer"/></svg>
+      <span id="washerCount">0</span>
+      <span class="plus">SHOP</span>
+    </button>
+    <div class="scoreline">
+      <span id="liveStars" class="stars" aria-label="Stars if you finish now"></span>
+      <span><span id="moveCount">0</span> · par <b id="parCount">0</b></span>
+    </div>
+  </div>
+
+  <main id="stage" aria-label="Puzzle board. Tap a bolt to lift its top nuts, then tap another bolt to drop them.">
+    <canvas id="gl"></canvas>
+    <canvas id="fx"></canvas>
+    <div id="veil"><span><i></i>Building level…</span></div>
+    <div id="toast" role="status" hidden></div>
+  </main>
+
+  <footer class="toolbar">
+    <button id="undoBtn" class="tool" title="Undo (U)">
+      <span class="hexbtn brass"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span></span>
+      Undo
+      <span class="cost free">free</span>
+    </button>
+    <button id="hintBtn" class="tool" title="Hint (H)">
+      <span class="hexbtn brass"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3Z"/></svg></span></span>
+      Hint
+      <span class="cost"><svg class="washer"><use href="#i-washer"/></svg><span id="hintCost">15</span></span>
+    </button>
+    <button id="spareBtn" class="tool" title="Buy a spare bolt that holds one nut (B)">
+      <span class="hexbtn brass"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v7"/><path d="M8.5 6.5h7v3.5h-7z"/><path d="M5 20h14"/></svg></span></span>
+      Spare bolt
+      <span class="cost"><svg class="washer"><use href="#i-washer"/></svg><span id="spareCost">40</span></span>
+    </button>
+  </footer>
+
+  <!-- menu -->
+  <div id="menu" class="overlay" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+      <div class="cardhead">
+        <h2 id="menuTitle">Workshop</h2>
+        <button class="btn small" id="menuShop">Shop</button>
+      </div>
+      <button class="daily" id="dailyBtn">
+        <span class="cal"><small id="calMonth">Oct</small><b id="calDay">30</b></span>
+        <span><span class="dname">Daily puzzle</span><span class="dmeta" id="dailyMeta">Same for everyone today</span></span>
+        <span class="go">Play</span>
+      </button>
+      <div class="group">
+        <div class="label">Difficulty</div>
+        <div class="diffs" id="diffs"></div>
+      </div>
+      <div class="group">
+        <div class="label">Level</div>
+        <div class="levelrow">
+          <button class="step" id="lvlMinus" aria-label="Previous level">−</button>
+          <input id="levelInput" type="number" inputmode="numeric" min="1" aria-label="Level number">
+          <button class="step" id="lvlPlus" aria-label="Next level">+</button>
+        </div>
+        <div class="levelinfo"><span id="levelType">Mixed bolts</span><span id="levelBest"></span></div>
+      </div>
+      <div class="actions">
+        <button class="btn steel" id="menuCancel">Back</button>
+        <button class="btn" id="playBtn">Play</button>
+      </div>
+      <div class="statsrow">
+        <div class="stat"><b id="stCleared">0</b><span>Cleared</span></div>
+        <div class="stat"><b id="stStars">0</b><span>Stars</span></div>
+        <div class="stat"><b id="stStreak">0</b><span>Streak</span></div>
+        <div class="stat"><b id="stEarned">0</b><span>Earned</span></div>
+      </div>
+      <details class="howto">
+        <summary>How to play</summary>
+        <p>Tap a bolt to lift its top nuts, then tap another bolt to screw them on. Nuts only go onto an empty bolt or onto a nut of the same colour, and matching nuts travel together. Gather each colour on a bolt of its own.</p>
+        <p><strong>Level types</strong> rotate as you climb: <strong>Mixed</strong> bolts of different lengths, <strong>Short</strong> 3-nut bolts and lots of them, <strong>Tall</strong> bolts with many nuts per colour, and <strong>Mystery</strong> nuts that stay grey until they reach the top.</p>
+        <p><strong>Stars and washers.</strong> Finish within par for 3 stars. Using a hint or a spare bolt costs one star, and going far over par costs another. Every new star earns washers, and the daily puzzle pays extra for a streak. Spend washers on hints, spare bolts (each holds a single nut) and new boards and bolt finishes. New levels unlock as you clear them.</p>
+      </details>
+    </div>
+  </div>
+
+  <!-- shop -->
+  <div id="shop" class="overlay" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+      <div class="cardhead">
+        <h2 id="shopTitle">Shop</h2>
+        <span class="balance"><svg class="washer"><use href="#i-washer"/></svg><span id="shopBalance">0</span></span>
+      </div>
+      <div class="group">
+        <div class="label">Boards</div>
+        <div class="shopgrid" id="boardGrid"></div>
+      </div>
+      <div class="group">
+        <div class="label">Bolt finish</div>
+        <div class="shopgrid" id="finishGrid"></div>
+      </div>
+      <p class="earn">Each new star pays washers: 8 on Easy, 15 on Medium, 25 on Hard and 40 on Expert. The daily puzzle pays 50 per star plus 10 for every day of your streak. Hints cost 15, spare bolts 40 and then 80.</p>
+      <div class="actions"><button class="btn steel" id="shopClose">Back to the puzzle</button></div>
+    </div>
+  </div>
+
+  <!-- win -->
+  <div id="win" class="overlay" hidden>
+    <div class="card wincard" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+      <h2 id="winTitle">Level 1 cleared</h2>
+      <div class="bigstars" id="winStars"></div>
+      <div class="reward" id="winReward"></div>
+      <p class="winmeta" id="winMeta"></p>
+      <div class="actions">
+        <button class="btn steel" id="replayBtn">Replay</button>
+        <button class="btn" id="nextBtn">Next level</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../../shared/js/platform.js"></script>
+<script src="../../shared/vendor/three/three.min.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

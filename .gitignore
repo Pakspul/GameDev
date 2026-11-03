@@ -1,0 +1,24 @@
+# dependencies and generated output
+node_modules/
+dist/
+test-results/
+
+# Capacitor native build output (the android/ project itself IS committed once created)
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/public/
+ios/App/Pods/
+ios/App/App/public/
+
+# NEVER commit signing keys
+*.jks
+*.keystore
+keystore.properties
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.log

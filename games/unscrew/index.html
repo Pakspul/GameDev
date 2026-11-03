@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Unscrew</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="bg"></div>
+<canvas id="c" tabindex="-1" aria-label="Speelveld"></canvas>
+<div id="loading" hidden>Level bouwen…</div>
+
+<div id="hud" hidden>
+  <div class="top">
+    <button class="ibtn" id="pauseBtn" aria-label="Pauze">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="3" y="2" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="11" y="2" width="4" height="14" rx="1.5" fill="currentColor"/></svg>
+    </button>
+    <div class="lvl"><div class="lvl-n">LEVEL <span id="lvN">1</span></div><div class="lvl-s"><span class="hh" id="hearts"></span><span id="lvS">—</span></div></div>
+    <div class="pill" aria-label="Munten"><span id="coinIco"></span><span id="coinN">0</span></div>
+    <div class="score"><div class="score-l">SCORE</div><div class="score-n" id="scoreN">0</div></div>
+  </div>
+  <div class="prog"><div class="bar"><i id="progFill"></i></div><span id="progT">0</span></div>
+  <div id="trays"><div id="boxes"></div><div id="rail"></div></div>
+</div>
+<div id="tools" hidden></div>
+<button class="ibtn" id="viewBtn" hidden aria-label="Camera terugzetten">
+  <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9" fill="none" stroke="#17212e" stroke-width="2.4" stroke-linecap="round"/><path d="M21 4v5h-5" fill="none" stroke="#17212e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="#ff6a13"/></svg>
+</button>
+
+<div id="fx"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<div id="menu">
+  <div class="brand" id="brand">
+    <svg class="logo" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="28" r="22" fill="#a2341d" opacity=".25"/><circle cx="26" cy="25" r="22" fill="#ff6a13"/><circle cx="26" cy="25" r="22" fill="url(#lg)"/><defs><radialGradient id="lg" cx=".35" cy=".3" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".6"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><path d="M17 16l18 18M35 16L17 34" stroke="#3b1503" stroke-width="5" stroke-linecap="round" opacity=".75"/></svg>
+    <div><h1>UNSCREW</h1><p>Draai schroeven los, sorteer ze op kleur en sloop alles laag voor laag.</p></div>
+  </div>
+  <div class="card" id="menuCard">
+    <div class="sec">
+      <div class="lbl">Weergave</div>
+      <div class="seg" id="modeSeg">
+        <button class="opt" data-mode="2d" aria-pressed="false">
+          <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="5" width="20" height="9" rx="4.5" fill="#8fd3ff"/><rect x="11" y="10" width="9" height="20" rx="4.5" fill="#ffcf70"/><rect x="15" y="16" width="16" height="9" rx="4.5" transform="rotate(-30 23 20)" fill="#b8a4ff"/><circle cx="8" cy="9.5" r="2.4" fill="#ff3d9a"/><circle cx="15.5" cy="25" r="2.4" fill="#1f7bff"/><circle cx="26" cy="17" r="2.4" fill="#8fd61f"/></svg>
+          <span><span class="t">2D</span><br><span class="d">Gestapelde platen</span></span>
+        </button>
+        <button class="opt" data-mode="3d" aria-pressed="false">
+          <svg viewBox="0 0 34 34" aria-hidden="true"><path d="M17 3l12 7v14l-12 7-12-7V10z" fill="#7cc68d"/><path d="M17 17l12-7v14l-12 7z" fill="#4f9e64"/><path d="M17 17L5 10l12-7 12 7z" fill="#b8e3b5"/><circle cx="17" cy="10" r="2.4" fill="#ff3d9a"/><circle cx="23" cy="21" r="2.4" fill="#ffcc1a"/><circle cx="10.5" cy="20" r="2.4" fill="#7b4dff"/></svg>
+          <span><span class="t">3D</span><br><span class="d">Objecten rondom</span></span>
+        </button>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="lbl">Moeilijkheid</div>
+      <div class="diffs" id="diffs"></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="stBest">—</b><span>Beste score</span></div>
+      <div class="stat"><b id="stLvl">—</b><span>Hoogste level</span></div>
+      <div class="stat"><b id="stCoins">0</b><span>Munten</span></div>
+    </div>
+    <div class="btns">
+      <button class="btn primary" id="contBtn" hidden></button>
+      <div class="row2"><button class="btn" id="newBtn">Nieuwe run</button><button class="btn" id="shopBtn">Winkel</button></div>
+    </div>
+    <details class="how">
+      <summary>Hoe speel je?</summary>
+      <ul>
+        <li>Tik een schroef om hem los te draaien. Hij vliegt naar een doos met dezelfde kleur, of anders naar de gatenrail.</li>
+        <li>Onder planken zitten verborgen schroeven. Je ziet ze pas als de plank erboven weg is.</li>
+        <li>Een schroef zit vast als er iets vóór zit. In 3D sleep je rond het object om de vrije schroeven te vinden.</li>
+        <li>Rail vol en geen zet meer: je verliest een leven. Met munten koop je gereedschap: boor, hamer, kist, magneet en röntgen.</li>
+      </ul>
+    </details>
+  </div>
+</div>
+
+<div id="modal" hidden>
+  <div class="mcard" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle"></h2>
+    <div id="mBody"></div>
+    <div class="btns" id="mActions"></div>
+  </div>
+</div>
+<script src="../../shared/js/platform.js"></script>
+<script src="../../shared/vendor/three/three.min.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

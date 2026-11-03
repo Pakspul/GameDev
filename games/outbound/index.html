@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Outbound</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+  <section id="home" class="view" aria-label="Levels">
+    <div class="wrap">
+      <div class="topline">
+        <button type="button" class="points" id="pointsBtn" aria-label="Points and shop"><span class="gem" id="gemIcon"></span><span><b class="num" id="pointsVal">0</b> points</span></button>
+        <div class="seg" id="themeSeg" role="radiogroup" aria-label="Appearance">
+          <button type="button" role="radio" data-theme-opt="auto" aria-checked="true"></button>
+          <button type="button" role="radio" data-theme-opt="light" aria-checked="false"></button>
+          <button type="button" role="radio" data-theme-opt="dark" aria-checked="false"></button>
+        </div>
+      </div>
+      <header class="hero">
+        <div class="hero-text">
+          <h1 class="wordmark">Out<span>bound</span></h1>
+          <p class="tagline">Every arrow leaves the way it points. Find the order that clears the board.</p>
+        </div>
+        <div class="hero-board" aria-hidden="true"><canvas id="heroCanvas"></canvas></div>
+      </header>
+
+      <section class="daily" id="daily" aria-label="Daily puzzle">
+        <div class="daily-text">
+          <span class="eyebrow" id="dailyEyebrow">Daily puzzle</span>
+          <strong id="dailyTitle"></strong>
+          <small id="dailyMeta"></small>
+        </div>
+        <button type="button" class="play-btn" id="dailyBtn">Play</button>
+      </section>
+
+      <div class="seg big" id="modeSeg" role="radiogroup" aria-label="Puzzle type">
+        <button type="button" role="radio" data-mode="flat" aria-checked="true"></button>
+        <button type="button" role="radio" data-mode="3d" aria-checked="false"></button>
+        <button type="button" role="radio" data-mode="shapes" aria-checked="false"></button>
+      </div>
+
+      <nav class="tabs" id="tabs" role="tablist" aria-label="Difficulty"></nav>
+
+      <section class="tier" id="tierPanel">
+        <div class="tier-head">
+          <div class="tier-title">
+            <h2 id="tierName">Easy</h2>
+            <p id="tierDesc"></p>
+          </div>
+          <button class="play-btn" id="playBtn" type="button"></button>
+        </div>
+        <div class="stats" id="tierStats"></div>
+      </section>
+
+      <section class="tier">
+        <div class="levels-head">
+          <h3>Levels</h3>
+          <div class="pager">
+            <button type="button" id="prevPage" aria-label="Previous levels"></button>
+            <span id="pageLabel" class="num"></span>
+            <button type="button" id="nextPage" aria-label="Next levels"></button>
+          </div>
+        </div>
+        <div class="grid" id="grid"></div>
+      </section>
+
+      <footer class="foot">
+        <div class="setting">
+          <div>
+            <strong id="smartLabel">Smart tap</strong>
+            <small>When a tap lands between arrows, it goes to the one that can leave. Turn it off and every near-miss counts.</small>
+          </div>
+          <button type="button" class="switch" id="smartTap" role="switch" aria-checked="true" aria-labelledby="smartLabel"></button>
+        </div>
+        <div class="setting" id="laneRow" hidden>
+          <div>
+            <strong id="laneLabel">Lane trace</strong>
+            <small>Press and hold an arrow to draw its lane to the edge.</small>
+          </div>
+          <button type="button" class="switch" id="laneTrace" role="switch" aria-checked="true" aria-labelledby="laneLabel"></button>
+        </div>
+        <details class="rules">
+          <summary>How to play</summary>
+          <ul>
+            <li>Tap an arrow. It slides off the board in the direction its head points.</li>
+            <li>If another arrow is in the way, it bounces back and you lose a heart. You have three per level.</li>
+            <li>You get one hint per level. It lights up an arrow that can leave, picking the one that frees the most others.</li>
+            <li>Clear a level without the hint for 3 stars, with the hint for 2.</li>
+            <li>Level numbers are fixed boards: Extra Hard level 23 is the same board for everyone, every time.</li>
+            <li>Pinch, scroll or use the zoom buttons on big boards. Drag to move around when zoomed in.</li>
+            <li>Boxes and Shapes: drag to turn the shape (arrow keys work too). Arrows can bend over edges, but each one leaves by sliding straight off the edge of the side its head is on. Check the hidden sides before you tap.</li>
+            <li>Shapes have inside corners. An arrow pointing into an inside corner hits a wall, so it can only leave the other way.</li>
+            <li>Curved sides count as one side. An arrow keeps sliding around the curve and only leaves at the next sharp edge.</li>
+            <li>Points: a 3-star clear pays the tier's full points, 2 stars pays 60%. The first clear of a level without losing a heart adds 25%. The daily puzzle pays 60 points plus up to 60 more for a streak. Spend them in the shop.</li>
+          </ul>
+        </details>
+        <div class="sync" id="syncNote">Progress is saved in this browser.</div>
+      </footer>
+    </div>
+  </section>
+
+  <section id="game" class="view" aria-label="Puzzle" hidden>
+    <header class="gbar">
+      <button type="button" class="round" id="backBtn" aria-label="Back to levels"></button>
+      <div class="gtitle">
+        <span class="pill" id="gTier">Easy</span>
+        <h1 class="num" id="gLevel">Level 1</h1>
+      </div>
+      <button type="button" class="round" id="restartBtn" aria-label="Restart level"></button>
+    </header>
+    <div class="status">
+      <div class="hearts" id="hearts" aria-label="3 hearts left"></div>
+      <div class="left num" id="leftCount"></div>
+    </div>
+    <div class="boardwrap">
+      <canvas id="boardCanvas" aria-label="Puzzle board"></canvas>
+      <canvas id="glCanvas" class="gl" aria-label="3D puzzle shape" hidden></canvas>
+      <div class="loading" id="loading" hidden>Building the level…</div>
+      <div class="zoomfloat">
+        <button type="button" id="zoomIn" aria-label="Zoom in"></button>
+        <button type="button" id="zoomFit" aria-label="Fit board"></button>
+        <button type="button" id="zoomOut" aria-label="Zoom out"></button>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+    <footer class="gfoot">
+      <div class="items">
+        <button type="button" class="item" id="itemProbe" aria-label="Probe" aria-pressed="false"></button>
+        <button type="button" class="item" id="itemHeart" aria-label="Extra heart"></button>
+        <button type="button" class="item" id="itemSkip" aria-label="Skip pass"></button>
+      </div>
+      <button type="button" class="hint" id="hintBtn">
+        <span class="bulb" id="hintIcon"></span>
+        <span><span id="hintText">Hint</span><small id="hintSub">1 left this level</small></span>
+      </button>
+    </footer>
+  </section>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+      <span class="pill" id="ovTier"></span>
+      <h2 id="ovTitle"></h2>
+      <div class="bigstars" id="ovStars"></div>
+      <p id="ovText"></p>
+      <div class="actions" id="ovActions"></div>
+    </div>
+  </div>
+</div>
+
+  <div class="sheet" id="shop" hidden>
+    <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+      <div class="sheet-head">
+        <h2 id="shopTitle">Shop</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="points"><span class="gem" id="gemIcon2"></span><span><b class="num" id="shopPoints">0</b> points</span></span>
+          <button type="button" class="close-x" id="shopClose" aria-label="Close shop"></button>
+        </div>
+      </div>
+      <div class="sheet-body" id="shopBody"></div>
+    </div>
+  </div>
+<script src="../../shared/js/platform.js"></script>
+<script src="levels.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
