@@ -30,11 +30,15 @@ Template: copy this to the top for a new day
 - GitHub: tests run on every push; a workflow can publish the browser version to GitHub Pages.
 - Wrote the [mission](MISSION.md), [privacy policy](PRIVACY.md), [Android guide](docs/ANDROID.md), [architecture notes](docs/ARCHITECTURE.md), [roadmap](docs/ROADMAP.md), [naming notes](docs/NAMING.md), the [to-do list](TODO.md) and this history file.
 
+- Added a fifth game, **Graphite**: four pencil-and-paper logic puzzles in one, Sudoku, Takuzu (binary puzzle), Star Battle and Calcudoku. Four tiers each, endless seeded levels, four daily puzzles with a calm streak, notes, undo, hints that explain the next logical step, rule-clash marking, light/dark theme. Every puzzle is checked to have exactly one solution; Sudoku and Takuzu puzzles never need guessing.
+- `npm test` now also checks the puzzle generators (`tests/puzzles.mjs`): unique solutions, and the same levels every time.
+
 **Decided**
 - One app containing all games first; separate apps per game remain possible later (`npm run build -- --game <name>`).
 - Package the app with Capacitor (Android first, iOS later).
 - Keep three.js at r128 for the existing four games.
 - "Honest Arcade" is a working title. The real name comes later ([docs/NAMING.md](docs/NAMING.md)).
+- The logic puzzles use their generic names (Calcudoku, not KenKen; Star Battle, not Queens; Takuzu, not Tango) to stay clear of trademarks. Murdoku-style whodunit puzzles stay on the idea list as a later, more original project.
 
 **Next**
 - Merge into `main`, turn on GitHub Pages, play everything on the phone.

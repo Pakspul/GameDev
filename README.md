@@ -12,8 +12,9 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Nuts & Bolts** | Screw nuts from bolt to bolt until every colour is sorted |
 | **Outbound** | Every arrow leaves the way it points; find the order that clears the board (2D and 3D shapes) |
 | **Unscrew** | Take 3D objects apart screw by screw (in Dutch for now) |
+| **Graphite** | Pencil-and-paper logic puzzles: Sudoku, Takuzu, Star Battle and Calcudoku, endlessly generated, each with exactly one solution |
 
-All four are built with [three.js](https://threejs.org), run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
+The first four are built with [three.js](https://threejs.org); Graphite is plain 2D canvas. They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
 
 ## Quick start
 
@@ -23,7 +24,7 @@ You need [Node.js](https://nodejs.org) 22 or newer.
 npm run dev        # play at http://localhost:8080 — and on your phone via the printed Wi-Fi address
 npm install        # once, for the tests
 npx playwright install chromium   # once
-npm test           # build + open every game in a headless phone browser
+npm test           # check the puzzle generators, build, open every game in a headless phone browser
 npm run build      # assemble dist/ (what goes into the app)
 ```
 
@@ -36,7 +37,7 @@ index.html          the hub (start screen) linking every game
 games/<name>/       one folder per game, with its own style, fonts and code
 shared/             what all games share: three.js, the platform layer, icons
 scripts/            dev server, build, font downloader
-tests/              smoke test
+tests/              smoke test + puzzle generator test
 docs/               guides
 ```
 

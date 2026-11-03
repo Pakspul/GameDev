@@ -27,6 +27,21 @@ The concrete, tickable list lives in **[TODO.md](../TODO.md)**, and what has bee
 
 ## Game ideas
 
+**Done: Graphite** (the logic grid collection): Sudoku, Takuzu, Star Battle and Calcudoku share one board, input, hint, undo, timer and daily engine. A new grid puzzle type is now mostly a generator in `games/graphite/levels/` plus a draw function. Candidates for the next types, all with free-to-use rules and generatable with exactly one solution:
+
+| Puzzle | Note |
+|---|---|
+| **Nonograms (picross)** | Also on the list below. Fits Graphite's grid and line solver. |
+| **Kakuro** | Sudoku's maths cousin; reuses Calcudoku's cage-tuple solver. |
+| **Hashi (bridges)**, **Slitherlink**, **Nurikabe** | Nikoli classics. The rules are free, but check each name for trademarks before using it in the store. |
+| **Killer Sudoku**, **Jigsaw Sudoku** | Sudoku variants: Calcudoku's cages, or irregular boxes from Star Battle's region grower. |
+
+**Naming and copyright, in short:** game rules can't be copyrighted, so a puzzle our own generator makes is ours. Names can be trademarks: "Sudoku" is a Nikoli trademark in Japan (generic elsewhere), "KenKen" and LinkedIn's "Queens"/"Tango" are brand names, which is why Graphite says Calcudoku, Star Battle and Takuzu. Never copy puzzles from books, newspapers or other apps. Not legal advice; check before a store release.
+
+**Later, more original: a whodunit logic grid.** Murdoku (a branded puzzle series of books and an app) made "place the suspects in the rooms, find the murderer" popular. The name, its puzzles, characters and art are off-limits, but the idea is free. Our own version would need its own name and setting, a clue generator plus a solver that checks the clues are enough for one answer, and some writing and art. It's a bigger, more creative project than another grid type.
+
+### More ideas
+
 Good candidates share three traits: **the store versions are notoriously ad-heavy** (so your version makes a point), **levels can be generated from a seed** (endless content, no server), and they **reuse what you already built**.
 
 | Idea | Why it fits | Reuses |
