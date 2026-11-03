@@ -17,7 +17,8 @@ How the repository is organised, why, and how to improve it step by step without
 │   │   └── fonts/           Self-hosted fonts + their licences
 │   ├── nuts-and-bolts/
 │   ├── outbound/
-│   └── unscrew/
+│   ├── unscrew/
+│   └── graphite/            levels/ holds one generator per puzzle type; worker.js runs them off the main thread
 ├── shared/                  Things every game uses, kept in exactly one place
 │   ├── vendor/three/        three.js r128 (the 3D engine), served locally
 │   └── icons/               App icon
@@ -26,6 +27,7 @@ How the repository is organised, why, and how to improve it step by step without
 │   ├── build.mjs            npm run build: assembles dist/
 │   └── vendor-fonts.mjs     npm run fonts: downloads a game's Google Fonts into its fonts/ folder
 ├── tests/smoke.mjs          npm test: opens every game in a headless phone browser
+├── tests/puzzles.mjs        npm test: Graphite's generators give unique puzzles, and the same ones every time
 ├── docs/                    Guides (this file, Android publishing, roadmap)
 ├── dist/                    (generated) the exact files that go into the app; not committed
 └── android/                 (generated once by Capacitor, then committed) the Android project
@@ -53,8 +55,11 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Nuts & Bolts | English | ~1,320 | three.js + 2D canvas particles | `nutsbolts:*` | Solver runs in a Web Worker (built from a Blob), washers currency |
 | Outbound | English | ~2,650 | 2D canvas, three.js loaded on demand for 3D modes | `outbound.*` | Three level generators (flat, box, shapes), light/dark theme, haptics, shop |
 | Unscrew | **Dutch** | ~790 | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators, coins and shop |
+| Graphite | English | ~2,200 | 2D canvas, redraws only on change | `graphite.v1` | Four logic puzzle types, generators in a Web Worker, logic-based hints, four dailies |
 
-All four save under different keys, so they can safely share one app (one "origin") without overwriting each other's progress.
+Graphite came later and was written for this repository directly, not as an artifact. It already uses `Platform.home()` and `Platform.haptic()`, draws nothing while the board is idle, and has no three.js at all.
+
+All five save under different keys, so they can safely share one app (one "origin") without overwriting each other's progress.
 
 ### What's duplicated (and what to do about it)
 
@@ -70,7 +75,7 @@ Every game re-implements the same small building blocks:
 | Tweens / easing, toast messages, overlays | all four | Similar |
 | `window.claude.hot` hooks | all four | Leftovers from the artifact environment. Harmless no-ops in a browser or app. |
 
-**Important: do not "deduplicate" the level generators' random functions.** Every level and every daily puzzle is computed from a seed. Swap one hash function for another and every level changes: players' saved progress ("level 37, 3 stars") would then point at a different puzzle. Treat each game's generator as frozen unless you bump its save version on purpose.
+**Important: do not "deduplicate" the level generators' random functions.** For Graphite this is enforced: `tests/puzzles.mjs` stores a fingerprint of the first levels of every type and tier, and fails if they change. Every level and every daily puzzle is computed from a seed. Swap one hash function for another and every level changes: players' saved progress ("level 37, 3 stars") would then point at a different puzzle. Treat each game's generator as frozen unless you bump its save version on purpose.
 
 ## How to improve it from here
 

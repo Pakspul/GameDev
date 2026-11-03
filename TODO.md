@@ -23,6 +23,9 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] Colour-blind check: can Unscrew's screws and boxes be told apart without colour?
 - [ ] Battery: pause rendering when nothing moves or the app is in the background
 - [ ] Optional cleanup: remove the `window.claude` leftovers from the artifact days
+- [ ] Graphite: play every type and tier on the phone. Are the tiers well spaced? Is Star Battle Expert (10×10, 2 stars) quick enough to generate on an older phone?
+- [ ] Graphite: is the name a keeper? (Same checks as in [docs/NAMING.md](docs/NAMING.md).)
+- [ ] Graphite: a next puzzle type (ideas in the roadmap: Nonograms, Kakuro, …)
 
 ## Android app (see [docs/ANDROID.md](docs/ANDROID.md), part 2)
 
@@ -45,8 +48,8 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] `Platform.storage` on `@capacitor/preferences` (needed for iOS)
 - [ ] iOS port (Mac + Apple Developer Program)
 - [ ] Also publish on itch.io and/or F-Droid
-- [ ] Hub extras: "Continue" button, a "Today" row with every daily puzzle
-- [ ] A fifth game (ideas in the roadmap)
+- [ ] Hub extras: "Continue" button, a "Today" row with every daily puzzle (Graphite already has one for its four types)
+- [x] A fifth game: **Graphite** (Sudoku, Takuzu, Star Battle, Calcudoku)
 
 ## Bugs & notes
 
