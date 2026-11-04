@@ -255,7 +255,7 @@ Then work through **Dashboard → "Set up your app"**:
 
 ## Part 5: iPhone later (what changes)
 
-The same Capacitor project produces an iOS app. The full step-by-step iPhone release is chapter 1 of **[RELEASE.md](RELEASE.md)**. In short, what's different:
+The same Capacitor project produces an iOS app. The full step-by-step iPhone release is chapter 2 of **[RELEASE.md](RELEASE.md)**. In short, what's different:
 
 | Topic | iOS |
 |---|---|

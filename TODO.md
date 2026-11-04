@@ -19,7 +19,7 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 
 ## Games
 
-- [ ] "Back to arcade" button in each game's own menu, calling `Platform.home()` (styled per game)
+- [ ] "Back to arcade" button in four games: see **Release issues**, item 1
 - [x] Language work for Unscrew, per the decision above
 - [ ] Colour-blind check: can Unscrew's screws and boxes be told apart without colour?
 - [ ] Battery: pause rendering when nothing moves or the app is in the background
@@ -32,7 +32,20 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] Camper Crew: playtest on the phone (landscape and portrait) and with someone else; answer the questions in [docs/BACKLOG.md](docs/BACKLOG.md#prototype-status)
 - [ ] Camper Crew: tune or cut based on the playtest, *then* decide on art, sound and more troubles
 
-## Android app (see [docs/ANDROID.md](docs/ANDROID.md), part 2)
+## Release issues
+
+Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each item says which release needs it. All four can be done by Claude in a session: just ask for the item by number.
+
+1. [ ] **No way back to the hub in four games.** Jade Pavilion, Nuts & Bolts, Outbound and Unscrew have no button that calls `Platform.home()` (Graphite and Camper Crew do). On Android the back button covers it; on iPhone a player is stuck in the game until they kill the app, and Apple rejects that. Add a "Back to arcade" button to each game's own menu, styled per game, with the label in English and Dutch in its `strings.js`.
+   *Needed for: iPhone (required). Nice for Android and the browser.*
+2. [ ] **Outbound vibrates through `navigator.vibrate` directly** (`games/outbound/game.js`). That doesn't exist on iPhone and skips the native Haptics plugin on Android. Replace it with `Platform.haptic(60)`.
+   *Needed for: iPhone. Better on Android.*
+3. [ ] **Progress is only in `localStorage`.** Inside an iPhone app, iOS may clear that when the phone runs low on space, and players lose all progress. Mirror every write to `@capacitor/preferences` in `shared/js/platform.js` and restore missing keys at start-up, so the games don't need changes (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
+   *Needed for: iPhone. Extra safety on Android.*
+4. [ ] **The privacy policy is out of date.** [PRIVACY.md](PRIVACY.md) lists only four games (Graphite is missing) and only the Android app. Name every game in the app, and the iPhone app once it exists; update the date.
+   *Needed for: Android (before the store listing), iPhone.*
+
+## Android app, priority 1 (see [docs/RELEASE.md](docs/RELEASE.md), chapter 1)
 
 - [ ] Install Node.js 22+ and Android Studio
 - [ ] Add Capacitor (`@capacitor/core`, `cli`, `android`, `app`, `haptics`) and commit the `android/` folder
@@ -40,22 +53,18 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] Final app icon (1024×1024 PNG) and splash screen
 - [ ] Create the signing key, **and back it up** (password manager + offline copy)
 
-## Google Play (see [docs/ANDROID.md](docs/ANDROID.md), part 3)
+## Google Play (see [docs/RELEASE.md](docs/RELEASE.md), chapter 1)
 
 - [ ] Developer account (US$25 one-time + ID verification)
 - [ ] **Find 12 testers early.** The closed test takes 14 days.
+- [ ] Privacy policy up to date (release issue 4) and online at a public URL
 - [ ] Store listing: short and full description (with the mission), 9:16 screenshots, 1024×500 feature graphic
 - [ ] Forms: privacy policy URL, ads = no, data safety = nothing collected, content rating, target audience
 - [ ] Internal test → closed test (12 testers × 14 days) → apply for production → release 🎉
 
 ## Later
 
-- [ ] iOS release, see [docs/RELEASE.md](docs/RELEASE.md), chapter 1:
-  - [ ] "Back to arcade" button in every game (see **Games** above; required for iOS)
-  - [ ] Outbound: `navigator.vibrate` → `Platform.haptic()`
-  - [ ] Saves mirrored to `@capacitor/preferences`, so iOS can't clear them
-  - [ ] Mac with Xcode, Apple Developer Program (US$99/year)
-  - [ ] TestFlight → App Store review → release
+- [ ] iPhone release, on hold because of the US$99/year fee (see [docs/RELEASE.md](docs/RELEASE.md), chapter 2). Release issues 1–3 come first and cost nothing.
 - [ ] Also publish on itch.io and/or F-Droid
 - [ ] Hub extras: "Continue" button, a "Today" row with every daily puzzle (Graphite already has one for its four types)
 - [x] A fifth game: **Graphite** (Sudoku, Takuzu, Star Battle, Calcudoku)

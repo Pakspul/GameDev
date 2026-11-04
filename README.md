@@ -47,7 +47,7 @@ docs/               guides
 ## Documentation
 
 - [MISSION.md](MISSION.md): the promise, and how to check every change against it
-- [docs/RELEASE.md](docs/RELEASE.md): how to release, with one chapter for the iPhone (App Store) and one for Android (Google Play)
+- [docs/RELEASE.md](docs/RELEASE.md): how to release, as step tables (who does what, and the state): Android first, iPhone on hold
 - [docs/ANDROID.md](docs/ANDROID.md): from browser to Google Play in detail, including how to test on your phone
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the code is organised and how to improve it safely
 - [TODO.md](TODO.md): what to do next, as a checklist
