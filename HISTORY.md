@@ -19,6 +19,19 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-04
+
+**Done**
+- Wrote a release guide ([docs/RELEASE.md](docs/RELEASE.md)): one table per platform with every step, who can do it (you, Claude, testers, the store), its state and a remark, followed by the details per step.
+- Listed the issues found along the way under **Release issues** in [TODO.md](TODO.md): four games without a way back to the hub, Outbound's direct `navigator.vibrate`, progress only in `localStorage`, and an out-of-date privacy policy.
+
+**Decided**
+- **Android first.** The iPhone release is on hold: it needs a Mac and US$99 per year. Its code fixes (release issues 1–3) are free and help Android too.
+
+**Next**
+- Create the Google Play account and find 12 testers; both take time.
+- Choose the app ID, then let Claude add Capacitor.
+
 ## 2026-11-03
 
 **Done**
