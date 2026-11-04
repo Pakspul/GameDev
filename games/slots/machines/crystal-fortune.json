@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "id": "crystal-fortune",
+  "version": 1,
+  "name": "Crystal Fortune",
+  "musicShift": 0,
+  "theme": {
+    "accent": "#7fe3ff",
+    "accent2": "#ff5fd2",
+    "bgTop": "#1a1146",
+    "bgBottom": "#0a0722",
+    "reel": "#120b33",
+    "frame": "#5ad1ff",
+    "glow": "#7a5cff",
+    "art": "crystal"
+  },
+  "grid": { "reels": 5, "rows": 3 },
+  "mode": "lines",
+  "betDivisor": 20,
+  "betLevels": [20, 40, 100, 200, 400, 1000, 2000, 5000],
+  "betUnlockLevels": [1, 1, 1, 3, 5, 8, 12, 16],
+  "defaultBet": 40,
+  "symbols": {
+    "TEN": { "kind": "regular", "art": "ten" },
+    "JACK": { "kind": "regular", "art": "jack" },
+    "QUEEN": { "kind": "regular", "art": "queen" },
+    "KING": { "kind": "regular", "art": "king" },
+    "ACE": { "kind": "regular", "art": "ace" },
+    "GREEN": { "kind": "regular", "art": "gem-green" },
+    "BLUE": { "kind": "regular", "art": "gem-blue" },
+    "RED": { "kind": "regular", "art": "gem-red" },
+    "CROWN": { "kind": "regular", "art": "crown" },
+    "WILD": { "kind": "wild", "art": "wild" },
+    "WILD_X2": { "kind": "wild", "multiplier": 2, "art": "wild-x2" },
+    "WILD_X3": { "kind": "wild", "multiplier": 3, "art": "wild-x3" },
+    "SCATTER": { "kind": "scatter", "art": "scatter" },
+    "COIN": { "kind": "coin", "art": "coin" },
+    "COLLECT": { "kind": "collect", "art": "lantern" }
+  },
+  "paylines": [
+    [1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0],
+    [2, 2, 2, 2, 2],
+    [0, 1, 2, 1, 0],
+    [2, 1, 0, 1, 2],
+    [0, 0, 1, 0, 0],
+    [2, 2, 1, 2, 2],
+    [1, 0, 0, 0, 1],
+    [1, 2, 2, 2, 1],
+    [0, 1, 1, 1, 0],
+    [2, 1, 1, 1, 2],
+    [1, 0, 1, 0, 1],
+    [1, 2, 1, 2, 1],
+    [0, 1, 0, 1, 0],
+    [2, 1, 2, 1, 2],
+    [1, 1, 0, 1, 1],
+    [1, 1, 2, 1, 1],
+    [0, 0, 1, 2, 2],
+    [2, 2, 1, 0, 0],
+    [1, 2, 1, 0, 1]
+  ],
+  "paytable": {
+    "TEN": { "3": 10, "4": 30, "5": 100 },
+    "JACK": { "3": 10, "4": 30, "5": 100 },
+    "QUEEN": { "3": 12, "4": 40, "5": 120 },
+    "KING": { "3": 15, "4": 50, "5": 180 },
+    "ACE": { "3": 20, "4": 75, "5": 250 },
+    "GREEN": { "3": 25, "4": 100, "5": 350 },
+    "BLUE": { "3": 40, "4": 150, "5": 500 },
+    "RED": { "3": 50, "4": 250, "5": 750 },
+    "CROWN": { "3": 75, "4": 400, "5": 1250 },
+    "WILD": { "3": 75, "4": 400, "5": 1250 },
+    "SCATTER": { "3": 2, "4": 10, "5": 50 }
+  },
+  "wild": {
+    "combine": "multiply",
+    "reels": [1, 2, 3]
+  },
+  "strips": {
+    "base": [
+      ["COIN", "TEN", "KING", "TEN", "KING", "KING", "TEN", "COIN", "GREEN", "COIN", "JACK", "KING", "TEN", "GREEN", "QUEEN", "COIN", "JACK", "COIN", "TEN", "QUEEN", "COIN", "KING", "ACE", "GREEN", "QUEEN", "ACE", "GREEN", "JACK", "COIN", "QUEEN", "SCATTER", "TEN", "JACK", "KING", "JACK", "TEN", "CROWN", "JACK", "QUEEN", "COIN", "BLUE", "ACE", "COLLECT", "RED", "KING", "BLUE", "QUEEN", "TEN", "RED", "JACK", "KING", "QUEEN", "COIN", "TEN", "QUEEN", "JACK", "TEN", "JACK", "CROWN", "QUEEN", "JACK", "ACE", "JACK", "TEN", "SCATTER", "TEN", "ACE", "BLUE", "QUEEN"],
+      ["QUEEN", "TEN", "WILD", "TEN", "COIN", "TEN", "JACK", "QUEEN", "COIN", "ACE", "RED", "BLUE", "WILD", "COIN", "RED", "QUEEN", "WILD", "COIN", "TEN", "JACK", "GREEN", "JACK", "SCATTER", "KING", "CROWN", "QUEEN", "JACK", "KING", "COIN", "TEN", "WILD", "QUEEN", "JACK", "ACE", "COIN", "COLLECT", "TEN", "GREEN", "CROWN", "JACK", "GREEN", "KING", "BLUE", "ACE", "COIN", "QUEEN", "TEN", "JACK", "JACK", "BLUE", "QUEEN", "TEN", "COIN", "KING", "ACE", "QUEEN", "KING", "KING", "SCATTER", "JACK", "KING", "QUEEN", "JACK", "ACE", "TEN", "GREEN", "KING", "TEN", "ACE", "COIN"],
+      ["TEN", "JACK", "COIN", "ACE", "COIN", "TEN", "QUEEN", "ACE", "GREEN", "JACK", "COIN", "KING", "WILD", "CROWN", "BLUE", "QUEEN", "TEN", "WILD", "QUEEN", "TEN", "CROWN", "RED", "TEN", "COIN", "JACK", "KING", "JACK", "SCATTER", "QUEEN", "COIN", "WILD", "QUEEN", "JACK", "QUEEN", "GREEN", "JACK", "BLUE", "KING", "GREEN", "ACE", "SCATTER", "KING", "JACK", "ACE", "TEN", "KING", "COIN", "JACK", "KING", "ACE", "TEN", "QUEEN", "COIN", "TEN", "GREEN", "JACK", "QUEEN", "TEN", "RED", "QUEEN", "JACK", "BLUE", "KING", "WILD", "COLLECT", "COIN", "KING", "TEN", "COIN", "ACE"],
+      ["COIN", "KING", "QUEEN", "KING", "WILD", "COIN", "ACE", "GREEN", "TEN", "QUEEN", "TEN", "JACK", "COIN", "QUEEN", "KING", "JACK", "SCATTER", "ACE", "RED", "WILD", "JACK", "COIN", "KING", "SCATTER", "TEN", "COIN", "GREEN", "ACE", "QUEEN", "GREEN", "QUEEN", "WILD", "JACK", "BLUE", "KING", "JACK", "TEN", "COIN", "JACK", "COIN", "TEN", "ACE", "TEN", "QUEEN", "CROWN", "BLUE", "TEN", "JACK", "TEN", "ACE", "JACK", "KING", "JACK", "QUEEN", "RED", "CROWN", "BLUE", "QUEEN", "ACE", "GREEN", "TEN", "KING", "TEN", "COIN", "WILD", "COLLECT", "COIN", "KING", "QUEEN", "JACK"],
+      ["JACK", "QUEEN", "COIN", "BLUE", "TEN", "JACK", "ACE", "TEN", "JACK", "TEN", "JACK", "QUEEN", "KING", "COIN", "COIN", "CROWN", "JACK", "ACE", "QUEEN", "TEN", "ACE", "KING", "QUEEN", "ACE", "KING", "TEN", "GREEN", "JACK", "CROWN", "KING", "TEN", "GREEN", "BLUE", "RED", "TEN", "SCATTER", "JACK", "COLLECT", "GREEN", "TEN", "QUEEN", "KING", "QUEEN", "TEN", "JACK", "TEN", "COIN", "RED", "COIN", "BLUE", "QUEEN", "KING", "COIN", "KING", "JACK", "GREEN", "QUEEN", "JACK", "ACE", "SCATTER", "COIN", "JACK", "COIN", "QUEEN", "KING", "TEN", "QUEEN", "COIN", "TEN"]
+    ],
+    "free": [
+      ["GREEN", "BLUE", "KING", "TEN", "JACK", "KING", "JACK", "QUEEN", "RED", "QUEEN", "TEN", "BLUE", "KING", "QUEEN", "ACE", "KING", "JACK", "ACE", "TEN", "GREEN", "TEN", "QUEEN", "JACK", "RED", "KING", "QUEEN", "GREEN", "JACK", "TEN", "GREEN", "SCATTER", "BLUE", "QUEEN", "KING", "ACE", "GREEN", "CROWN", "RED", "ACE", "TEN", "QUEEN", "RED", "TEN", "JACK", "BLUE", "CROWN", "ACE", "ACE", "TEN", "KING", "JACK", "ACE", "KING", "GREEN", "CROWN", "BLUE", "QUEEN", "JACK", "TEN", "SCATTER", "JACK"],
+      ["KING", "TEN", "KING", "GREEN", "RED", "JACK", "BLUE", "JACK", "CROWN", "TEN", "JACK", "BLUE", "TEN", "RED", "WILD", "BLUE", "CROWN", "JACK", "QUEEN", "RED", "ACE", "TEN", "GREEN", "BLUE", "QUEEN", "TEN", "QUEEN", "KING", "ACE", "GREEN", "ACE", "BLUE", "CROWN", "JACK", "QUEEN", "GREEN", "TEN", "JACK", "ACE", "KING", "RED", "GREEN", "KING", "JACK", "KING", "QUEEN", "SCATTER", "TEN", "SCATTER", "QUEEN", "JACK", "QUEEN", "ACE", "TEN", "WILD", "ACE", "JACK", "KING", "TEN", "QUEEN", "ACE"],
+      ["JACK", "ACE", "JACK", "TEN", "ACE", "CROWN", "GREEN", "ACE", "TEN", "QUEEN", "JACK", "BLUE", "TEN", "JACK", "SCATTER", "QUEEN", "TEN", "ACE", "BLUE", "SCATTER", "QUEEN", "GREEN", "QUEEN", "KING", "WILD", "TEN", "JACK", "GREEN", "KING", "JACK", "ACE", "QUEEN", "KING", "BLUE", "RED", "GREEN", "JACK", "TEN", "ACE", "JACK", "BLUE", "QUEEN", "RED", "KING", "CROWN", "RED", "BLUE", "QUEEN", "KING", "TEN", "QUEEN", "WILD", "KING", "KING", "ACE", "GREEN", "TEN", "CROWN", "TEN", "RED"],
+      ["JACK", "ACE", "RED", "TEN", "RED", "KING", "QUEEN", "ACE", "GREEN", "BLUE", "TEN", "JACK", "QUEEN", "BLUE", "TEN", "RED", "JACK", "TEN", "QUEEN", "TEN", "SCATTER", "BLUE", "TEN", "JACK", "WILD", "KING", "ACE", "GREEN", "KING", "RED", "QUEEN", "KING", "BLUE", "JACK", "QUEEN", "JACK", "KING", "WILD", "ACE", "KING", "ACE", "QUEEN", "GREEN", "ACE", "TEN", "KING", "ACE", "TEN", "JACK", "BLUE", "GREEN", "CROWN", "QUEEN", "SCATTER", "TEN", "GREEN", "CROWN", "JACK", "QUEEN", "CROWN", "JACK"],
+      ["CROWN", "RED", "QUEEN", "KING", "BLUE", "TEN", "QUEEN", "KING", "GREEN", "CROWN", "ACE", "QUEEN", "GREEN", "BLUE", "KING", "GREEN", "JACK", "RED", "QUEEN", "TEN", "JACK", "QUEEN", "KING", "GREEN", "JACK", "TEN", "JACK", "ACE", "JACK", "ACE", "SCATTER", "TEN", "BLUE", "TEN", "KING", "TEN", "JACK", "KING", "RED", "ACE", "JACK", "QUEEN", "TEN", "ACE", "GREEN", "BLUE", "KING", "BLUE", "KING", "ACE", "GREEN", "RED", "QUEEN", "CROWN", "SCATTER", "QUEEN", "ACE", "JACK", "TEN", "JACK", "TEN"]
+    ]
+  },
+  "features": {
+    "freeSpins": {
+      "trigger": {
+        "symbol": "SCATTER",
+        "minCount": 3,
+        "awards": { "3": 11, "4": 15, "5": 21 }
+      },
+      "retrigger": { "enabled": true, "spins": 5, "cap": 50 },
+      "modifiers": { "stickyWilds": true }
+    },
+    "holdSpin": {
+      "trigger": { "symbol": "COIN", "count": 6 },
+      "respins": 3,
+      "landChance": 0.045,
+      "gridFullGrand": true,
+      "coinValues": [
+        { "value": 1, "weight": 40 },
+        { "value": 2, "weight": 25 },
+        { "value": 3, "weight": 15 },
+        { "value": 5, "weight": 8 },
+        { "value": 10, "weight": 4 },
+        { "value": 25, "weight": 1 },
+        { "jackpot": "mini", "weight": 3 },
+        { "jackpot": "minor", "weight": 1.5 },
+        { "jackpot": "major", "weight": 0.4 }
+      ]
+    }
+  },
+  "featureOrder": ["holdSpin", "freeSpins"],
+  "jackpots": {
+    "mini": { "type": "fixed", "value": 20 },
+    "minor": { "type": "fixed", "value": 50 },
+    "major": { "type": "progressive", "seed": 250, "contribution": 0.006 },
+    "grand": { "type": "progressive", "seed": 1000, "contribution": 0.012 }
+  },
+  "meter": {
+    "symbol": "COLLECT",
+    "target": 115,
+    "reward": { "type": "freeSpins", "spins": 8 }
+  },
+  "maxWin": 5000,
+  "timing": { "staggerMs": 150 },
+  "winTiers": { "win": 1, "big": 10, "mega": 25, "epic": 50 },
+  "anticipation": {
+    "extraMs": 1000,
+    "triggers": [
+      { "symbol": "SCATTER", "needed": 3, "minLanded": 2 },
+      { "symbol": "COIN", "needed": 6, "minLanded": 4 }
+    ]
+  },
+  "targets": {
+    "rtp": 0.96,
+    "hitFrequency": [0.25, 0.35],
+    "freeSpinsEvery": [150, 200],
+    "volatility": "medium",
+    "rtpTolerance": 0.005
+  }
+}

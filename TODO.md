@@ -45,6 +45,16 @@ Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each
 4. [ ] **The privacy policy is out of date.** [PRIVACY.md](PRIVACY.md) lists only four games (Graphite is missing) and only the Android app. Name every game in the app, and the iPhone app once it exists; update the date.
    *Needed for: Android (before the store listing), iPhone.*
 
+## Crystal Reels (slots)
+
+- [ ] Play on a real phone: 60 fps during spins and big wins, spin-to-movement latency under 100 ms, start-up under 3 s (see "Not verified here" in [docs/SLOTS.md](docs/SLOTS.md))
+- [ ] Listen to the synthesised music loops and feel the haptics; tune or replace them
+- [ ] Decide on final theme and art for the first machine (symbols are drawn in code in `games/slots/src/ui/art.js`)
+- [ ] Before releasing a changed machine config: `npm run slots:verify` (10 million spins per machine)
+- [ ] Store listing: play-money statement and the "simulated gambling" content rating (text in [docs/SLOTS.md](docs/SLOTS.md))
+- [ ] Add the new game to [PRIVACY.md](PRIVACY.md)'s list once the app is built (it stores progress locally and nothing else)
+- [ ] Optional: a cooldown on the free refill (`refill.cooldownMinutes` in `games/slots/data/game.json`; the specification default is 10)
+
 ## Android app, priority 1 (see [docs/RELEASE.md](docs/RELEASE.md), chapter 1)
 
 - [ ] Install Node.js 22+ and Android Studio

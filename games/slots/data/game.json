@@ -1,0 +1,295 @@
+{
+ "schema": 1,
+ "startingBalance": 25000,
+ "xp": {
+  "perCoinBet": 0.05,
+  "thresholds": [
+   0,
+   60,
+   190,
+   390,
+   630,
+   930,
+   1260,
+   1640,
+   2060,
+   2510,
+   3010,
+   3540,
+   4100,
+   4700,
+   5330,
+   5990,
+   6690,
+   7410,
+   8170,
+   8950,
+   9770,
+   10620,
+   11490,
+   12390,
+   13320,
+   14280,
+   15260,
+   16270,
+   17310,
+   18380
+  ],
+  "rewards": {
+   "2": {
+    "coins": 1000
+   },
+   "3": {
+    "coins": 1250
+   },
+   "4": {
+    "coins": 1500
+   },
+   "5": {
+    "coins": 1750
+   },
+   "6": {
+    "coins": 2000
+   },
+   "7": {
+    "coins": 2250
+   },
+   "8": {
+    "coins": 2500
+   },
+   "9": {
+    "coins": 2750
+   },
+   "10": {
+    "coins": 3000
+   },
+   "11": {
+    "coins": 3250
+   },
+   "12": {
+    "coins": 3500
+   },
+   "13": {
+    "coins": 3750
+   },
+   "14": {
+    "coins": 4000
+   },
+   "15": {
+    "coins": 4250
+   },
+   "16": {
+    "coins": 4500
+   },
+   "17": {
+    "coins": 4750
+   },
+   "18": {
+    "coins": 5000
+   },
+   "19": {
+    "coins": 5250
+   },
+   "20": {
+    "coins": 5500
+   },
+   "21": {
+    "coins": 5750
+   },
+   "22": {
+    "coins": 6000
+   },
+   "23": {
+    "coins": 6250
+   },
+   "24": {
+    "coins": 6500
+   },
+   "25": {
+    "coins": 6750
+   },
+   "26": {
+    "coins": 7000
+   },
+   "27": {
+    "coins": 7250
+   },
+   "28": {
+    "coins": 7500
+   },
+   "29": {
+    "coins": 7750
+   },
+   "30": {
+    "coins": 8000
+   }
+  }
+ },
+ "machines": [
+  {
+   "id": "crystal-fortune",
+   "file": "machines/crystal-fortune.json",
+   "unlockLevel": 1
+  },
+  {
+   "id": "neon-tumble",
+   "file": "machines/neon-tumble.json",
+   "unlockLevel": 4
+  }
+ ],
+ "refill": {
+  "amount": 10000,
+  "cooldownMinutes": 0
+ },
+ "timedBonus": {
+  "enabled": true,
+  "hours": 4,
+  "amount": 2500
+ },
+ "sessionReminder": {
+  "defaultMinutes": 60,
+  "choices": [
+   0,
+   30,
+   60,
+   90,
+   120
+  ]
+ },
+ "autoplay": {
+  "choices": [
+   10,
+   25,
+   50,
+   100
+  ],
+  "bigWinMultiples": [
+   0,
+   10,
+   25,
+   50,
+   100
+  ]
+ },
+ "missions": {
+  "active": 3,
+  "pool": [
+   {
+    "id": "spins50",
+    "metric": "spins",
+    "target": 50,
+    "reward": 600
+   },
+   {
+    "id": "spins120",
+    "metric": "spins",
+    "target": 120,
+    "reward": 1200
+   },
+   {
+    "id": "wins15",
+    "metric": "wins",
+    "target": 15,
+    "reward": 500
+   },
+   {
+    "id": "freespins1",
+    "metric": "freeSpins",
+    "target": 1,
+    "reward": 800
+   },
+   {
+    "id": "freespins3",
+    "metric": "freeSpins",
+    "target": 3,
+    "reward": 2500
+   },
+   {
+    "id": "wilds5",
+    "metric": "wilds",
+    "target": 5,
+    "reward": 600
+   },
+   {
+    "id": "wilds15",
+    "metric": "wilds",
+    "target": 15,
+    "reward": 1200
+   },
+   {
+    "id": "bigwin1",
+    "metric": "bigWins",
+    "target": 1,
+    "reward": 1000
+   },
+   {
+    "id": "lanterns8",
+    "metric": "collects",
+    "target": 8,
+    "reward": 700
+   },
+   {
+    "id": "features2",
+    "metric": "features",
+    "target": 2,
+    "reward": 1500
+   },
+   {
+    "id": "scatters6",
+    "metric": "scatters",
+    "target": 6,
+    "reward": 900
+   }
+  ]
+ },
+ "achievements": [
+  {
+   "id": "firstWin",
+   "metric": "firstWin"
+  },
+  {
+   "id": "firstFeature",
+   "metric": "firstFeature"
+  },
+  {
+   "id": "firstBigWin",
+   "metric": "tier",
+   "tier": "big"
+  },
+  {
+   "id": "firstMegaWin",
+   "metric": "tier",
+   "tier": "mega"
+  },
+  {
+   "id": "firstEpicWin",
+   "metric": "tier",
+   "tier": "epic"
+  },
+  {
+   "id": "firstJackpot",
+   "metric": "jackpot"
+  },
+  {
+   "id": "firstGrand",
+   "metric": "grand"
+  },
+  {
+   "id": "spins1000",
+   "metric": "totalSpins",
+   "target": 1000
+  },
+  {
+   "id": "allMachines",
+   "metric": "allMachines"
+  }
+ ],
+ "countUpMs": {
+  "below": 400,
+  "win": 1000,
+  "big": 3500,
+  "mega": 5500,
+  "epic": 8000,
+  "jackpot": 6000
+ }
+}

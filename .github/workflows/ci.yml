@@ -24,3 +24,15 @@ jobs:
         with:
           name: screenshots
           path: test-results/
+
+  # The strict maths check for the slot machines: 10 million spins per machine, RTP within the plain
+  # tolerance (about 2 minutes). `npm test` already runs the quicker 1 million spin check.
+  slots-math:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: node scripts/slots-sim.mjs --verify
