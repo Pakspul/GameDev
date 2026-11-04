@@ -50,6 +50,7 @@ docs/               guides
 - [docs/RELEASE.md](docs/RELEASE.md): how to release, as step tables (who does what, and the state): Android first, iPhone on hold
 - [docs/ANDROID.md](docs/ANDROID.md): from browser to Google Play in detail, including how to test on your phone
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the code is organised and how to improve it safely
+- [docs/ECONOMY.md](docs/ECONOMY.md): how coins, washers and points work in every game: prices in levels of effort, stars for playing without help
 - [TODO.md](TODO.md): what to do next, as a checklist
 - [HISTORY.md](HISTORY.md): what was done, per day
 - [docs/ROADMAP.md](docs/ROADMAP.md): tips and ideas for new games

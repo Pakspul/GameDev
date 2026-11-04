@@ -253,18 +253,14 @@ function NBCore() {
     { hex: "#a65f2e", icon: "paw" }
   ];
   const DIFF_KEYS = C.DIFF_KEYS;
-  const DIFF_INFO = {
-    easy:   { star: 8 },
-    medium: { star: 15 },
-    hard:   { star: 25 },
-    expert: { star: 40 }
-  };
+  const DIFF_INFO = { easy: {}, medium: {}, hard: {}, expert: {} };
   for (const k in DIFF_INFO) { DIFF_INFO[k].name = _t("diff." + k); DIFF_INFO[k].meta = _t("diff." + k + ".meta"); }
   const TYPE_NAME = {};
   for (const k of ["mixed", "tall", "short", "mystery"]) TYPE_NAME[k] = _t("type." + k);
-  const HINT_COST = 15;
-  const SPARE_COSTS = [40, 80];
-  const DAILY_STAR = 50, DAILY_STREAK = 10, DAILY_STREAK_CAP = 10;
+  // Prices follow the tier you're playing (games/nuts-and-bolts/economy.js, docs/ECONOMY.md).
+  const MAX_SPARES = 2;
+  const hintCost = () => ECO.price("hint", M ? M.diff : "medium");
+  const spareCost = () => ECO.price("spare", M ? M.diff : "medium", M ? M.spares : 0);
 
   const BOARDS = [
     { id: "night",     price: 0,   pat: "pegs",   v: { board: "#241940", deep: "#150e27", peg: "#120a22", glow: "rgba(140,104,220,0.22)", panel: "#2f2352", line: "#463872", muted: "#b8a7da" } },
@@ -292,7 +288,7 @@ function NBCore() {
   };
   const progress = Object.assign({ easy: 1, medium: 1, hard: 1, expert: 1 }, store.get("progress", {}));
   const eco = Object.assign({
-    washers: 60, earned: 0, best: {}, cleared: 0, stars: 0,
+    washers: ECO.start, earned: 0, best: {}, cleared: 0, stars: 0,
     owned: { board: ["night"], finish: ["gunmetal"] },
     equip: { board: "night", finish: "gunmetal" },
     daily: { last: null, streak: 0, bestStreak: 0, done: {} }
@@ -341,6 +337,10 @@ function NBCore() {
 
   // ================================================================ dom
   const $ = id => document.getElementById(id);
+  $("earnNote").textContent = _t("earn", {
+    e: ECO.reward("easy"), m: ECO.reward("medium"), h: ECO.reward("hard"), x: ECO.reward("expert"),
+    hint: ECO.price("hint", "hard"), spare: ECO.price("spare", "hard"), spare2: ECO.price("spare", "hard", 1)
+  });
   const app = $("app"), stage = $("stage"), glCanvas = $("gl"), fxCanvas = $("fx"), veil = $("veil"), toastEl = $("toast");
   const fx = fxCanvas.getContext("2d");
   const starSvg = (on, cls) => '<svg class="' + (on ? "on" : "off") + (cls ? " " + cls : "") + '"><use href="#i-star"/></svg>';
@@ -916,7 +916,8 @@ function NBCore() {
 
   async function hint() {
     if (!M || hintBusy || loading || isSolved()) return;
-    if (!canPay(HINT_COST)) return;
+    const cost = hintCost();
+    if (!canPay(cost)) return;
     hintBusy = true; updateHud();
     const v = version;
     const res = await call({ type: "solve", bolts: M.bolts, caps: M.caps, counts: M.counts, limit: 150000 });
@@ -926,7 +927,7 @@ function NBCore() {
       toast(_t("toast.noWay"));
       return;
     }
-    pay(HINT_COST);
+    pay(cost);
     M.hints++;
     changed();
     const mv = res.moves[0];
@@ -943,8 +944,8 @@ function NBCore() {
   }
   function addSpare() {
     if (!M || loading || isSolved()) return;
-    if (M.spares >= SPARE_COSTS.length) { toast(_t("toast.spareMax")); return; }
-    const cost = SPARE_COSTS[M.spares];
+    if (M.spares >= MAX_SPARES) { toast(_t("toast.spareMax")); return; }
+    const cost = spareCost();
     if (!canPay(cost)) return;
     pay(cost);
     if (sel >= 0) deselect();
@@ -1003,9 +1004,10 @@ function NBCore() {
     $("liveStars").setAttribute("aria-label", _t("liveStars", { s }));
     $("undoBtn").disabled = !M.history.length;
     $("hintBtn").disabled = hintBusy || isSolved();
-    const maxed = M.spares >= SPARE_COSTS.length;
+    const maxed = M.spares >= MAX_SPARES;
+    $("hintCost").textContent = hintCost();
     $("spareBtn").disabled = maxed || isSolved();
-    $("spareCost").textContent = maxed ? _t("max") : SPARE_COSTS[M.spares];
+    $("spareCost").textContent = maxed ? _t("max") : spareCost();
   }
   function snapshotM() {
     return M && { mode: M.mode, diff: M.diff, level: M.level, type: M.type, par: M.par, day: M.day, caps: M.caps, bolts: M.bolts, hid: M.hid, counts: M.counts, history: M.history, spares: M.spares, hints: M.hints, initial: M.initial, won: M.won };
@@ -1087,10 +1089,10 @@ function NBCore() {
         eco.daily.streak = eco.daily.last === yesterday() ? eco.daily.streak + 1 : 1;
         eco.daily.last = day;
         eco.daily.bestStreak = Math.max(eco.daily.bestStreak || 0, eco.daily.streak);
-        gain = DAILY_STAR * stars + DAILY_STREAK * Math.min(eco.daily.streak, DAILY_STREAK_CAP);
+        gain = ECO.dailyPay(M.diff, stars, 0, eco.daily.streak);
         eco.daily.done[day] = stars;
       } else if (stars > prev) {
-        gain = DAILY_STAR * (stars - prev);
+        gain = ECO.dailyPay(M.diff, stars, prev, eco.daily.streak);
         eco.daily.done[day] = stars;
       }
       $("winTitle").textContent = _t("win.daily");
@@ -1099,7 +1101,7 @@ function NBCore() {
     } else {
       const key = M.diff + ":" + M.level, prev = eco.best[key] || 0;
       if (stars > prev) {
-        gain = DIFF_INFO[M.diff].star * (stars - prev);
+        gain = ECO.levelPay(M.diff, stars, prev);
         eco.best[key] = stars;
         eco.stars += stars - prev;
         if (!prev) eco.cleared++;
@@ -1108,7 +1110,7 @@ function NBCore() {
       store.set("progress", progress);
       $("winTitle").textContent = _t("win.level", { n: M.level });
       meta = _t("win.meta", { moves: plural(M.history.length, "move"), par: M.par }) + (prev ? _t("win.bestBefore", { stars: plural(prev, "star") }) : "");
-      if (M.hints || M.spares) meta += "<br>Solve it without a hint or spare bolt for the third star.";
+      if (M.hints || M.spares) meta += _t("win.helpStar");
       $("nextBtn").textContent = _t("nextLevel");
     }
     if (gain) { eco.washers += gain; eco.earned += gain; }

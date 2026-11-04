@@ -45,7 +45,7 @@ I18n.add({
     "how.3": "<strong>Stars and washers.</strong> Finish within par for 3 stars. Using a hint or a spare bolt costs one star, and going far over par costs another. Every new star earns washers, and the daily puzzle pays extra for a streak. Spend washers on hints, spare bolts (each holds a single nut) and new boards and bolt finishes. New levels unlock as you clear them.",
     "boards": "Boards",
     "finish": "Bolt finish",
-    "earn": "Each new star pays washers: 8 on Easy, 15 on Medium, 25 on Hard and 40 on Expert. The daily puzzle pays 50 per star plus 10 for every day of your streak. Hints cost 15, spare bolts 40 and then 80.",
+    "earn": "A 3-star clear pays {e} washers on Easy, {m} on Medium, {h} on Hard and {x} on Expert, a third for each star. Replaying only pays for stars you didn't have yet. The daily puzzle pays twice a Hard level, plus 10% for each day of your streak, up to 50%. Help is priced in levels of the tier you're playing: a hint costs half a level, a spare bolt two levels and a second spare four (on Hard: {hint}, {spare} and {spare2}). Help also costs a star, so come back without it for all three.",
     "backToPuzzle": "Back to the puzzle",
     "replay": "Replay",
 
@@ -94,6 +94,7 @@ I18n.add({
     "win.meta": "{moves}, par {par}",
     "win.bestBefore": " · best before: {stars}",
     "win.gain": "+{n} washers",
+    "win.helpStar": "<br>Help costs a star. Solve it without a hint or spare bolt for the third.",
     "win.none": "No new stars this time",
     "unlockedTo": "Unlocked to level {n}",
     "levelType": "Level {n} · <b>{type}</b>",
@@ -148,7 +149,7 @@ I18n.add({
     "how.3": "<strong>Sterren en ringen.</strong> Blijf binnen par voor 3 sterren. Een hint of een reservebout kost één ster, en ver over par gaan kost er nog een. Elke nieuwe ster levert ringen op, en de dagpuzzel betaalt extra voor een reeks. Besteed ringen aan hints, reservebouten (waar telkens één moer op past) en nieuwe borden en boutafwerkingen. Nieuwe levels komen vrij als je ze uitspeelt.",
     "boards": "Borden",
     "finish": "Boutafwerking",
-    "earn": "Elke nieuwe ster levert ringen op: 8 op Makkelijk, 15 op Gemiddeld, 25 op Moeilijk en 40 op Expert. De dagpuzzel betaalt 50 per ster plus 10 voor elke dag van je reeks. Hints kosten 15, reservebouten 40 en daarna 80.",
+    "earn": "Een level met 3 sterren levert {e} ringen op op Makkelijk, {m} op Gemiddeld, {h} op Moeilijk en {x} op Expert, een derde per ster. Opnieuw spelen levert alleen iets op voor sterren die je nog niet had. De dagpuzzel levert het dubbele van een Moeilijk level op, plus 10% voor elke dag van je reeks, tot 50%. Hulp kost een aantal levels van het niveau dat je speelt: een hint een half level, een reservebout twee levels en een tweede reservebout vier (op Moeilijk: {hint}, {spare} en {spare2}). Hulp kost ook een ster, dus kom zonder hulp terug voor alle drie.",
     "backToPuzzle": "Terug naar de puzzel",
     "replay": "Opnieuw",
 
@@ -197,6 +198,7 @@ I18n.add({
     "win.meta": "{moves}, par {par}",
     "win.bestBefore": " · eerder beste: {stars}",
     "win.gain": "+{n} ringen",
+    "win.helpStar": "<br>Hulp kost een ster. Los het op zonder hint of reservebout voor de derde.",
     "win.none": "Deze keer geen nieuwe sterren",
     "unlockedTo": "Vrijgespeeld tot level {n}",
     "levelType": "Level {n} · <b>{type}</b>",

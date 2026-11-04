@@ -65,12 +65,12 @@
     <button id="hintBtn" class="tool" data-i18n-attr="title:hint.tip">
       <span class="hexbtn brass"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3Z"/></svg></span></span>
       <span data-i18n="hint"></span>
-      <span class="cost"><svg class="washer"><use href="#i-washer"/></svg><span id="hintCost">15</span></span>
+      <span class="cost"><svg class="washer"><use href="#i-washer"/></svg><span id="hintCost"></span></span>
     </button>
     <button id="spareBtn" class="tool" data-i18n-attr="title:spare.tip">
       <span class="hexbtn brass"><span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v7"/><path d="M8.5 6.5h7v3.5h-7z"/><path d="M5 20h14"/></svg></span></span>
       <span data-i18n="spare"></span>
-      <span class="cost"><svg class="washer"><use href="#i-washer"/></svg><span id="spareCost">40</span></span>
+      <span class="cost"><svg class="washer"><use href="#i-washer"/></svg><span id="spareCost"></span></span>
     </button>
   </footer>
 
@@ -133,7 +133,7 @@
         <div class="label" data-i18n="finish"></div>
         <div class="shopgrid" id="finishGrid"></div>
       </div>
-      <p class="earn" data-i18n="earn"></p>
+      <p class="earn" id="earnNote"></p>
       <div class="actions"><button class="btn steel" id="shopClose" data-i18n="backToPuzzle"></button></div>
     </div>
   </div>
@@ -155,6 +155,8 @@
 <script src="../../shared/js/platform.js"></script>
 <script src="../../shared/js/i18n.js"></script>
 <script src="strings.js"></script>
+<script src="../../shared/js/economy.js"></script>
+<script src="economy.js"></script>
 <script src="../../shared/vendor/three/three.min.js"></script>
 <script src="game.js"></script>
 </body>

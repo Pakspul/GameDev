@@ -149,6 +149,9 @@ details.rules ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); di
 .buy:disabled { background: var(--line); color: var(--muted); cursor: default; }
 .buy.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .buy.on { background: var(--ink); color: var(--bg); }
+.shop-row .price { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.9rem; white-space: nowrap; }
+.shop-row .price svg { width: 12px; height: 12px; }
+.shop-sec .earn { margin: 0 0 2px; }
 .swatch { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; display: block; }
 .earn { color: var(--muted); font-size: 0.85rem; margin: 0; max-width: 60ch; }
 .close-x { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line); background: var(--board); flex: none; }

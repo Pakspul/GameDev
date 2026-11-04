@@ -56,25 +56,24 @@ const TIER_INFO = {
   "s-extra":  { pips: 4 },
   "s-insane": { pips: 5 }
 };
-const TIER_PTS = { easy: 10, medium: 20, hard: 30, extra: 45, insane: 65, master: 90, grandmaster: 120,
-  "c-easy": 15, "c-medium": 25, "c-hard": 40, "c-extra": 55, "c-insane": 75,
-  "s-easy": 20, "s-medium": 35, "s-hard": 50, "s-extra": 70, "s-insane": 95 };
+// Points per tier, help prices and the rest of the economy: games/outbound/economy.js.
 // Daily puzzle by weekday (0 = Sunday)
 const DAILY = [
   { tier: "s-insane", level: 12 }, { tier: "hard", level: 40 }, { tier: "s-hard", level: 20 }, { tier: "extra", level: 30 },
   { tier: "c-extra", level: 12 }, { tier: "s-extra", level: 16 }, { tier: "master", level: 20 }
 ];
+// Power-ups ("item") have no fixed price: they're paid when used, at the tier's price.
 const SHOP = [
-  { id: "probe", kind: "item", price: 40, icon: "probe" },
-  { id: "heart", kind: "item", price: 60, icon: "heartPlus" },
-  { id: "skip", kind: "item", price: 120, icon: "skip" },
+  { id: "probe", kind: "item", icon: "probe" },
+  { id: "heart", kind: "item", icon: "heartPlus" },
+  { id: "skip", kind: "item", icon: "skip" },
   { id: "lane", kind: "unlock", price: 300, icon: "lane" },
   { id: "skin-rainbow", kind: "skin", price: 250 },
   { id: "skin-blueprint", kind: "skin", price: 150 },
   { id: "skin-ember", kind: "skin", price: 150 }
 ];
 SHOP.forEach((s) => { s.name = _t("item." + s.id); s.desc = _t("item." + s.id + ".desc"); });
-const PRICE = {}; SHOP.forEach((s) => (PRICE[s.id] = s.price));
+const PRICE = Object.assign({}, LEGACY_ITEM_PRICE); SHOP.forEach((s) => { if (s.price) PRICE[s.id] = s.price; });
 const PAGE = 40;
 
 /* ---------- theme + skins ---------- */
@@ -125,15 +124,34 @@ function lsGet(k) { try { const v = localStorage.getItem(k); return v ? JSON.par
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 function todayStr(d) { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function dayNum(s) { const [y, m, d] = s.split("-").map(Number); return Math.round(Date.UTC(y, m - 1, d) / 86400000); }
-function starValue(t, st) { const b = TIER_PTS[t] || 0; return st >= 3 ? b : st === 2 ? Math.round(b * 0.6) : 0; }
-function flawValue(t) { return Math.round((TIER_PTS[t] || 0) * 0.25); }
+// A level pays for its stars (docs/ECONOMY.md). 1 star only comes from a skip, which pays nothing.
+function starValue(t, st) { return st >= 2 ? ECO.levelPay(t, st, 0) : 0; }
+function flawValue(t) { return Math.round(ECO.reward(t) * FLAWLESS_BONUS); }
+function dailyTierOf(date) { const [y, m, d] = date.split("-").map(Number); return DAILY[new Date(y, m - 1, d).getDay()].tier; }
+// The economy before November 2026, kept only to work out what an old save was worth.
+const Legacy = {
+  pts: { easy: 10, medium: 20, hard: 30, extra: 45, insane: 65, master: 90, grandmaster: 120,
+    "c-easy": 15, "c-medium": 25, "c-hard": 40, "c-extra": 55, "c-insane": 75,
+    "s-easy": 20, "s-medium": 35, "s-hard": 50, "s-extra": 70, "s-insane": 95 },
+  balance(S, data) {
+    let e = 0, s = 0;
+    for (const t in data.tiers) for (const lv in data.tiers[t]) { const b = this.pts[t] || 0, st = data.tiers[t][lv]; e += st >= 3 ? b : st === 2 ? Math.round(b * 0.6) : 0; }
+    for (const t in data.flaw) for (const lv in data.flaw[t]) if (data.flaw[t][lv]) e += Math.round((this.pts[t] || 0) * 0.25);
+    for (const d in data.daily) { const st = data.daily[d]; if (st > 0) e += (st >= 3 ? 60 : 40) + 10 * Math.min(S.streakAt(d) - 1, 6); }
+    for (const k in data.bought) s += (data.bought[k] || 0) * (PRICE[k] || 0);
+    for (const k in data.owned) if (data.owned[k]) s += PRICE[k] || 0;
+    return e - s;
+  }
+};
 function fmtDate(s) {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(I18n.lang === "nl" ? "nl-NL" : "en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
 const Store = {
-  data: { tiers: {}, flaw: {}, daily: {}, bought: {}, used: {}, owned: {} },
+  // bought/used: power-ups from before they were paid on use (old saves only).
+  // paid: points spent on power-ups since. carry: kept from the old economy so no balance went down.
+  data: { tiers: {}, flaw: {}, daily: {}, bought: {}, used: {}, owned: {}, paid: 0, carry: 0, ver: 0 },
   settings: { smartTap: true, tier: "easy", tier3: "c-easy", tierS: "s-easy", mode: "flat", theme: "auto", skin: "ink", laneTrace: true },
   remote: null, writing: false, dirty: false,
   load() {
@@ -146,6 +164,18 @@ const Store = {
     if (["flat", "3d", "shapes"].indexOf(this.settings.mode) < 0) this.settings.mode = "flat";
     if (["auto", "light", "dark"].indexOf(this.settings.theme) < 0) this.settings.theme = "auto";
     if (!SKINS[this.settings.skin]) this.settings.skin = "ink";
+    this.migrate();
+  },
+  // November 2026: power-ups became pay-on-use, priced by tier (docs/ECONOMY.md). Unused stocked
+  // power-ups are refunded, and if the new formulas would value an old save lower, the
+  // difference is carried over, so nobody's balance goes down.
+  migrate() {
+    if (this.data.ver >= 3) return;
+    const before = Legacy.balance(this, this.data);
+    this.data.carry = 0;
+    this.data.carry = Math.max(0, before - this.balance());
+    this.data.ver = 3;
+    lsSet(LS_DATA, this.data);
   },
   saveSettings() { lsSet(LS_SETTINGS, this.settings); },
   save() { lsSet(LS_DATA, this.data); lsSet(LS_PROGRESS, this.data.tiers); this.push(); },
@@ -176,33 +206,37 @@ const Store = {
   },
   currentStreak() { const t = todayStr(); if (this.data.daily[t]) return this.streakAt(t); const y = new Date(); y.setDate(y.getDate() - 1); return this.streakAt(todayStr(y)); },
   earned() {
-    let e = 0;
+    let e = ECO.start + (this.data.carry || 0);
     for (const t in this.data.tiers) for (const lv in this.data.tiers[t]) e += starValue(t, this.data.tiers[t][lv]);
     for (const t in this.data.flaw) for (const lv in this.data.flaw[t]) if (this.data.flaw[t][lv]) e += flawValue(t);
-    for (const d in this.data.daily) { const st = this.data.daily[d]; if (st > 0) e += (st >= 3 ? 60 : 40) + 10 * Math.min(this.streakAt(d) - 1, 6); }
+    for (const d in this.data.daily) { const st = this.data.daily[d]; if (st > 0) e += ECO.dailyPay(dailyTierOf(d), st, 0, this.streakAt(d)); }
     return e;
   },
   spent() {
-    let s = 0;
-    for (const k in this.data.bought) s += (this.data.bought[k] || 0) * (PRICE[k] || 0);
+    let s = this.data.paid || 0;
+    for (const k in this.data.used) s += (this.data.used[k] || 0) * (LEGACY_ITEM_PRICE[k] || 0);
     for (const k in this.data.owned) if (this.data.owned[k]) s += PRICE[k] || 0;
     return s;
   },
   balance() { return this.earned() - this.spent(); },
-  count(item) { return Math.max(0, (this.data.bought[item] || 0) - (this.data.used[item] || 0)); },
-  owns(id) { return !!this.data.owned[id]; },
-  buy(id) {
-    const it = SHOP.find((x) => x.id === id);
-    if (!it || this.balance() < it.price) return false;
-    if (it.kind === "item") this.data.bought[id] = (this.data.bought[id] || 0) + 1;
-    else { if (this.owns(id)) return false; this.data.owned[id] = 1; }
+  /** Pay for a power-up as it's used. False (and nothing paid) if the balance is too low. */
+  pay(amount) {
+    if (this.balance() < amount) return false;
+    this.data.paid = (this.data.paid || 0) + amount;
     this.save();
     return true;
   },
-  use(item) { if (this.count(item) < 1) return false; this.data.used[item] = (this.data.used[item] || 0) + 1; this.save(); return true; },
+  owns(id) { return !!this.data.owned[id]; },
+  buy(id) {
+    const it = SHOP.find((x) => x.id === id);
+    if (!it || !it.price || this.balance() < it.price || this.owns(id)) return false;
+    this.data.owned[id] = 1;
+    this.save();
+    return true;
+  },
   // Every field only ever grows, so taking the max of each value merges devices safely.
   merge(a, b) {
-    const out = { tiers: {}, flaw: {}, daily: {}, bought: {}, used: {}, owned: {} };
+    const out = { tiers: {}, flaw: {}, daily: {}, bought: {}, used: {}, owned: {}, paid: 0, carry: 0, ver: 0 };
     const clamp = (v, hi) => Math.max(0, Math.min(hi, Math.floor(+v || 0)));
     for (const src of [a, b]) {
       if (!src || typeof src !== "object") continue;
@@ -215,6 +249,7 @@ const Store = {
         }
       }
       if (src.daily && typeof src.daily === "object") for (const d in src.daily) { if (!/^\d{4}-\d\d-\d\d$/.test(d)) continue; const v = clamp(src.daily[d], 3); if (v > (out.daily[d] || 0)) out.daily[d] = v; }
+      for (const field of ["paid", "carry", "ver"]) { const v = clamp(src[field], 1e9); if (v > out[field]) out[field] = v; }
       for (const field of ["bought", "used", "owned"]) {
         const S = src[field]; if (!S || typeof S !== "object") continue;
         for (const k in S) { if (!(k in PRICE)) continue; const v = clamp(S[k], field === "owned" ? 1 : 1e6); if (v > (out[field][k] || 0)) out[field][k] = v; }
@@ -1049,7 +1084,7 @@ class Board3D {
 
 /* ---------- game ---------- */
 const Game = {
-  board: null, board2: null, board3: null, tier: "easy", level: 1, daily: null, hearts: 3, maxHearts: 3, hintUsed: false, heartUsed: false,
+  board: null, board2: null, board3: null, tier: "easy", level: 1, daily: null, hearts: 3, maxHearts: 3, hintUsed: false, heartUsed: false, helped: false,
   mistakes: 0, over: false, toastTimer: 0, token: 0, shown3dTip: false, probeArmed: false, cache: null,
   init() {
     this.board2 = new Board($("#boardCanvas"), { interactive: true, pad: 14 });
@@ -1084,7 +1119,7 @@ const Game = {
     opts = opts || {};
     const token = ++this.token, kind = kindOf(tier), three = kind !== "flat";
     this.tier = tier; this.level = level; this.daily = opts.daily || null;
-    this.hearts = 3; this.maxHearts = 3; this.hintUsed = false; this.heartUsed = false; this.mistakes = 0; this.over = true; this.probeArmed = false;
+    this.hearts = 3; this.maxHearts = 3; this.hintUsed = false; this.heartUsed = false; this.helped = false; this.mistakes = 0; this.over = true; this.probeArmed = false;
     Overlay.hide(); Shop.close();
     App.show("game");
     const tierName = ALL_TIERS[tier].name + MODE_LABEL[kind];
@@ -1124,7 +1159,7 @@ const Game = {
       for (const id of rs.removed || []) if (id >= 0 && id < lv.snakes.length) this.board.dropSilently(id);
       this.maxHearts = rs.maxHearts === 4 ? 4 : 3; this.heartUsed = this.maxHearts === 4;
       this.hearts = Math.max(1, Math.min(this.maxHearts, rs.hearts || 3));
-      this.hintUsed = !!rs.hintUsed; this.mistakes = rs.mistakes || 0;
+      this.hintUsed = !!rs.hintUsed; this.helped = !!rs.helped || this.heartUsed; this.mistakes = rs.mistakes || 0;
       this.board.draw();
     }
     this.renderHud();
@@ -1141,11 +1176,11 @@ const Game = {
     $("#hintText").textContent = _t(this.hintUsed ? "hint.used" : "hint");
     $("#hintSub").textContent = _t(this.hintUsed ? "hint.usedSub" : "hint.sub");
     const item = (el, icon, id, label, disabled, pressed) => {
-      const c = Store.count(id);
-      el.innerHTML = ICON[icon] + '<span class="badge">' + c + "</span>";
-      el.classList.toggle("empty", c === 0);
+      const p = this.price(id);
+      el.innerHTML = ICON[icon] + '<span class="badge">' + p + "</span>";
+      el.classList.toggle("empty", Store.balance() < p);
       el.disabled = disabled;
-      el.setAttribute("aria-label", _t("itemLeft", { label, n: c }));
+      el.setAttribute("aria-label", _t("itemPrice", { label, n: p }));
       if (pressed != null) el.setAttribute("aria-pressed", String(pressed));
     };
     item($("#itemProbe"), "probe", "probe", _t("item.probe"), this.over, this.probeArmed);
@@ -1182,17 +1217,27 @@ const Game = {
       this.renderHud();
     }
   },
+  // Power-ups are paid when used, at the price of this level's tier, and cost the level a star.
+  price(item) { return ECO.price(item, this.tier, 0); },
+  canPay(item) {
+    const p = this.price(item);
+    if (Store.balance() >= p) return true;
+    this.toast(_t("needPoints", { n: p - Store.balance() }), 2600);
+    return false;
+  },
   useProbe() {
     if (this.over) return;
     if (this.probeArmed) { this.probeArmed = false; this.renderHud(); this.toast(_t("probe.away")); return; }
-    if (Store.count("probe") < 1) { Shop.open("probe"); return; }
+    if (!this.canPay("probe")) return;
     this.probeArmed = true; this.renderHud();
     this.toast(_t("probe.armed"), 2600);
   },
   probe(id) {
     const b = this.board;
     this.probeArmed = false;
-    if (!Store.use("probe")) { this.renderHud(); return; }
+    if (!Store.pay(this.price("probe"))) { this.renderHud(); return; }
+    this.helped = true;
+    Home.renderPoints();
     b.showLane(id);
     setTimeout(() => { if (b.laneId === id) b.hideLane(); }, 1800);
     if (b.isFree(id)) { b.markGood(id); this.toast(_t("probe.free"), 2400); }
@@ -1201,23 +1246,22 @@ const Game = {
   },
   useHeart() {
     if (this.over || this.heartUsed) return;
-    if (Store.count("heart") < 1) { Shop.open("heart"); return; }
-    if (!Store.use("heart")) return;
-    this.heartUsed = true; this.maxHearts = 4; this.hearts++;
+    if (!this.canPay("heart") || !Store.pay(this.price("heart"))) return;
+    this.heartUsed = true; this.helped = true; Home.renderPoints(); this.maxHearts = 4; this.hearts++;
     this.renderHud();
     this.toast(_t("heart.added"));
   },
   askSkip() {
     if (this.over || this.daily) return;
-    if (Store.count("skip") < 1) { Shop.open("skip"); return; }
+    if (!this.canPay("skip")) return;
     Overlay.show({
       tier: ALL_TIERS[this.tier].name + MODE_LABEL[kindOf(this.tier)], title: _t("skip.title", { n: this.level }), stars: null,
-      text: _t("skip.text", { n: Store.count("skip") }),
+      text: _t("skip.text", { n: this.price("skip") }),
       actions: [{ label: _t("skip.ok"), primary: true, fn: () => this.skip() }, { label: _t("skip.keep"), fn: () => Overlay.hide() }]
     });
   },
   skip() {
-    if (!Store.use("skip")) return Overlay.hide();
+    if (!Store.pay(this.price("skip"))) return Overlay.hide();
     Store.record(this.tier, this.level, 1, false);
     this.start(this.tier, this.level + 1);
   },
@@ -1248,7 +1292,7 @@ const Game = {
     if (m) { e.preventDefault(); this.board.rotate(m[0], m[1]); }
   },
   win() {
-    const stars = this.hintUsed ? 2 : 3, flawless = this.mistakes === 0, tn = ALL_TIERS[this.tier].name + MODE_LABEL[kindOf(this.tier)];
+    const stars = Economy.helped(3, this.hintUsed || this.helped), flawless = this.mistakes === 0, tn = ALL_TIERS[this.tier].name + MODE_LABEL[kindOf(this.tier)];
     let text, gained, actions;
     if (this.daily) {
       gained = Store.recordDaily(this.daily, stars);
@@ -1258,7 +1302,7 @@ const Game = {
     } else {
       const r = Store.record(this.tier, this.level, stars, flawless);
       gained = r.gained;
-      text = _t(this.hintUsed ? "win.withHint" : "win.noHint");
+      text = _t(this.hintUsed || this.helped ? "win.withHelp" : "win.noHint");
       text += this.mistakes ? _t("win.lost", { n: this.mistakes }) : _t("win.noLoss");
       if (r.prev > stars) text += _t("win.prev", { n: r.prev });
       actions = [
@@ -1271,7 +1315,7 @@ const Game = {
   lose() {
     const tn = ALL_TIERS[this.tier].name + MODE_LABEL[kindOf(this.tier)];
     const actions = [{ label: _t("tryAgain"), primary: true, fn: () => this.start(this.tier, this.level, { daily: this.daily }) }];
-    if (!this.daily && Store.count("skip") > 0) actions.push({ label: _t("useSkip", { n: Store.count("skip") }), fn: () => this.skip() });
+    if (!this.daily && Store.balance() >= this.price("skip")) actions.push({ label: _t("useSkip", { n: this.price("skip") }), fn: () => this.skip() });
     actions.push({ label: _t("allLevels"), fn: () => App.show("home") });
     Overlay.show({ tier: this.daily ? _t("dailyPill", { tier: tn }) : tn, title: _t("out.title"), stars: null,
       text: _t("out.text", { what: this.daily ? _t("todays") : _t("level", { n: this.level }) }), actions });
@@ -1281,7 +1325,7 @@ const Game = {
     if (!b || !b.lv || this.over) return null;
     const removed = [];
     for (let i = 0; i < b.alive.length; i++) if (!b.alive[i]) removed.push(i);
-    return { tier: this.tier, level: this.level, daily: this.daily, removed, hearts: this.hearts, maxHearts: this.maxHearts, hintUsed: this.hintUsed, mistakes: this.mistakes };
+    return { tier: this.tier, level: this.level, daily: this.daily, removed, hearts: this.hearts, maxHearts: this.maxHearts, hintUsed: this.hintUsed, helped: this.helped, mistakes: this.mistakes };
   }
 };
 
@@ -1348,6 +1392,7 @@ const Shop = {
   },
   render(focus) {
     const bal = Store.balance();
+    const tierNow = App.view === "game" ? Game.tier : Store.curTier();
     $("#shopPoints").textContent = bal;
     const buyBtn = (it) => '<button type="button" class="buy" data-act="buy" data-id="' + it.id + '"' + (bal < it.price ? " disabled" : "") + ' aria-label="' + _t("shop.buy", { name: it.name, price: it.price }) + '">' + ICON.gem + " " + it.price + "</button>";
     const wearBtn = (skin) => { const on = Skin.id === skin; return '<button type="button" class="buy ' + (on ? "on" : "ghost") + '" data-act="wear" data-id="' + skin + '"' + (on ? " disabled" : "") + ">" + _t(on ? "shop.inUse" : "shop.use") + "</button>"; };
@@ -1359,15 +1404,15 @@ const Shop = {
         right = Store.owns(it.id) ? wearBtn(skin) : buyBtn(it);
       } else {
         ic = '<span class="ic">' + ICON[it.icon] + "</span>";
-        right = it.kind === "unlock" && Store.owns(it.id) ? '<button type="button" class="buy on" disabled>' + _t("shop.owned") + "</button>" : buyBtn(it);
+        right = it.kind === "item" ? '<span class="price num" aria-label="' + _t("pointsAmount", { n: ECO.price(it.id, tierNow, 0) }) + '">' + ICON.gem + " " + ECO.price(it.id, tierNow, 0) + "</span>"
+          : it.kind === "unlock" && Store.owns(it.id) ? '<button type="button" class="buy on" disabled>' + _t("shop.owned") + "</button>" : buyBtn(it);
       }
-      const own = it.kind === "item" ? '<span class="own num">' + _t("shop.youHave", { n: Store.count(it.id) }) + "</span>" : "";
-      return '<div class="shop-row"' + (focus === it.id ? ' style="border-color:var(--accent)"' : "") + ">" + ic + "<div><strong>" + it.name + "</strong><small>" + it.desc + "</small>" + own + "</div>" + right + "</div>";
+      return '<div class="shop-row"' + (focus === it.id ? ' style="border-color:var(--accent)"' : "") + ">" + ic + "<div><strong>" + it.name + "</strong><small>" + it.desc + "</small></div>" + right + "</div>";
     };
     const inkRow = '<div class="shop-row">' + this.swatch("ink") + "<div><strong>" + _t("skin.ink") + "</strong><small>" + _t("skin.ink.desc") + "</small></div>" + wearBtn("ink") + "</div>";
     $("#shopBody").innerHTML =
       '<p class="earn">' + _t("shop.earn") + "</p>" +
-      '<section class="shop-sec"><h3>' + _t("shop.powerups") + "</h3>" + SHOP.filter((x) => x.kind === "item").map(row).join("") + "</section>" +
+      '<section class="shop-sec"><h3>' + _t("shop.powerups") + "</h3>" + '<p class="earn">' + _t("shop.powerupsNote", { tier: ALL_TIERS[tierNow].name + MODE_LABEL[kindOf(tierNow)] }) + "</p>" + SHOP.filter((x) => x.kind === "item").map(row).join("") + "</section>" +
       '<section class="shop-sec"><h3>' + _t("shop.upgrades") + "</h3>" + SHOP.filter((x) => x.kind === "unlock").map(row).join("") + "</section>" +
       '<section class="shop-sec"><h3>' + _t("shop.skins") + "</h3>" + inkRow + SHOP.filter((x) => x.kind === "skin").map(row).join("") + "</section>";
   }
@@ -1443,7 +1488,7 @@ const Home = {
     const T = ALL_TIERS[cur];
     $("#tierName").textContent = kind === "flat" ? T.name : _t("tierName." + kind, { tier: T.name });
     const s0 = kind === "box" ? G3.sizeFor(cur, 1) : kind === "shape" ? GS.sizeFor(cur, 1) : G.sizeFor(cur, 1), s1 = T.cap;
-    $("#tierDesc").textContent = _t("desc." + cur) + _t(kind === "flat" ? "grow.flat" : "grow.cells", { a: s0, b: s1 }) + _t("tierPts", { n: TIER_PTS[cur] });
+    $("#tierDesc").textContent = _t("desc." + cur) + _t(kind === "flat" ? "grow.flat" : "grow.cells", { a: s0, b: s1 }) + _t("tierPts", { n: ECO.reward(cur) });
     const next = Store.unlocked(cur);
     $("#playBtn").innerHTML = ICON.play + '<span class="num">' + (next === 1 ? _t("play.start") : _t("play.level", { n: next })) + "</span>";
     const p = Store.data.tiers[cur] || {};
