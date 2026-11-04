@@ -19,6 +19,23 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-04 (slots)
+
+**Done**
+- Built **Crystal Reels**, a full slot game from the acceptance criteria document ([docs/SLOTS.md](docs/SLOTS.md)): two machines (Crystal Fortune: 20 lines, free spins with sticky wilds, Hold & Spin, four jackpots; Neon Tumble: 243 ways, cascades, expanding wild, free spins with a choice of three, a pick bonus), a lobby with levels, daily missions, a free coin bonus, stats and achievements, English and Dutch.
+- One engine for everything: the outcome is decided before the reels move, features are planned in full when they start, and the same `Session` code drives the game, the maths simulator and session replay. All odds live in one config per machine, validated at build time.
+- A maths simulator (`npm run slots:sim`) and a tuning pass: both machines land on 96.0% RTP over 10 million spins (within ±0.5 points), with a hit frequency of about 31% and free spins every 160-180 spins.
+- Tests: 87 unit tests (every paytable entry, edge cases, fairness source scans, saves, replay), an end-to-end run in a phone-sized browser, and the existing smoke test now covers the new game.
+
+**Decided**
+- Plain web technology without a bundler, like the rest of the arcade. No monetization, no cloud save, no analytics, no social features.
+- The refill after running out of coins has **no waiting time** (the specification allows a 10 minute default; the project mission rules out timers that stop you playing). One number in `data/game.json` changes it.
+- The volatility classes are low < 4, medium < 12, high otherwise (standard deviation of a round's return in bets).
+
+**Next**
+- Play it on a real phone: frame rate, input latency, how the music and haptics feel (not measurable in a headless test).
+- Art pass: the symbols are drawn in code and are meant to be restyled.
+
 ## 2026-11-04
 
 **Done**

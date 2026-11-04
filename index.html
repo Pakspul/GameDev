@@ -76,6 +76,8 @@ header p{margin:0;color:var(--muted);max-width:34em}
 .g-graph{--c-bg:#f5f1e8;--c-ink:#25272c;--c-accent:#2f5fd0;--c-accent-ink:#fff;--c-font:800 2.3rem/1 "Fraunces",Georgia,serif;--c-track:-.035em;
   --c-art:linear-gradient(rgba(60,90,140,.09) 1px,transparent 1px) 0 0/22px 22px,linear-gradient(90deg,rgba(60,90,140,.09) 1px,transparent 1px) 0 0/22px 22px}
 
+.g-slots{--c-bg:#1a1146;--c-ink:#f4f1ff;--c-accent:#7fe3ff;--c-accent-ink:#06102a;--c-font:900 2rem/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--c-track:-.02em;
+  --c-art:radial-gradient(120% 90% at 88% 0%,rgba(255,95,210,.35),transparent 60%),radial-gradient(90% 70% at 0% 100%,rgba(127,227,255,.22),transparent 60%)}
 .g-camp{--c-bg:#2b2f36;--c-ink:#f4f5f7;--c-accent:#ffb347;--c-accent-ink:#2b1a00;--c-font:800 2.1rem/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--c-track:-.03em;
   --c-art:repeating-linear-gradient(90deg,transparent 0 26px,rgba(255,255,255,.07) 26px 40px) 0 72%/100% 4px no-repeat,radial-gradient(120% 90% at 90% 0%,rgba(255,179,71,.28),transparent 60%)}
 details{margin-top:30px;border-top:1px solid var(--line);padding-top:18px}
@@ -128,6 +130,12 @@ footer{margin-top:22px;color:var(--muted);font-size:.8rem}
       <h2>Graphite</h2>
       <p data-i18n="graph.blurb"></p>
     </a>
+    <a class="card g-slots" href="games/slots/index.html">
+      <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
+      <div class="meta"><span>2D</span><span data-i18n="tag.slots"></span><span data-i18n="tag.playMoney"></span></div>
+      <h2>Crystal Reels</h2>
+      <p data-i18n="slots.blurb"></p>
+    </a>
     <a class="card g-camp" href="games/camper-crew/index.html">
       <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
       <div class="meta"><span>3D</span><span data-i18n="tag.action"></span><span data-i18n="tag.prototype"></span></div>
@@ -163,11 +171,14 @@ I18n.add({
     "tag.daily": "Daily",
     "tag.action": "Action",
     "tag.prototype": "Prototype",
+    "tag.slots": "Slots",
+    "tag.playMoney": "Play money",
     "jade.blurb": "Clear the lantern-lit table by matching pairs of free tiles.",
     "nuts.blurb": "Screw the nuts from bolt to bolt until every colour has a bolt of its own.",
     "out.blurb": "Every arrow leaves the way it points. Find the order that clears the board.",
     "uns.blurb": "Take it apart screw by screw, and drop each one in the box of its colour.",
     "graph.blurb": "Sudoku, Takuzu, Star Battle and Calcudoku: endless pencil puzzles, each with one solution.",
+    "slots.blurb": "Two slot machines with play money only: free spins, Hold & Spin, a pick bonus and jackpots, and the same odds for everyone.",
     "camp.blurb": "You're the only crew on a self-driving camper. Steer, refuel, cook and patch your way to camp before sunset.",
     "hub.whyQ": "Why are there no ads?",
     "hub.why1": "Most \"free\" mobile games are built to sell your attention: an ad after every level, timers you can skip for money, and tracking you never agreed to. These games are made the other way round. They are free because they are free: no ads, no data collection, no paid shortcuts, and no internet connection needed.",
@@ -190,11 +201,14 @@ I18n.add({
     "tag.daily": "Dagelijks",
     "tag.action": "Actie",
     "tag.prototype": "Prototype",
+    "tag.slots": "Gokkasten",
+    "tag.playMoney": "Speelgeld",
     "jade.blurb": "Maak de tafel bij lantaarnlicht leeg door paren vrije stenen te combineren.",
     "nuts.blurb": "Draai de moeren van bout naar bout tot elke kleur een eigen bout heeft.",
     "out.blurb": "Elke pijl vertrekt de kant op die hij wijst. Vind de volgorde die het bord leegmaakt.",
     "uns.blurb": "Haal het schroef voor schroef uit elkaar en gooi elke schroef in de doos van zijn kleur.",
     "graph.blurb": "Sudoku, Takuzu, Star Battle en Calcudoku: eindeloze potloodpuzzels, elk met één oplossing.",
+    "slots.blurb": "Twee gokkasten met alleen speelgeld: gratis spins, Hold & Spin, een kiesbonus en jackpots, en voor iedereen dezelfde kansen.",
     "camp.blurb": "Je bent de enige bemanning van een zelfrijdende camper. Stuur, tank, kook en repareer je een weg naar de camping voor zonsondergang.",
     "hub.whyQ": "Waarom zijn er geen advertenties?",
     "hub.why1": "De meeste \"gratis\" mobiele spellen zijn gemaakt om je aandacht te verkopen: een advertentie na elk level, wachttijden die je met geld kunt overslaan, en tracking waar je nooit mee hebt ingestemd. Deze spellen zijn andersom gemaakt. Ze zijn gratis omdat ze gratis zijn: geen advertenties, geen dataverzameling, geen betaalde shortcuts en geen internetverbinding nodig.",

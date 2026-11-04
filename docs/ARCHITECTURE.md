@@ -58,6 +58,7 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Outbound | English + Dutch | ~2,650 | 2D canvas, three.js loaded on demand for 3D modes | `outbound.*` | Three level generators (flat, box, shapes), light/dark theme, haptics, shop |
 | Unscrew | English + Dutch | ~790 | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators, coins and shop |
 | Graphite | English + Dutch | ~2,200 | 2D canvas, redraws only on change | `graphite.v1` | Four logic puzzle types, generators in a Web Worker, logic-based hints, four dailies |
+| Crystal Reels | English + Dutch | ~6,000 (ES modules) | DOM + SVG, no canvas except particles; frame loop only while something moves | `honest-arcade.slots.save.0/1` | Slot machines with play money; maths engine + simulator in `games/slots/src/engine`, see [SLOTS.md](SLOTS.md) |
 | Camper Crew | English + Dutch | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
 
 Graphite came later and was written for this repository directly, not as an artifact. It already uses `Platform.home()` and `Platform.haptic()`, draws nothing while the board is idle, and has no three.js at all.

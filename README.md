@@ -13,9 +13,10 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Outbound** | Every arrow leaves the way it points; find the order that clears the board (2D and 3D shapes) |
 | **Unscrew** | Take 3D objects apart screw by screw |
 | **Graphite** | Pencil-and-paper logic puzzles: Sudoku, Takuzu, Star Battle and Calcudoku, endlessly generated, each with exactly one solution |
+| **Crystal Reels** | Two slot machines with play money only: free spins, Hold & Spin, a pick bonus, jackpots, the same odds for everyone. See [docs/SLOTS.md](docs/SLOTS.md) |
 | **Camper Crew** *(prototype, dev only)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
 
-Jade Pavilion, Nuts & Bolts, Outbound, Unscrew and Camper Crew are built with [three.js](https://threejs.org); Graphite is plain 2D canvas. They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
+Jade Pavilion, Nuts & Bolts, Outbound, Unscrew and Camper Crew are built with [three.js](https://threejs.org); Graphite is plain 2D canvas, and Crystal Reels is plain DOM and SVG with synthesised sound (no libraries, no assets). They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
 
 ## Quick start
 
@@ -25,7 +26,7 @@ You need [Node.js](https://nodejs.org) 22 or newer.
 npm run dev        # play at http://localhost:8080 — and on your phone via the printed Wi-Fi address
 npm install        # once, for the tests
 npx playwright install chromium   # once
-npm test           # check the puzzle generators, build, open every game in a headless phone browser
+npm test           # puzzle generators, slot maths and rules, build, open every game in a headless phone browser, play the slots end to end
 npm run build      # assemble dist/ (what goes into the app)
 ```
 
@@ -39,7 +40,7 @@ Experimental games (listed in `EXPERIMENTAL` in [scripts/build.mjs](scripts/buil
 index.html          the hub (start screen) linking every game
 games/<name>/       one folder per game, with its own style, fonts and code
 shared/             what all games share: three.js, the platform layer, icons
-scripts/            dev server, build, font downloader
+scripts/            dev server, build, font downloader, slot simulator and validator
 tests/              smoke test + puzzle generator test
 docs/               guides
 ```
@@ -50,6 +51,7 @@ docs/               guides
 - [docs/RELEASE.md](docs/RELEASE.md): how to release, as step tables (who does what, and the state): Android first, iPhone on hold
 - [docs/ANDROID.md](docs/ANDROID.md): from browser to Google Play in detail, including how to test on your phone
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the code is organised and how to improve it safely
+- [docs/SLOTS.md](docs/SLOTS.md): Crystal Reels: how it is built, the maths simulator, fairness rules, requirement map
 - [docs/ECONOMY.md](docs/ECONOMY.md): how coins, washers and points work in every game: prices in levels of effort, stars for playing without help
 - [TODO.md](TODO.md): what to do next, as a checklist
 - [HISTORY.md](HISTORY.md): what was done, per day

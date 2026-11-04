@@ -31,10 +31,29 @@ if (gi > 0 && !(await readdir(join(ROOT, "games"))).includes(ONLY)) {
   process.exit(1);
 }
 
+// Slots: an invalid machine config must fail the build (MATH-03), before anything is assembled.
+if (!ONLY || ONLY === "slots") {
+  const { validateMachine } = await import("../games/slots/src/engine/config.js");
+  const dir = join(ROOT, "games", "slots", "machines");
+  for (const f of (await readdir(dir)).filter((n) => n.endsWith(".json"))) {
+    const errors = validateMachine(JSON.parse(await readFile(join(dir, f), "utf8")));
+    if (errors.length) { console.error(`games/slots/machines/${f} is invalid:\n  ` + errors.join("\n  ")); process.exit(1); }
+  }
+}
+
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST);
 for (const entry of INCLUDE) {
   await cp(join(ROOT, entry), join(DIST, entry), { recursive: true, filter: (src) => !SKIP_FILES.has(basename(src)) });
+}
+// The slots debug menu and its forcing code are for development only: never in a release build (TOOL-03).
+await rm(join(DIST, "games", "slots", "src", "debug"), { recursive: true, force: true });
+{
+  const gameJs = join(DIST, "games", "slots", "game.js");
+  const code = await readFile(gameJs, "utf8");
+  const stripped = code.replace(/\n *\/\/ <debug>[\s\S]*?\/\/ <\/debug>\n/, "\n");
+  if (stripped === code || stripped.includes("debug")) throw new Error("Couldn't strip the debug block from games/slots/game.js");
+  await writeFile(gameJs, stripped);
 }
 if (HIDDEN.length) {
   const hub = join(DIST, "index.html");

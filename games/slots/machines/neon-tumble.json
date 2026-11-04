@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "id": "neon-tumble",
+  "version": 1,
+  "name": "Neon Tumble",
+  "musicShift": 5,
+  "theme": {
+    "accent": "#ff5fa8",
+    "accent2": "#3df5c8",
+    "bgTop": "#07162f",
+    "bgBottom": "#050816",
+    "reel": "#0a1230",
+    "frame": "#ff5fa8",
+    "glow": "#3df5c8",
+    "art": "neon"
+  },
+  "grid": { "reels": 5, "rows": 3 },
+  "mode": "ways",
+  "betDivisor": 50,
+  "betLevels": [50, 100, 200, 500, 1000, 2000, 5000, 10000],
+  "betUnlockLevels": [1, 1, 1, 2, 4, 7, 10, 14],
+  "defaultBet": 50,
+  "symbols": {
+    "CIRCLE": { "kind": "regular", "art": "neon-circle" },
+    "TRIANGLE": { "kind": "regular", "art": "neon-triangle" },
+    "SQUARE": { "kind": "regular", "art": "neon-square" },
+    "HEX": { "kind": "regular", "art": "neon-hex" },
+    "RING": { "kind": "regular", "art": "neon-ring" },
+    "BOLT": { "kind": "regular", "art": "neon-bolt" },
+    "HEART": { "kind": "regular", "art": "neon-heart" },
+    "MOON": { "kind": "regular", "art": "neon-moon" },
+    "STAR": { "kind": "regular", "art": "neon-star" },
+    "DIAMOND": { "kind": "regular", "art": "neon-diamond" },
+    "WILD": { "kind": "wild", "expanding": true, "art": "neon-wild" },
+    "SCATTER": { "kind": "scatter", "art": "neon-scatter" },
+    "BONUS": { "kind": "bonus", "art": "neon-bonus" },
+    "COLLECT": { "kind": "collect", "art": "neon-collect" }
+  },
+  "paytable": {
+    "CIRCLE": { "3": 3, "4": 12, "5": 36 },
+    "TRIANGLE": { "3": 3, "4": 12, "5": 36 },
+    "SQUARE": { "3": 5, "4": 15, "5": 45 },
+    "HEX": { "3": 7, "4": 18, "5": 54 },
+    "RING": { "3": 9, "4": 21, "5": 60 },
+    "BOLT": { "3": 9, "4": 31, "5": 95 },
+    "HEART": { "3": 12, "4": 44, "5": 142 },
+    "MOON": { "3": 15, "4": 57, "5": 190 },
+    "STAR": { "3": 24, "4": 80, "5": 255 },
+    "DIAMOND": { "3": 36, "4": 126, "5": 475 },
+    "SCATTER": { "3": 2, "4": 10, "5": 50 }
+  },
+  "wild": {
+    "combine": "multiply",
+    "reels": [1, 2, 3]
+  },
+  "strips": {
+    "base": [
+      ["TRIANGLE", "HEART", "BONUS", "BOLT", "SQUARE", "HEX", "DIAMOND", "MOON", "STAR", "TRIANGLE", "STAR", "CIRCLE", "TRIANGLE", "HEART", "HEX", "HEART", "HEX", "SQUARE", "TRIANGLE", "BOLT", "HEART", "CIRCLE", "BONUS", "SCATTER", "CIRCLE", "RING", "TRIANGLE", "RING", "CIRCLE", "DIAMOND", "MOON", "HEART", "CIRCLE", "TRIANGLE", "HEX", "BONUS", "RING", "HEX", "CIRCLE", "SQUARE", "MOON", "RING", "SQUARE", "TRIANGLE", "SQUARE", "SCATTER", "STAR", "MOON", "TRIANGLE", "SQUARE", "RING", "BOLT", "CIRCLE", "BOLT", "DIAMOND", "HEX", "SQUARE", "RING", "CIRCLE", "BOLT", "COLLECT"],
+      ["HEART", "SQUARE", "BOLT", "HEX", "DIAMOND", "CIRCLE", "WILD", "RING", "BOLT", "CIRCLE", "HEX", "SQUARE", "HEX", "STAR", "MOON", "CIRCLE", "BOLT", "HEART", "TRIANGLE", "SQUARE", "BOLT", "SCATTER", "HEX", "TRIANGLE", "STAR", "SCATTER", "SQUARE", "CIRCLE", "MOON", "SQUARE", "WILD", "RING", "COLLECT", "HEART", "MOON", "STAR", "RING", "SQUARE", "DIAMOND", "TRIANGLE", "HEX", "MOON", "RING", "DIAMOND", "HEART", "TRIANGLE", "SQUARE", "TRIANGLE", "RING", "CIRCLE", "HEX", "HEART", "CIRCLE", "TRIANGLE", "CIRCLE", "BOLT", "RING", "CIRCLE", "TRIANGLE"],
+      ["RING", "TRIANGLE", "SCATTER", "HEX", "CIRCLE", "BOLT", "MOON", "HEX", "WILD", "BONUS", "SQUARE", "MOON", "BOLT", "STAR", "RING", "DIAMOND", "RING", "WILD", "TRIANGLE", "DIAMOND", "SQUARE", "TRIANGLE", "HEX", "HEART", "SQUARE", "HEX", "BOLT", "BONUS", "TRIANGLE", "DIAMOND", "CIRCLE", "BOLT", "HEART", "HEX", "BOLT", "STAR", "SQUARE", "RING", "COLLECT", "HEART", "CIRCLE", "MOON", "STAR", "CIRCLE", "SQUARE", "RING", "TRIANGLE", "HEART", "HEX", "CIRCLE", "TRIANGLE", "CIRCLE", "HEART", "RING", "BONUS", "MOON", "SQUARE"],
+      ["HEART", "RING", "TRIANGLE", "HEX", "RING", "BOLT", "HEX", "TRIANGLE", "RING", "MOON", "STAR", "SQUARE", "CIRCLE", "TRIANGLE", "HEX", "MOON", "HEX", "WILD", "BOLT", "CIRCLE", "TRIANGLE", "HEX", "CIRCLE", "WILD", "SQUARE", "DIAMOND", "RING", "HEX", "SCATTER", "BOLT", "HEART", "MOON", "TRIANGLE", "BOLT", "SCATTER", "RING", "DIAMOND", "SQUARE", "CIRCLE", "RING", "HEART", "SQUARE", "HEART", "STAR", "SQUARE", "STAR", "CIRCLE", "BOLT", "CIRCLE", "HEART", "TRIANGLE", "SQUARE", "CIRCLE", "MOON", "COLLECT", "CIRCLE", "SQUARE", "TRIANGLE", "DIAMOND"],
+      ["TRIANGLE", "CIRCLE", "SCATTER", "SQUARE", "DIAMOND", "TRIANGLE", "RING", "CIRCLE", "MOON", "SQUARE", "HEX", "MOON", "HEART", "CIRCLE", "SQUARE", "CIRCLE", "BONUS", "STAR", "SQUARE", "HEX", "CIRCLE", "TRIANGLE", "RING", "BONUS", "BOLT", "TRIANGLE", "HEART", "RING", "CIRCLE", "HEX", "SQUARE", "STAR", "BONUS", "MOON", "RING", "MOON", "STAR", "HEART", "SQUARE", "BOLT", "HEART", "TRIANGLE", "BOLT", "TRIANGLE", "BOLT", "HEX", "RING", "COLLECT", "HEART", "TRIANGLE", "DIAMOND", "HEX", "CIRCLE", "DIAMOND", "CIRCLE", "RING", "SQUARE", "TRIANGLE", "SCATTER", "HEX", "BOLT"]
+    ],
+    "free": [
+      ["MOON", "BOLT", "DIAMOND", "MOON", "HEART", "TRIANGLE", "RING", "HEX", "HEART", "HEX", "SQUARE", "BOLT", "RING", "SCATTER", "SQUARE", "RING", "TRIANGLE", "RING", "BOLT", "HEX", "TRIANGLE", "SQUARE", "CIRCLE", "RING", "CIRCLE", "HEART", "TRIANGLE", "DIAMOND", "MOON", "SQUARE", "HEX", "CIRCLE", "DIAMOND", "BOLT", "HEX", "MOON", "TRIANGLE", "STAR", "CIRCLE", "SQUARE", "CIRCLE", "STAR", "HEX", "TRIANGLE", "HEART", "RING", "SCATTER", "HEART", "TRIANGLE", "SQUARE", "CIRCLE", "STAR", "BOLT", "CIRCLE"],
+      ["RING", "CIRCLE", "WILD", "SQUARE", "BOLT", "RING", "SQUARE", "HEX", "STAR", "TRIANGLE", "CIRCLE", "HEART", "BOLT", "CIRCLE", "WILD", "DIAMOND", "TRIANGLE", "HEX", "SQUARE", "MOON", "HEX", "CIRCLE", "STAR", "SQUARE", "HEART", "RING", "DIAMOND", "HEART", "BOLT", "DIAMOND", "SQUARE", "HEX", "TRIANGLE", "BOLT", "HEX", "STAR", "TRIANGLE", "HEX", "SCATTER", "HEART", "TRIANGLE", "MOON", "BOLT", "SQUARE", "MOON", "CIRCLE", "HEART", "RING", "WILD", "CIRCLE", "RING", "CIRCLE", "SCATTER", "MOON", "TRIANGLE"],
+      ["MOON", "STAR", "CIRCLE", "WILD", "TRIANGLE", "HEART", "HEX", "BOLT", "DIAMOND", "TRIANGLE", "MOON", "CIRCLE", "TRIANGLE", "RING", "CIRCLE", "WILD", "HEART", "STAR", "SQUARE", "HEX", "TRIANGLE", "SQUARE", "RING", "SCATTER", "BOLT", "CIRCLE", "SQUARE", "BOLT", "HEX", "TRIANGLE", "WILD", "CIRCLE", "DIAMOND", "RING", "BOLT", "MOON", "WILD", "RING", "TRIANGLE", "HEART", "SQUARE", "MOON", "DIAMOND", "HEART", "HEX", "RING", "SCATTER", "HEART", "HEX", "SQUARE", "STAR", "SQUARE", "BOLT", "CIRCLE"],
+      ["WILD", "DIAMOND", "HEART", "STAR", "MOON", "WILD", "RING", "MOON", "STAR", "HEX", "BOLT", "SQUARE", "RING", "TRIANGLE", "HEX", "CIRCLE", "SQUARE", "RING", "SQUARE", "DIAMOND", "CIRCLE", "HEX", "CIRCLE", "HEX", "SQUARE", "RING", "HEART", "SCATTER", "TRIANGLE", "CIRCLE", "MOON", "DIAMOND", "TRIANGLE", "STAR", "BOLT", "HEART", "MOON", "CIRCLE", "WILD", "SQUARE", "TRIANGLE", "CIRCLE", "BOLT", "HEART", "TRIANGLE", "HEX", "RING", "BOLT", "CIRCLE", "HEART", "TRIANGLE", "HEX", "SCATTER", "BOLT", "SQUARE"],
+      ["BOLT", "RING", "HEART", "RING", "CIRCLE", "DIAMOND", "RING", "BOLT", "HEART", "MOON", "CIRCLE", "TRIANGLE", "CIRCLE", "SQUARE", "DIAMOND", "TRIANGLE", "STAR", "HEX", "RING", "CIRCLE", "HEX", "TRIANGLE", "SCATTER", "STAR", "RING", "SQUARE", "HEX", "MOON", "RING", "HEX", "SQUARE", "HEART", "HEX", "SQUARE", "MOON", "CIRCLE", "BOLT", "TRIANGLE", "CIRCLE", "BOLT", "STAR", "CIRCLE", "TRIANGLE", "HEX", "HEART", "TRIANGLE", "HEART", "DIAMOND", "SCATTER", "SQUARE", "BOLT", "MOON", "SQUARE", "TRIANGLE"]
+    ]
+  },
+  "cascade": {
+    "enabled": true,
+    "multipliers": [1, 2, 3, 5]
+  },
+  "features": {
+    "freeSpins": {
+      "trigger": {
+        "symbol": "SCATTER",
+        "minCount": 3,
+        "awards": { "3": 1, "4": 1, "5": 1 }
+      },
+      "retrigger": { "enabled": false },
+      "modifiers": {},
+      "choice": [
+        { "id": "steady", "spins": 24, "multiplier": 1 },
+        { "id": "bold", "spins": 12, "multiplier": 2 },
+        { "id": "wild", "spins": 6, "multiplier": 4 }
+      ],
+      "choiceScale": { "3": 1, "4": 1.5, "5": 2 }
+    },
+    "pick": {
+      "trigger": {
+        "symbol": "BONUS",
+        "reels": [0, 2, 4]
+      },
+      "items": 12,
+      "startPicks": 3,
+      "firstRevealNoCollect": true,
+      "pool": [
+        { "type": "coins", "value": 2, "weight": 30 },
+        { "type": "coins", "value": 3, "weight": 24 },
+        { "type": "coins", "value": 5, "weight": 18 },
+        { "type": "coins", "value": 8, "weight": 11 },
+        { "type": "coins", "value": 15, "weight": 6 },
+        { "type": "coins", "value": 25, "weight": 2.5 },
+        { "type": "extraPick", "value": 1, "weight": 8 },
+        { "type": "multiplier", "value": 2, "weight": 5 },
+        { "type": "multiplier", "value": 3, "weight": 2 },
+        { "type": "collect", "weight": 12 },
+        { "type": "jackpot", "tier": "mini", "weight": 1.2 },
+        { "type": "jackpot", "tier": "minor", "weight": 0.5 },
+        { "type": "jackpot", "tier": "major", "weight": 0.1 },
+        { "type": "jackpot", "tier": "grand", "weight": 0.01 }
+      ]
+    }
+  },
+  "featureOrder": ["freeSpins", "pick"],
+  "jackpots": {
+    "mini": { "type": "fixed", "value": 20 },
+    "minor": { "type": "fixed", "value": 50 },
+    "major": { "type": "progressive", "seed": 250, "contribution": 0.002 },
+    "grand": { "type": "progressive", "seed": 1000, "contribution": 0.004 }
+  },
+  "meter": {
+    "symbol": "COLLECT",
+    "target": 74,
+    "reward": { "type": "pick" }
+  },
+  "maxWin": 5000,
+  "timing": { "staggerMs": 150 },
+  "winTiers": { "win": 1, "big": 10, "mega": 25, "epic": 50 },
+  "anticipation": {
+    "extraMs": 1000,
+    "triggers": [
+      { "symbol": "SCATTER", "needed": 3, "minLanded": 2 },
+      {
+        "symbol": "BONUS",
+        "needed": 3,
+        "reels": [0, 2, 4],
+        "minLanded": 2
+      }
+    ]
+  },
+  "targets": {
+    "rtp": 0.96,
+    "hitFrequency": [0.25, 0.35],
+    "freeSpinsEvery": [150, 200],
+    "volatility": "medium",
+    "rtpTolerance": 0.005
+  }
+}

@@ -2,14 +2,18 @@
   "name": "honest-arcade",
   "version": "0.1.0",
   "private": true,
-  "description": "Ad-free puzzle games built with three.js — playable in the browser, packaged for Android (and later iOS) with Capacitor.",
+  "description": "Ad-free games built with three.js and plain web tech: puzzles and slot machines with play money. Playable in the browser, packaged for Android (and later iOS) with Capacitor.",
   "type": "module",
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "build": "node scripts/build.mjs",
     "preview": "npm run build && node scripts/serve.mjs --dist",
-    "test": "node tests/puzzles.mjs && node tests/economy.mjs && npm run build -- --experimental && node tests/smoke.mjs",
-    "fonts": "node scripts/vendor-fonts.mjs"
+    "test": "node tests/puzzles.mjs && node tests/economy.mjs && npm run test:slots && npm run build -- --experimental && node tests/smoke.mjs && node tests/slots/e2e.mjs",
+    "fonts": "node scripts/vendor-fonts.mjs",
+    "test:slots": "node scripts/slots-validate.mjs && node --test tests/slots/*.test.mjs && node scripts/slots-sim.mjs --check",
+    "slots:sim": "node scripts/slots-sim.mjs",
+    "slots:validate": "node scripts/slots-validate.mjs",
+    "slots:verify": "node scripts/slots-sim.mjs --verify"
   },
   "devDependencies": {
     "playwright": "1.63.0"
