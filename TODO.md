@@ -50,8 +50,12 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 
 ## Later
 
-- [ ] `Platform.storage` on `@capacitor/preferences` (needed for iOS)
-- [ ] iOS port (Mac + Apple Developer Program)
+- [ ] iOS release, see [docs/RELEASE.md](docs/RELEASE.md), chapter 1:
+  - [ ] "Back to arcade" button in every game (see **Games** above; required for iOS)
+  - [ ] Outbound: `navigator.vibrate` → `Platform.haptic()`
+  - [ ] Saves mirrored to `@capacitor/preferences`, so iOS can't clear them
+  - [ ] Mac with Xcode, Apple Developer Program (US$99/year)
+  - [ ] TestFlight → App Store review → release
 - [ ] Also publish on itch.io and/or F-Droid
 - [ ] Hub extras: "Continue" button, a "Today" row with every daily puzzle (Graphite already has one for its four types)
 - [x] A fifth game: **Graphite** (Sudoku, Takuzu, Star Battle, Calcudoku)
