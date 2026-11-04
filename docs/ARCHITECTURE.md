@@ -20,6 +20,7 @@ How the repository is organised, why, and how to improve it step by step without
 │   ├── unscrew/
 │   └── graphite/            levels/ holds one generator per puzzle type; worker.js runs them off the main thread
 ├── shared/                  Things every game uses, kept in exactly one place
+│   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md)
 │   ├── vendor/three/        three.js r128 (the 3D engine), served locally
 │   └── icons/               App icon
 ├── scripts/                 Developer tools (never shipped to players)
@@ -28,6 +29,7 @@ How the repository is organised, why, and how to improve it step by step without
 │   └── vendor-fonts.mjs     npm run fonts: downloads a game's Google Fonts into its fonts/ folder
 ├── tests/smoke.mjs          npm test: opens every game in a headless phone browser
 ├── tests/puzzles.mjs        npm test: Graphite's generators give unique puzzles, and the same ones every time
+├── tests/economy.mjs        npm test: every game's prices and rewards follow docs/ECONOMY.md
 ├── docs/                    Guides (this file, Android publishing, roadmap)
 ├── dist/                    (generated) the exact files that go into the app; not committed
 └── android/                 (generated once by Capacitor, then committed) the Android project

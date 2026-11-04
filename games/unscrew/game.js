@@ -26,10 +26,10 @@ const STONE=['#c9ccd3','#b7bcc6','#d6d8de'];
 const GLASS=['#ff9db8','#ffcf70','#8fd3ff','#b8a4ff','#8ee3b0','#ffb37a','#9fe6e0','#f5a3e0'];
 
 function cfgFor(diff,level){
-  const D={easy:{K:3,B:5,C0:4,Cmax:6,minPer:1,maxPer:2,swapF:.6,win:6,margin:2,mult:1,cap:80,cx0:.1,coins:20,hidPref:.25},
-    normal:{K:3,B:5,C0:5,Cmax:8,minPer:1,maxPer:3,swapF:1.4,win:10,margin:1,mult:1.5,cap:140,cx0:.45,coins:35,hidPref:.55},
-    hard:{K:3,B:4,C0:7,Cmax:9,minPer:2,maxPer:3,swapF:2.5,win:14,margin:1,mult:2,cap:190,cx0:.85,coins:55,hidPref:.85},
-    expert:{K:2,B:5,C0:8,Cmax:9,minPer:2,maxPer:4,swapF:3,win:16,margin:1,mult:3,cap:240,cx0:1.15,coins:80,hidPref:1}}[diff];
+  const D={easy:{K:3,B:5,C0:4,Cmax:6,minPer:1,maxPer:2,swapF:.6,win:6,margin:2,mult:1,cap:80,cx0:.1,hidPref:.25},
+    normal:{K:3,B:5,C0:5,Cmax:8,minPer:1,maxPer:3,swapF:1.4,win:10,margin:1,mult:1.5,cap:140,cx0:.45,hidPref:.55},
+    hard:{K:3,B:4,C0:7,Cmax:9,minPer:2,maxPer:3,swapF:2.5,win:14,margin:1,mult:2,cap:190,cx0:.85,hidPref:.85},
+    expert:{K:2,B:5,C0:8,Cmax:9,minPer:2,maxPer:4,swapF:3,win:16,margin:1,mult:3,cap:240,cx0:1.15,hidPref:1}}[diff];
   return{...D,C:Math.min(D.Cmax,D.C0+Math.floor((level-1)/3)),cx:Math.min(1.6,D.cx0+(level-1)/12)};
 }
 
@@ -468,17 +468,20 @@ const _t=I18n.t;
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const SKEY='unscrew.v2';
 let save={};try{save=JSON.parse(localStorage.getItem(SKEY))||{}}catch(e){}
-save={best:{},runs:{},sound:true,sel:{mode:'3d',diff:'normal'},coins:250,inv:{drill:1,xray:1},...save};
+save={best:{},runs:{},stars:{},sound:true,sel:{mode:'3d',diff:'normal'},coins:ECO.start,inv:{},...save};
+// Tools used to be bought ahead and stocked. Now you pay when you use one, at the price of the
+// difficulty you're playing (docs/ECONOMY.md), so any stocked tools are refunded once.
+for(const id in save.inv){save.coins+=(save.inv[id]||0)*(LEGACY_TOOL_PRICE[id]||0)}save.inv={};
 function persist(){try{localStorage.setItem(SKEY,JSON.stringify(save))}catch(e){}}
 const DIFFS=['easy','normal','hard','expert'];
 const fmt=n=>n.toLocaleString(I18n.lang);
 const COIN='<svg class="coin" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10.6" r="8.6" fill="#c98a00"/><circle cx="10" cy="9.6" r="8.6" fill="#ffc21a"/><circle cx="10" cy="9.6" r="6" fill="none" stroke="#e8a400" stroke-width="1.4"/><path d="M7.4 7l5.2 5.2M12.6 7l-5.2 5.2" stroke="#9a6400" stroke-width="1.8" stroke-linecap="round"/></svg>';
 const TOOLS={
-  drill:{price:60,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M3 8.5h11.5l3 2.2v3.6l-3 2.2H9.5L8.4 23H4.6l1.2-6.5H3z" fill="#ff6a13"/><rect x="4.5" y="10" width="7" height="2.5" rx="1" fill="#ffd0b0"/><path d="M17.5 12.5h6" stroke="#5b6270" stroke-width="2.4" stroke-linecap="round"/><path d="M19 10.8l1 3.4M21.5 10.8l1 3.4" stroke="#8a95a5" stroke-width="1"/></svg>'},
-  hammer:{price:120,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M5 22l10-10" stroke="#a9744a" stroke-width="3.4" stroke-linecap="round"/><path d="M11.5 5.5l5-2.5 6.5 6.5-2.5 2.5-3-1.4-2.5 2.5-5-5z" fill="#5b6270"/><path d="M16.5 3l6.5 6.5" stroke="#8a95a5" stroke-width="1.5"/></svg>'},
-  chest:{price:150,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M9 9V6.5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 17 6.5V9" fill="none" stroke="#5b6270" stroke-width="2.2"/><rect x="3" y="9" width="20" height="13" rx="2.5" fill="#e8283a"/><rect x="3" y="13" width="20" height="2.6" fill="#a81c2a"/><rect x="11" y="12" width="4" height="4.6" rx="1" fill="#ffc21a"/></svg>'},
-  magnet:{price:80,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M6.5 4v9a6.5 6.5 0 0 0 13 0V4" fill="none" stroke="#e8283a" stroke-width="4.4"/><path d="M6.5 3.5v4M19.5 3.5v4" stroke="#c9d0da" stroke-width="4.4"/><path d="M2 12h2M22 12h2M4 17l1.6-1M22 17l-1.6-1" stroke="#1f7bff" stroke-width="1.6" stroke-linecap="round"/></svg>'},
-  xray:{price:40,icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="8" cy="13" r="5" fill="#bdf3ff" stroke="#17212e" stroke-width="2"/><circle cx="18" cy="13" r="5" fill="#bdf3ff" stroke="#17212e" stroke-width="2"/><path d="M11.2 11.6c1.2-1 2.4-1 3.6 0" fill="none" stroke="#17212e" stroke-width="2"/><circle cx="8" cy="13" r="1.8" fill="#ff3d9a"/><circle cx="18" cy="13" r="1.8" fill="#ffcc1a"/></svg>'}};
+  drill:{icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M3 8.5h11.5l3 2.2v3.6l-3 2.2H9.5L8.4 23H4.6l1.2-6.5H3z" fill="#ff6a13"/><rect x="4.5" y="10" width="7" height="2.5" rx="1" fill="#ffd0b0"/><path d="M17.5 12.5h6" stroke="#5b6270" stroke-width="2.4" stroke-linecap="round"/><path d="M19 10.8l1 3.4M21.5 10.8l1 3.4" stroke="#8a95a5" stroke-width="1"/></svg>'},
+  hammer:{icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M5 22l10-10" stroke="#a9744a" stroke-width="3.4" stroke-linecap="round"/><path d="M11.5 5.5l5-2.5 6.5 6.5-2.5 2.5-3-1.4-2.5 2.5-5-5z" fill="#5b6270"/><path d="M16.5 3l6.5 6.5" stroke="#8a95a5" stroke-width="1.5"/></svg>'},
+  chest:{icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M9 9V6.5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 17 6.5V9" fill="none" stroke="#5b6270" stroke-width="2.2"/><rect x="3" y="9" width="20" height="13" rx="2.5" fill="#e8283a"/><rect x="3" y="13" width="20" height="2.6" fill="#a81c2a"/><rect x="11" y="12" width="4" height="4.6" rx="1" fill="#ffc21a"/></svg>'},
+  magnet:{icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><path d="M6.5 4v9a6.5 6.5 0 0 0 13 0V4" fill="none" stroke="#e8283a" stroke-width="4.4"/><path d="M6.5 3.5v4M19.5 3.5v4" stroke="#c9d0da" stroke-width="4.4"/><path d="M2 12h2M22 12h2M4 17l1.6-1M22 17l-1.6-1" stroke="#1f7bff" stroke-width="1.6" stroke-linecap="round"/></svg>'},
+  xray:{icon:'<svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="8" cy="13" r="5" fill="#bdf3ff" stroke="#17212e" stroke-width="2"/><circle cx="18" cy="13" r="5" fill="#bdf3ff" stroke="#17212e" stroke-width="2"/><path d="M11.2 11.6c1.2-1 2.4-1 3.6 0" fill="none" stroke="#17212e" stroke-width="2"/><circle cx="8" cy="13" r="1.8" fill="#ff3d9a"/><circle cx="18" cy="13" r="1.8" fill="#ffcc1a"/></svg>'}};
 const TOOL_ORDER=['drill','hammer','chest','magnet','xray'];
 for(const id of TOOL_ORDER){TOOLS[id].name=_t('tool.'+id);TOOLS[id].desc=_t('tool.'+id+'.desc')}
 
@@ -618,9 +621,9 @@ function renderRail(newSlot){const r=$('#rail');if(r.children.length!==LS.cap){r
   if(newSlot!=null){const h=r.children[newSlot];h.classList.remove('new');void h.offsetWidth;h.classList.add('new')}}
 function renderTools(){const el=$('#tools');if(!el.children.length){el.innerHTML=TOOL_ORDER.map(id=>`<button class="tool" data-tool="${id}">${TOOLS[id].icon}<b>${TOOLS[id].name}</b><small></small><span class="badge" hidden></span></button>`).join('');
     el.querySelectorAll('.tool').forEach(b=>b.onclick=()=>useTool(b.dataset.tool))}
-  el.querySelectorAll('.tool').forEach(b=>{const id=b.dataset.tool,own=save.inv[id]||0,bd=b.querySelector('.badge');bd.hidden=!own;bd.textContent=own;
-    b.querySelector('small').innerHTML=own?_t('owned'):`${COIN}${TOOLS[id].price}`;b.disabled=!canUse(id);b.classList.toggle('on',!!LS&&LS.target===id);
-    b.setAttribute('aria-label',`${TOOLS[id].name}: ${own?_t('ownedN',{n:own}):_t('priceN',{n:TOOLS[id].price})}`)});
+  el.querySelectorAll('.tool').forEach(b=>{const id=b.dataset.tool,price=toolPrice(id);b.querySelector('.badge').hidden=true;
+    b.querySelector('small').innerHTML=`${COIN}${price}`;b.disabled=!canUse(id);b.classList.toggle('on',!!LS&&LS.target===id);
+    b.setAttribute('aria-label',`${TOOLS[id].name}: ${_t('priceN',{n:price})}`)});
   $('#viewBtn').hidden=!(state==='play'&&CUR&&CUR.mode==='3d')}
 
 /* --- level flow --- */
@@ -632,14 +635,14 @@ function startLevel(){
   setTimeout(()=>{
     const cfg=cfgFor(G.diff,G.level),lv=buildLevel(G.mode,G.diff,G.level,cfg);setCurrent(lv);
     LS={cfg,lv,screws:lv.screws,total:lv.screws.length,removed:0,boxes:[],queue:lv.queue,qi:0,buffer:[],cap:cfg.B,busy:0,levelScore:0,combo:0,lastBox:0,
-      start:performance.now(),drills:0,chestUsed:false,target:null,xrayUntil:0,done:false,paused:false,meshes:[],coinsEarned:0};
+      start:performance.now(),drills:0,chestUsed:false,uses:{},helped:false,target:null,xrayUntil:0,done:false,paused:false,meshes:[]};
     LS.meshes=spawnScrews(lv);
     for(let i=0;i<cfg.K;i++)LS.boxes.push(nextBox());
     renderTop();renderBoxes();renderRail();renderTools();$('#loading').hidden=true;orbit.auto=false;orbit.tw=null;
     requestAnimationFrame(()=>fitCamera(true));
     save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist()},30)}
 function addScore(v){if(!LS)return;LS.levelScore+=Math.round(v*LS.cfg.mult);renderScore();const b=save.best[key()]||{score:0,level:0};if(runScore()>b.score){b.score=runScore();save.best[key()]=b}}
-function addCoins(n){save.coins+=n;if(LS)LS.coinsEarned+=n;renderCoins();persist()}
+function addCoins(n){save.coins+=n;renderCoins();persist()}
 
 function tapScrew(s){
   if(s.state!=='in'||s.hidden)return;const blk=firstBlocker(s,LS.meshes);s.blocker=blk;
@@ -660,7 +663,7 @@ function flyTo(c,from,dest){LS.busy++;
   else fly(c,from,railCenter(dest.it.slot),()=>{LS.busy--;dest.it.arrived=true;renderRail(dest.it.slot);sfx.tink();tryAbsorb();checkSoon()})}
 function arriveBox(b,k){b.arrived++;const h=b.el&&b.el.querySelectorAll('.h')[k];if(h)h.innerHTML=tokHTML(b.c);sfx.tink();if(b.arrived===3)completeBox(b);checkSoon()}
 function completeBox(b){LS.busy++;b.state='leaving';const now=performance.now();LS.combo=now-LS.lastBox<3500?Math.min(5,LS.combo+1):1;LS.lastBox=now;
-  addScore(25*LS.combo);addCoins(1);const ls=LS,i=LS.boxes.indexOf(b),bay=$('#boxes').children[i];
+  addScore(25*LS.combo);const ls=LS,i=LS.boxes.indexOf(b),bay=$('#boxes').children[i];
   if(LS.combo>1){const t=document.createElement('div');t.className='combo';t.textContent=_t('combo',{n:LS.combo});bay.appendChild(t);t.animate([{transform:'translate(-50%,0)',opacity:1},{transform:'translate(-50%,-26px)',opacity:0}],{duration:900,easing:'ease-out',fill:'forwards'})}
   setTimeout(()=>{if(ls!==LS)return;sfx.box(LS.combo);const lid=b.el.querySelector('.lid');
     lid.animate([{transform:'translateY(-24px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:reduceMotion?1:180,fill:'forwards',easing:'ease-in'});
@@ -680,12 +683,15 @@ function check(){if(!LS||LS.done||LS.busy>0||state!=='play')return;
 
 /* --- tools --- */
 function canUse(id){if(!LS||LS.done)return false;if(id==='drill')return LS.drills<2;if(id==='chest')return !LS.chestUsed&&LS.qi<LS.queue.length;return true}
-function affordable(id){return(save.inv[id]||0)>0||save.coins>=TOOLS[id].price}
-function pay(id){if((save.inv[id]||0)>0)save.inv[id]--;else{save.coins-=TOOLS[id].price;renderCoins()}persist();renderTools()}
+// Price of the next use in this level: a multiple of what a level of this difficulty pays,
+// doubling for each extra drill, magnet, hammer or chest (games/unscrew/economy.js).
+function toolPrice(id,diff){return ECO.price(id,diff||G.diff,LS?LS.uses[id]||0:0)}
+function affordable(id){return save.coins>=toolPrice(id)}
+function pay(id){save.coins-=toolPrice(id);LS.uses[id]=(LS.uses[id]||0)+1;LS.helped=true;renderCoins();persist();renderTools()}
 function useTool(id){ensureAudio();if(state!=='play'||!LS||LS.done||LS.paused)return;
   if(LS.target===id){LS.target=null;renderTools();toast(_t('toast.hammerAway'));return}
   if(!canUse(id))return toast(_t(id==='drill'?'toast.maxDrills':'toast.cantNow'));
-  if(!affordable(id))return toast(_t('toast.needCoins',{n:TOOLS[id].price-save.coins}));
+  if(!affordable(id))return toast(_t('toast.needCoins',{n:toolPrice(id)-save.coins}));
   if(id==='hammer'){LS.target='hammer';renderTools();toast(_t('toast.hammerTap'),2600);return}
   if(TOOL_FN[id]())pay(id)}
 const TOOL_FN={
@@ -724,11 +730,12 @@ function modal(title,body,actions){$('#mTitle').textContent=title;$('#mBody').in
   actions.forEach(([label,fn,cls])=>{const b=document.createElement('button');b.className='btn '+(cls||'');b.innerHTML=label;b.onclick=()=>{if(fn()!=='keep')closeModal()};a.appendChild(b)});
   $('#modal').hidden=false;setTimeout(()=>a.querySelector('button')&&a.querySelector('button').focus(),50)}
 function closeModal(){$('#modal').hidden=true}
-function openShop(after){
-  const draw=()=>{$('#mBody').innerHTML=`<div class="wallet">${COIN}<span>${fmt(save.coins)}</span></div><div class="shop">${TOOL_ORDER.map(id=>{const t=TOOLS[id],own=save.inv[id]||0;
-    return`<div class="srow">${t.icon}<div><span class="nm">${t.name}</span>${own?`<span class="own">×${own}</span>`:''}<div class="ds">${t.desc}</div></div><button class="sbuy" data-buy="${id}" ${save.coins<t.price?'disabled':''} aria-label="${_t('shop.buy',{name:t.name,price:t.price})}">${COIN}${t.price}</button></div>`}).join('')}</div>`;
-    $('#mBody').querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const id=b.dataset.buy,t=TOOLS[id];if(save.coins<t.price)return;ensureAudio();save.coins-=t.price;save.inv[id]=(save.inv[id]||0)+1;persist();sfx.coin();draw();renderCoins();if(LS)renderTools()})};
-  modal(_t('shop.title'),'',[[_t('done'),after,'primary']]);draw()}
+// Not a shop any more: tools are paid when you use them, so this lists what they cost on the
+// difficulty you're playing (or have selected in the menu).
+function openShop(after){const diff=LS?G.diff:save.sel.diff;
+  const body=`<div class="wallet">${COIN}<span>${fmt(save.coins)}</span></div><p class="snote">${_t('shop.note',{diff:_t('diff.'+diff)})}</p><div class="shop">${TOOL_ORDER.map(id=>{const t=TOOLS[id];
+    return`<div class="srow">${t.icon}<div><span class="nm">${t.name}</span><div class="ds">${t.desc}</div></div><span class="sprice" aria-label="${_t('priceN',{n:toolPrice(id,diff)})}">${COIN}${toolPrice(id,diff)}</span></div>`}).join('')}</div>`;
+  modal(_t('shop.title'),body,[[_t('done'),after,'primary']])}
 function openPause(){if(!LS)return;LS.paused=true;const soundBtn=()=>_t(save.sound?'sound.on':'sound.off');
   modal(_t('pause'),`<p>${_t('pause.body',{level:G.level,removed:LS.removed,total:LS.total})}</p>`,[
     [_t('pause.resume'),()=>{LS.paused=false;checkSoon()},'primary'],
@@ -737,19 +744,26 @@ function openPause(){if(!LS)return;LS.paused=true;const soundBtn=()=>_t(save.sou
     [soundBtn(),()=>{save.sound=!save.sound;persist();$('#mActions').children[3].textContent=soundBtn();return'keep'}],
     [_t('toMenu'),()=>showMenu()]])}
 function stuck(){LS.paused=true;sfx.fail();const acts=[];const resume=()=>{LS.paused=false};
-  const label=id=>(save.inv[id]||0)>0?_t('stuck.use',{name:TOOLS[id].name,n:save.inv[id]}):_t('stuck.buy',{name:TOOLS[id].name,price:COIN+TOOLS[id].price});
+  const label=id=>_t('stuck.buy',{name:TOOLS[id].name,price:COIN+toolPrice(id)});
   if(canUse('drill')&&affordable('drill'))acts.push([label('drill'),()=>{resume();useTool('drill')},'primary']);
   if(canUse('chest')&&affordable('chest'))acts.push([label('chest'),()=>{resume();useTool('chest')},acts.length?'':'primary']);
   acts.push([_t('stuck.retry'),()=>loseLife(),acts.length?'':'primary']);
   modal(_t('stuck.title'),`<p>${_t('stuck.body')}${acts.length>1?_t('stuck.toolHint'):''}</p>`,acts)}
 function loseLife(){G.hearts--;if(G.hearts<=0)return gameOver();save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist();startLevel()}
-function levelComplete(){LS.done=true;const secs=(performance.now()-LS.start)/1000,m=LS.cfg.mult;
-  const base=LS.levelScore,time=Math.round(Math.max(0,LS.total*4-secs)*2*m),bonus=Math.round((150+G.level*20)*m),coins=LS.cfg.coins+Math.floor(G.level*1.5);
-  LS.levelScore+=time+bonus;G.score=runScore();const done=G.level;G.level++;LS.levelScore=0;addCoins(coins);
+// Stars per level, so a run is also something to perfect: 3 for a clean, quick clear, one less
+// for using any tool, and one less for running out of time bonus. Coins only pay for new stars.
+const starsOf=(m=G.mode,d=G.diff)=>save.stars[key(m,d)]||(save.stars[key(m,d)]={});
+function levelComplete(){LS.done=true;const secs=(performance.now()-LS.start)/1000,m=LS.cfg.mult,slow=secs>LS.total*4;
+  const base=LS.levelScore,time=Math.round(Math.max(0,LS.total*4-secs)*2*m),bonus=Math.round((150+G.level*20)*m);
+  const stars=Math.max(1,Economy.helped(3,LS.helped)-(slow?1:0)),st=starsOf(),prev=st[G.level]||0,coins=ECO.levelPay(G.diff,stars,prev);
+  if(stars>prev)st[G.level]=stars;
+  LS.levelScore+=time+bonus;G.score=runScore();const done=G.level;G.level++;LS.levelScore=0;if(coins)addCoins(coins);
   const b=save.best[key()]||{score:0,level:0};b.score=Math.max(b.score,G.score);b.level=Math.max(b.level,done);save.best[key()]=b;
   save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist();sfx.win();renderScore();
-  const mm=Math.floor(secs/60),ss=String(Math.floor(secs%60)).padStart(2,'0'),earned=LS.coinsEarned;
-  setTimeout(()=>modal(_t('win.title',{n:done}),`<div class="rows"><div><span>${_t('win.screws')}</span><span>${fmt(base)}</span></div><div><span>${_t('win.time',{t:mm+':'+ss})}</span><span>+${fmt(time)}</span></div><div><span>${_t('win.level')}</span><span>+${fmt(bonus)}</span></div><div class="tot"><span>${_t('win.total')}</span><span>${fmt(G.score)}</span></div><div class="gold"><span>${_t('win.coins')}</span><span>${COIN} +${earned}</span></div></div>`,
+  const mm=Math.floor(secs/60),ss=String(Math.floor(secs%60)).padStart(2,'0');
+  const notes=[LS.helped&&_t('win.toolStar'),slow&&_t('win.slowStar'),prev>stars&&_t('win.prev',{n:prev}),!coins&&_t('win.noCoins')].filter(Boolean);
+  const starRow=`<div class="wstars" role="img" aria-label="${_t('win.stars',{n:stars})}">${[0,1,2].map(i=>`<span class="${i<stars?'':'off'}">★</span>`).join('')}</div>`;
+  setTimeout(()=>modal(_t('win.title',{n:done}),`${starRow}<div class="rows"><div><span>${_t('win.screws')}</span><span>${fmt(base)}</span></div><div><span>${_t('win.time',{t:mm+':'+ss})}</span><span>+${fmt(time)}</span></div><div><span>${_t('win.level')}</span><span>+${fmt(bonus)}</span></div><div class="tot"><span>${_t('win.total')}</span><span>${fmt(G.score)}</span></div><div class="gold"><span>${_t('win.coins')}</span><span>${COIN} +${coins}</span></div></div>${notes.length?`<p class="wnote">${notes.join(' ')}</p>`:''}`,
     [[_t('win.next'),()=>startLevel(),'primary'],[_t('menu.shop'),()=>{openShop(()=>startLevel());return'keep'}],[_t('toMenu'),()=>showMenu()]]),reduceMotion?50:650)}
 function gameOver(){const b=save.best[key()]||{score:0,level:0};const reached=G.level-1;const isBest=G.score>0&&G.score>=b.score;b.score=Math.max(b.score,G.score);b.level=Math.max(b.level,reached);save.best[key()]=b;
   delete save.runs[key()];persist();
@@ -764,7 +778,7 @@ function renderMenu(){const sel=save.sel;
     return`<button class="opt" data-diff="${id}" aria-pressed="${id===sel.diff}"><span><span class="t">${_t('diff.'+id)}</span><br><span class="d">${_t('menu.diffInfo',{k:c.K,b:c.B,c:c.C,cmax:c.Cmax})}</span></span>
       <span class="pips" aria-hidden="true"><span>${'<i></i>'.repeat(c.K)}</span><span class="hole">${'<i></i>'.repeat(c.B)}</span></span></button>`}).join('');
   document.querySelectorAll('#diffs .opt').forEach(b=>b.onclick=()=>{save.sel.diff=b.dataset.diff;persist();renderMenu()});
-  const b=save.best[key(sel.mode,sel.diff)];$('#stBest').textContent=b?fmt(b.score):'—';$('#stLvl').textContent=b&&b.level?b.level:'—';renderCoins();
+  const b=save.best[key(sel.mode,sel.diff)];$('#stBest').textContent=b?fmt(b.score):'—';const sv=Object.values(save.stars[key(sel.mode,sel.diff)]||{});$('#stStars').textContent=sv.length?`${sv.reduce((a,x)=>a+x,0)}/${sv.length*3}`:'—';$('#stLvl').textContent=b&&b.level?b.level:'—';renderCoins();
   const r=save.runs[key(sel.mode,sel.diff)],cb=$('#contBtn');cb.hidden=!r;
   if(r)cb.innerHTML=`${_t('menu.continue',{n:r.level})} <span aria-label="${_t('lives',{n:r.hearts})}">${'♥'.repeat(r.hearts)}</span>`;
   $('#newBtn').className='btn'+(r?'':' primary')}
