@@ -13,7 +13,8 @@
     "test:slots": "node scripts/slots-validate.mjs && node --test tests/slots/*.test.mjs && node scripts/slots-sim.mjs --check",
     "slots:sim": "node scripts/slots-sim.mjs",
     "slots:validate": "node scripts/slots-validate.mjs",
-    "slots:verify": "node scripts/slots-sim.mjs --verify"
+    "slots:verify": "node scripts/slots-sim.mjs --verify",
+    "unscrew:models": "node scripts/unscrew-models.mjs"
   },
   "devDependencies": {
     "playwright": "1.63.0"
