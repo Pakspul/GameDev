@@ -65,15 +65,13 @@ export class MachineScreen {
     this.balanceEl = h("span", { class: "balance-value", text: "0" });
     this.levelEl = h("span", { class: "level-badge", text: "1" });
     this.xpFill = h("i");
-    this.backBtn = h("button", { type: "button", class: "icon-btn", "aria-label": t("lobby") }, icon("back"));
-    this.muteBtn = h("button", { type: "button", class: "icon-btn", "aria-label": t("mute") });
-    this.infoBtn = h("button", { type: "button", class: "icon-btn", "aria-label": t("info") }, icon("info"));
-    this.settingsBtn = h("button", { type: "button", class: "icon-btn", "aria-label": t("settings") }, icon("gear"));
+    // back and the menu drawer are the arcade-wide ones (shared/js/gamenav.js, set up in game.js)
+    this.backBtn = this.app.nav.back;
     const top = h("header", { class: "topbar" }, this.backBtn,
       h("div", { class: "topbar-mid" }, h("div", { class: "machine-name", text: cfg.name }),
         h("div", { class: "xp-row" }, this.levelEl, h("div", { class: "xp-bar", role: "progressbar", "aria-label": t("xp") }, this.xpFill))),
       h("div", { class: "balance", "aria-live": "polite" }, symbolSvg("coin", "coin-icon"), this.balanceEl),
-      this.muteBtn, this.infoBtn, this.settingsBtn);
+      this.app.nav.menu);
 
     this.jpEls = {};
     const jp = h("div", { class: "jackpots", "aria-label": t("jackpots") });
@@ -117,10 +115,7 @@ export class MachineScreen {
 
   bind() {
     const { app } = this;
-    this.backBtn.onclick = () => { if (this.sm.accepts("nav")) { app.audio.sfx("tap"); this.leave(); } };
-    this.muteBtn.onclick = () => { app.profile.settings.muted = !app.profile.settings.muted; app.audio.applySettings(); app.persist(); this.updateControls(); };
-    this.infoBtn.onclick = () => { if (this.sm.accepts("info")) { app.audio.sfx("tap"); app.showInfo(this); } };
-    this.settingsBtn.onclick = () => { if (this.sm.accepts("menu")) { app.audio.sfx("tap"); app.showSettings(); } };
+    app.nav.setBack(() => { if (this.alive && this.sm.accepts("nav")) { app.audio.sfx("tap"); this.leave(); } }, this.t("lobby"));
     this.betMinus.onclick = () => this.stepBet(-1);
     this.betPlus.onclick = () => this.stepBet(1);
     this.maxBtn.onclick = () => this.maxBet();
@@ -215,8 +210,6 @@ export class MachineScreen {
     this.betPlus.disabled = !sm.accepts("bet") || this.bet === this.cfg.betLevels[this.cfg.betLevels.length - 1];
     this.maxBtn.disabled = !sm.accepts("bet");
     this.backBtn.disabled = !sm.accepts("nav");
-    this.infoBtn.disabled = !sm.accepts("info");
-    this.settingsBtn.disabled = !sm.accepts("menu");
     this.autoBtn.disabled = !(sm.accepts("autoplay") || this.auto.active);
     this.turboBtn.disabled = !sm.accepts("turbo");
     this.turboBtn.setAttribute("aria-pressed", String(this.turbo));
@@ -225,7 +218,6 @@ export class MachineScreen {
     this.spinBtn.disabled = idle ? !canSpin : !["spinning", "stopping", "presenting"].includes(sm.state);
     this.spinBtn.classList.toggle("busy", !idle);
     this.spinBtn.setAttribute("aria-label", idle ? this.t("spin") : this.t("stopReels"));
-    this.muteBtn.replaceChildren(icon(app.profile.settings.muted ? "mute" : "sound"));
     this.autoBtn.querySelector(".auto-label").textContent = this.auto.active ? this.t("autoLeft", { n: this.auto.left }) : this.t("auto");
     this.autoBtn.classList.toggle("on", this.auto.active);
     this.el.dataset.state = sm.state;

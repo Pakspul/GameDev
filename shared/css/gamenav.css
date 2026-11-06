@@ -1,0 +1,103 @@
+/* GameNav: the back button (top left) and the game's menu (top right), see shared/js/gamenav.js.
+   Same place and shape of interaction in every game; the look comes from the game. Everything
+   visual reads a --gn-* variable with a neutral fallback, and each game's style.css sets them:
+
+     --gn-size --gn-radius --gn-bg --gn-fg --gn-border --gn-shadow --gn-press --gn-icon --gn-stroke
+     --gn-font --gn-title-font --gn-panel-bg --gn-panel-fg --gn-panel-radius --gn-muted --gn-line
+     --gn-hover --gn-accent --gn-accent-ink --gn-backdrop --gn-z --gn-top --gn-side
+
+   Load it before the game's own style.css, so the game can also restyle .gnav-btn directly. */
+
+.gnav-btn, .gnav-bar, .gnav-drawer, .gnav-drawer *, .gnav-drawer *::before, .gnav-drawer *::after { box-sizing: border-box; }
+.gnav-btn {
+  flex: none; position: relative; display: grid; place-items: center;
+  width: var(--gn-size, 44px); height: var(--gn-size, 44px); margin: 0; padding: 0;
+  border: var(--gn-border, 0); border-radius: var(--gn-radius, 50%);
+  background: var(--gn-bg, rgba(127, 127, 127, .18)); color: var(--gn-fg, currentColor);
+  box-shadow: var(--gn-shadow, none);
+  font: inherit; cursor: pointer; pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .1s ease, background-color .15s ease, box-shadow .1s ease;
+}
+.gnav-btn:active { transform: var(--gn-press, scale(.93)); }
+.gnav-btn:focus-visible { outline: 2px solid var(--gn-accent, currentColor); outline-offset: 2px; }
+.gnav-face { display: grid; place-items: center; width: 100%; height: 100%; border-radius: inherit; }
+.gnav-btn svg { width: var(--gn-icon, 22px); height: var(--gn-icon, 22px); stroke-width: var(--gn-stroke, 2.2); }
+
+/* A bar of its own, for screens without a header: fixed to the top corners, taps pass through the middle. */
+.gnav-bar {
+  position: fixed; left: 0; right: 0; top: 0; z-index: var(--gn-z, 40);
+  display: flex; justify-content: space-between; align-items: center; pointer-events: none;
+  padding: calc(env(safe-area-inset-top, 0px) + var(--gn-top, 12px)) max(var(--gn-side, 14px), env(safe-area-inset-right, 0px)) 0 max(var(--gn-side, 14px), env(safe-area-inset-left, 0px));
+}
+
+/* The drawer: slides in from the right, like the hub's menu. */
+.gnav-drawer {
+  margin: 0 0 0 auto; width: min(100% - 56px, 340px); max-width: none; height: 100%; max-height: none;
+  padding: 0; border: 0; border-left: 1px solid var(--gn-line, rgba(127, 127, 127, .25));
+  border-radius: var(--gn-panel-radius, 22px) 0 0 var(--gn-panel-radius, 22px);
+  background: var(--gn-panel-bg, #fbf9f4); color: var(--gn-panel-fg, #1d1a16);
+  font-family: var(--gn-font, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif); font-size: 16px; line-height: 1.4;
+  box-shadow: -18px 0 40px -24px rgba(0, 0, 0, .6);
+  overflow-y: auto; overscroll-behavior: contain;
+  -webkit-user-select: none; user-select: none;
+}
+.gnav-drawer::backdrop { background: var(--gn-backdrop, rgba(0, 0, 0, .45)); }
+.gnav-drawer[open] { animation: gnav-in .24s cubic-bezier(.2, .8, .2, 1); }
+.gnav-drawer[open]::backdrop { animation: gnav-fade .24s ease-out; }
+@keyframes gnav-in { from { transform: translateX(100%); } }
+@keyframes gnav-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .gnav-drawer[open], .gnav-drawer[open]::backdrop { animation: none; } }
+
+.gnav-inner {
+  min-height: 100%; display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 14px) 16px;
+}
+.gnav-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.gnav-head h2 { margin: 0; min-width: 0; font: var(--gn-title-font, 800 1.35rem/1.15 var(--gn-font, system-ui, sans-serif)); letter-spacing: -.01em; }
+.gnav-close { --gn-size: 40px; --gn-icon: 18px; }
+.gnav-drawer .gnav-close { color: var(--gn-panel-fg, #1d1a16); background: var(--gn-hover, rgba(127, 127, 127, .14)); border: 0; box-shadow: none; }
+
+.gnav-items, .gnav-foot { display: flex; flex-direction: column; gap: 2px; margin: 0 -6px; }
+.gnav-items:not(:empty) { margin-bottom: 12px; }
+.gnav-foot { margin-top: auto; padding-top: 12px; }
+.gnav-items:not(:empty) + .gnav-foot { border-top: 1px solid var(--gn-line, rgba(127, 127, 127, .25)); }
+.gnav-item, .gnav-more > summary {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 10px 12px;
+  font: inherit; font-weight: 650; color: inherit; text-align: left; text-decoration: none;
+  background: none; border: 0; border-radius: var(--gn-item-radius, 14px); cursor: pointer;
+}
+.gnav-more { display: block; padding: 0; }
+.gnav-more > summary { list-style: none; }
+.gnav-more > summary::-webkit-details-marker { display: none; }
+button.gnav-item:hover:not(:disabled), .gnav-more > summary:hover { background: var(--gn-hover, rgba(127, 127, 127, .12)); }
+.gnav-item:focus-visible, .gnav-more > summary:focus-visible, .gnav-seg button:focus-visible { outline: 2px solid var(--gn-accent, currentColor); outline-offset: -2px; }
+.gnav-item:disabled { opacity: .4; cursor: default; }
+.gnav-ico { flex: none; display: grid; place-items: center; width: 22px; height: 22px; color: var(--gn-muted, rgba(127, 127, 127, .9)); }
+.gnav-ico:empty { display: none; }
+.gnav-ico svg { width: 22px; height: 22px; stroke-width: 1.8; }
+.gnav-label { flex: 1; min-width: 0; }
+.gnav-label small { display: block; margin-top: 1px; font-size: .8em; font-weight: 500; color: var(--gn-muted, rgba(127, 127, 127, .9)); }
+.gnav-chev { flex: none; display: grid; color: var(--gn-muted, rgba(127, 127, 127, .9)); transform: rotate(-90deg); transition: transform .15s; }
+.gnav-chev svg { width: 16px; height: 16px; stroke-width: 2; }
+.gnav-more[open] .gnav-chev { transform: rotate(90deg); }
+.gnav-text { padding: 0 12px 10px 46px; font-size: .9em; font-weight: 450; color: var(--gn-muted, rgba(127, 127, 127, .9)); cursor: auto; }
+.gnav-text p { margin: 0 0 8px; }
+.gnav-text ul { margin: 0; padding-left: 1.1em; }
+.gnav-text li { margin: 0 0 4px; }
+.gnav-text b, .gnav-text strong, .gnav-text kbd { color: var(--gn-panel-fg, #1d1a16); }
+
+.gnav-switch { flex: none; position: relative; width: 44px; height: 26px; border-radius: 99px; background: var(--gn-line, rgba(127, 127, 127, .3)); transition: background-color .15s; }
+.gnav-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .15s; }
+[aria-checked="true"] > .gnav-switch { background: var(--gn-accent, #2f5fd0); }
+[aria-checked="true"] > .gnav-switch::after { transform: translateX(18px); }
+
+.gnav-choice { flex-wrap: wrap; row-gap: 8px; cursor: default; }
+.gnav-seg { display: flex; flex: 1 0 100%; gap: 2px; padding: 3px; border-radius: 99px; background: var(--gn-hover, rgba(127, 127, 127, .12)); }
+.gnav-ico:not(:empty) ~ .gnav-seg { margin-left: 34px; flex-basis: calc(100% - 34px); }
+.gnav-seg button { flex: 1; min-width: 0; min-height: 34px; padding: 4px 8px; font: inherit; font-size: .85rem; font-weight: 700; color: var(--gn-muted, rgba(127, 127, 127, .9)); background: none; border: 0; border-radius: 99px; cursor: pointer; }
+.gnav-seg button[aria-checked="true"] { background: var(--gn-accent, #2f5fd0); color: var(--gn-accent-ink, #fff); }
+
+.gnav-heading { margin: 14px 12px 4px; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gn-muted, rgba(127, 127, 127, .9)); }
+.gnav-heading:first-child { margin-top: 2px; }
+.gnav-sep { height: 1px; margin: 8px 12px; background: var(--gn-line, rgba(127, 127, 127, .25)); }

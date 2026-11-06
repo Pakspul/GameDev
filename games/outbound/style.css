@@ -95,14 +95,6 @@ svg { display: block; }
 .lvl.locked .n { font-weight: 600; color: var(--muted); }
 
 .foot { display: flex; flex-direction: column; gap: 16px; border-top: 1px solid var(--line); padding-top: 20px; }
-.setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.setting div { min-width: 0; }
-.setting strong { display: block; font-weight: 600; }
-.setting small { color: var(--muted); font-size: 0.85rem; display: block; max-width: 48ch; }
-.switch { flex: none; width: 48px; height: 28px; border-radius: 999px; background: var(--line); position: relative; transition: background 0.2s; }
-.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--board); box-shadow: 0 1px 2px rgb(0 0 0 / 0.2); transition: transform 0.2s; }
-.switch[aria-checked="true"] { background: var(--accent); }
-.switch[aria-checked="true"]::after { transform: translateX(20px); }
 details.rules summary { cursor: pointer; font-weight: 600; }
 details.rules ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; max-width: 62ch; }
 .sync { font-size: 0.8rem; color: var(--muted); }
@@ -116,7 +108,8 @@ details.rules ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); di
 .seg.big button { flex: 1; justify-content: center; padding: 11px 12px; font-size: 0.95rem; font-weight: 600; gap: 8px; }
 .seg.big button svg { width: 19px; height: 19px; }
 
-.topline { justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: -6px; }
+.topline { justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: -6px; }
+.topline .gnav-menu { margin-left: auto; }
 .points { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
 .points .gem { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--star); color: #2a1d00; }
 .points .gem svg { width: 14px; height: 14px; }
@@ -160,8 +153,15 @@ details.rules ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); di
 /* ---------- Game ---------- */
 #game { display: flex; flex-direction: column; }
 .gbar { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; gap: 8px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); padding-block: 10px 4px; }
-.round { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); }
-.round svg { width: 22px; height: 22px; }
+/* Back button and menu drawer (shared/js/gamenav.js): Outbound's round buttons, and a drawer that looks like its board. */
+:root {
+  --gn-size: 46px; --gn-bg: var(--surface); --gn-fg: var(--ink); --gn-border: 1px solid var(--line); --gn-stroke: 2.6;
+  --gn-font: var(--font-body); --gn-title-font: 800 2rem/1 var(--font-display);
+  --gn-panel-bg: var(--board); --gn-panel-fg: var(--ink); --gn-muted: var(--muted); --gn-line: var(--line);
+  --gn-hover: var(--surface); --gn-accent: var(--accent); --gn-accent-ink: var(--on-accent);
+}
+.gnav-drawer .gnav-head h2 { letter-spacing: -0.03em; }
+.gnav-drawer .gnav-seg button[aria-checked="true"] { background: var(--ink); color: var(--bg); }
 .gtitle { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
 .pill { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; background: var(--ink); color: var(--bg); padding: 3px 10px 2px; border-radius: 999px; white-space: nowrap; }
 .gtitle h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.7rem; line-height: 1; letter-spacing: -0.02em; }

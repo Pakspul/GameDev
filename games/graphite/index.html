@@ -7,16 +7,14 @@
 <meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
 <title>Graphite</title>
 <link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="../../shared/css/gamenav.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-kind="sudoku">
 
 <section id="home" class="view" data-i18n-attr="aria-label:home">
   <div class="wrap">
-    <div class="topline">
-      <button type="button" class="ghost" id="arcadeBtn"><span class="ico" data-icon="back"></span><span data-i18n="arcade"></span></button>
-      <button type="button" class="round" id="settingsBtn" data-i18n-attr="aria-label:settings"><span class="ico" data-icon="gear"></span></button>
-    </div>
+    <div class="topline" id="homeBar"></div>
 
     <header class="hero">
       <h1 class="wordmark">Graphite</h1>
@@ -67,13 +65,11 @@
 
 <section id="game" class="view" data-i18n-attr="aria-label:puzzle" hidden>
   <header class="gbar">
-    <button type="button" class="round" id="backBtn" data-i18n-attr="aria-label:backToLevels"><span class="ico" data-icon="back"></span></button>
     <div class="gtitle">
       <span class="pill" id="gPill"></span>
       <h1 id="gTitle"></h1>
     </div>
     <span class="timer" id="timer" data-i18n-attr="aria-label:time"></span>
-    <button type="button" class="round" id="restartBtn" data-i18n-attr="aria-label:restartAria"><span class="ico" data-icon="restart"></span></button>
   </header>
   <div class="boardwrap" id="boardWrap">
     <canvas id="board" data-i18n-attr="aria-label:board"></canvas>
@@ -94,45 +90,9 @@
   </div>
 </div>
 
-<div class="overlay" id="settings" hidden>
-  <div class="card sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
-    <div class="sheet-head">
-      <h2 id="setTitle" data-i18n="settings"></h2>
-      <button type="button" class="round" id="settingsClose" data-i18n-attr="aria-label:closeSettings"><span class="ico" data-icon="close"></span></button>
-    </div>
-    <div class="setting">
-      <div><strong data-i18n="appearance"></strong></div>
-      <div class="seg" id="themeSeg" role="radiogroup" data-i18n-attr="aria-label:appearance">
-        <button type="button" role="radio" data-theme-opt="auto" data-i18n="theme.auto"></button>
-        <button type="button" role="radio" data-theme-opt="light" data-i18n="theme.light"></button>
-        <button type="button" role="radio" data-theme-opt="dark" data-i18n="theme.dark"></button>
-      </div>
-    </div>
-    <div class="setting">
-      <div><strong id="lblLang" data-i18n="language"></strong><small data-i18n="language.note"></small></div>
-      <div class="seg" id="langSeg" role="radiogroup" aria-labelledby="lblLang"></div>
-    </div>
-    <div class="setting">
-      <div><strong id="lblMistakes" data-i18n="set.mistakes"></strong><small data-i18n="set.mistakes.note"></small></div>
-      <button type="button" class="switch" role="switch" data-setting="mistakes" aria-labelledby="lblMistakes"></button>
-    </div>
-    <div class="setting">
-      <div><strong id="lblTimer" data-i18n="set.timer"></strong><small data-i18n="set.timer.note"></small></div>
-      <button type="button" class="switch" role="switch" data-setting="timer" aria-labelledby="lblTimer"></button>
-    </div>
-    <div class="setting">
-      <div><strong id="lblAutodot" data-i18n="set.autodot"></strong><small data-i18n="set.autodot.note"></small></div>
-      <button type="button" class="switch" role="switch" data-setting="autodot" aria-labelledby="lblAutodot"></button>
-    </div>
-    <div class="setting">
-      <div><strong id="lblSound" data-i18n="set.sound"></strong><small data-i18n="set.sound.note"></small></div>
-      <button type="button" class="switch" role="switch" data-setting="sound" aria-labelledby="lblSound"></button>
-    </div>
-  </div>
-</div>
-
 <script src="../../shared/js/platform.js"></script>
 <script src="../../shared/js/i18n.js"></script>
+<script src="../../shared/js/gamenav.js"></script>
 <script src="strings.js"></script>
 <script src="levels/common.js"></script>
 <script src="levels/sudoku.js"></script>

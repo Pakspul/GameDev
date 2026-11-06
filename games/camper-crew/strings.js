@@ -3,7 +3,6 @@
 I18n.add({
   en: {
     "scene": "The camper, seen from above",
-    "pause": "Pause",
     "fuel": "Fuel",
     "mood": "Mood",
     "sunTip": "Time until sunset",
@@ -16,7 +15,6 @@ I18n.add({
     "btn.throw": "Throw",
     "btn.patch": "Patch",
     "btn.spray": "Spray",
-    "arcade": "← Arcade",
     "prototype": "Grey-box prototype",
     "lead": "The camper drives itself. Mostly. You are the only crew on board: get to the campsite before the sun sets.",
     "prevRoad": "Previous road",
@@ -35,6 +33,7 @@ I18n.add({
     "how.stars": "Stars: &#9733; reach the campsite, &#9733; with the mood at half or more, &#9733; with 20 seconds of daylight to spare.",
     "paused": "Paused",
     "resume": "Resume",
+    "backToMenu": "Back to the start screen",
     "restartRoad": "Restart road",
     "menu": "Menu",
     "result": "Result",
@@ -80,7 +79,6 @@ I18n.add({
   },
   nl: {
     "scene": "De camper, van bovenaf gezien",
-    "pause": "Pauze",
     "fuel": "Brandstof",
     "mood": "Humeur",
     "sunTip": "Tijd tot zonsondergang",
@@ -93,7 +91,6 @@ I18n.add({
     "btn.throw": "Gooi",
     "btn.patch": "Dicht",
     "btn.spray": "Spuit",
-    "arcade": "← Arcade",
     "prototype": "Grey-box-prototype",
     "lead": "De camper rijdt zelf. Meestal. Jij bent de enige bemanning aan boord: haal de camping voordat de zon ondergaat.",
     "prevRoad": "Vorige weg",
@@ -112,6 +109,7 @@ I18n.add({
     "how.stars": "Sterren: &#9733; haal de camping, &#9733; met een humeur van de helft of meer, &#9733; met nog 20 seconden daglicht over.",
     "paused": "Gepauzeerd",
     "resume": "Verder",
+    "backToMenu": "Terug naar het startscherm",
     "restartRoad": "Weg opnieuw",
     "menu": "Menu",
     "result": "Resultaat",

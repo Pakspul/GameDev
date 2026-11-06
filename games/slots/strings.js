@@ -4,7 +4,6 @@ I18n.add({
   en: {
     "metaDesc": "Slot machines with play money only: no ads, no purchases, no tracking.",
     "title": "Crystal Reels",
-    "arcade": "Back to arcade",
     "lobby": "Back to lobby",
     "lobby.note": "Play money only. No ads, no purchases, and every spin has the same odds for everyone.",
     "machines": "Machines",
@@ -15,7 +14,7 @@ I18n.add({
     "jp.mini": "Mini", "jp.minor": "Minor", "jp.major": "Major", "jp.grand": "Grand", "jp.won": "JACKPOT",
     "xp": "Experience",
     "close": "Close", "cancel": "Cancel", "ok": "OK", "continue": "Continue",
-    "mute": "Sound on or off",
+    "sound": "Sound",
     "spin": "Spin", "stopReels": "Stop the reels",
     "bet": "Bet", "betUp": "Raise the bet", "betDown": "Lower the bet", "maxBet": "Max bet",
     "betLocked": "Reach level {level} to unlock this bet.",
@@ -139,7 +138,6 @@ I18n.add({
   nl: {
     "metaDesc": "Gokkasten met alleen speelgeld: geen advertenties, geen aankopen, geen tracking.",
     "title": "Crystal Reels",
-    "arcade": "Terug naar de arcade",
     "lobby": "Terug naar de lobby",
     "lobby.note": "Alleen speelgeld. Geen advertenties, geen aankopen, en elke draai heeft voor iedereen dezelfde kansen.",
     "machines": "Machines",
@@ -150,7 +148,7 @@ I18n.add({
     "jp.mini": "Mini", "jp.minor": "Minor", "jp.major": "Major", "jp.grand": "Grand", "jp.won": "JACKPOT",
     "xp": "Ervaring",
     "close": "Sluiten", "cancel": "Annuleren", "ok": "OK", "continue": "Doorgaan",
-    "mute": "Geluid aan of uit",
+    "sound": "Geluid",
     "spin": "Draaien", "stopReels": "Stop de rollen",
     "bet": "Inzet", "betUp": "Inzet verhogen", "betDown": "Inzet verlagen", "maxBet": "Max inzet",
     "betLocked": "Bereik level {level} om deze inzet te ontgrendelen.",

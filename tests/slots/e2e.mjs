@@ -85,7 +85,7 @@ await page.evaluate(() => { const a = window.slotsApp; a.screen.turbo = false; }
 await page.click(".spin-btn");
 await page.waitForTimeout(150);
 check((await state(page)) === "spinning", "REEL-01: the reels are moving right after the tap");
-check(await page.evaluate(() => document.querySelector(".bet-row .round-btn").disabled && document.querySelector(".topbar .icon-btn").disabled), "REEL-01: bet controls and navigation are disabled while spinning");
+check(await page.evaluate(() => document.querySelector(".bet-row .round-btn").disabled && document.querySelector(".topbar .gnav-back").disabled), "REEL-01: bet controls and navigation are disabled while spinning");
 check(await app(page, (b) => window.slotsApp.profile.balance === b - 40, before), "the bet is deducted at the tap");
 await page.screenshot({ path: join(OUT, "slots-spinning.png") });
 await page.click(".spin-btn"); // slam stop
@@ -121,7 +121,9 @@ await page.context().close();
 console.log("Rules, settings, profile");
 page = await newPage();
 await start(page);
-await page.click("[aria-label='Rules']");
+// Rules, settings and profile sit in the menu drawer (top right), shared with every game (shared/js/gamenav.js).
+const fromMenu = async (label) => { await page.click(".gnav-menu"); await page.click(`.gnav-item >> text=${label}`); };
+await fromMenu("Rules");
 await page.waitForSelector(".info");
 await page.click(".tab >> text=Features");
 let text = await page.textContent(".modal");
@@ -135,14 +137,14 @@ await page.click(".info-bet .round-btn >> nth=1");
 check((await page.textContent(".pay-grid")) !== payBefore, "MATH-06: paytable amounts update when the bet changes");
 await page.screenshot({ path: join(OUT, "slots-rules.png") });
 await page.click("[aria-label='Close']");
-await page.click("[aria-label='Settings']");
+await fromMenu("Settings");
 await page.waitForSelector(".settings");
 check((await page.$$(".settings input[type=range]")).length === 2, "PERS-04: music and sound volume sliders exist");
 await page.screenshot({ path: join(OUT, "slots-settings.png") });
 await page.click("[aria-label='Close']");
-await page.click("[aria-label='Lobby']").catch(() => page.click(".topbar .icon-btn >> nth=0"));
+await page.click(".gnav-back");
 await page.waitForSelector(".tile");
-await page.click("[aria-label='Profile']");
+await fromMenu("Profile");
 await page.waitForSelector(".profile");
 check((await page.$$(".ach")).length === 9, "PROG-05: achievements are listed");
 await page.screenshot({ path: join(OUT, "slots-profile.png") });

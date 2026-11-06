@@ -362,7 +362,6 @@ function hud(){
   $('#nShuffle').textContent=sl>0?(isFinite(sl)?sl:'∞'):'−250';
   $('#btnUndo').disabled=!G.undo.length;
   const hb=$('#btnHighlight');hb.disabled=!!G.d.noHighlight;hb.setAttribute('aria-pressed',String(save.settings.highlight&&!G.d.noHighlight));hb.title=_t(G.d.noHighlight?'tool.glow.off':'tool.glow.tip');
-  $('#btnSound').setAttribute('aria-pressed',String(save.settings.sound));
 }
 let lastSec=-1;
 function hudTick(){
@@ -373,11 +372,26 @@ function hudTick(){
   if(G.d.timed)$('#incense i').style.width=(G.timeLeft/G.limit*100)+'%';
 }
 const overlayOpen=()=>!!document.querySelector('.overlay:not([hidden])');
-function openOverlay(id){document.querySelectorAll('.overlay').forEach(o=>o.hidden=o.id!==id);const f=$('#'+id+' [data-autofocus]');if(f)setTimeout(()=>{try{f.focus({preventScroll:true});}catch(_){}},50);}
-function closeOverlays(){cam.tYaw=0;document.querySelectorAll('.overlay').forEach(o=>o.hidden=true);}
+function openOverlay(id){document.querySelectorAll('.overlay').forEach(o=>o.hidden=o.id!==id);navBack();const f=$('#'+id+' [data-autofocus]');if(f)setTimeout(()=>{try{f.focus({preventScroll:true});}catch(_){}},50);}
+function closeOverlays(){cam.tYaw=0;document.querySelectorAll('.overlay').forEach(o=>o.hidden=true);navBack();}
 let toastT=0;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},1900);}
 function popup(pos,text,cls){const v=pos.clone().project(camera),el=document.createElement('div');el.className='pop '+(cls||'');el.textContent=text;el.style.left=((v.x+1)/2*innerWidth)+'px';el.style.top=((1-v.y)/2*innerHeight)+'px';$('#fx').appendChild(el);setTimeout(()=>el.remove(),1200);}
 function showBanner(){const b=$('#banner');$('#bannerEyebrow').textContent=G.daily?_t('dailyChallenge'):_t('banner.level',{diff:G.d.name,n:G.level});$('#bannerName').textContent=G.daily?prettyDate(G.dateStr):displayName();$('#bannerMeta').textContent=_t('banner.tiles',{n:G.tiles.length})+(G.d.timed?_t('banner.incense',{t:fmtTime(G.limit)}):'');b.hidden=false;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>{b.hidden=true;},2600);}
+
+/* ---------- Back (top left) and the menu drawer (top right) ---------- */
+// At the table, back opens the main menu; on the main menu it leaves for the arcade.
+// The drawer holds the table settings, and at the table also restart and recenter. It pauses the incense.
+const nav=GameNav.create({title:'Jade Pavilion',items:()=>{const atTable=$('#menu').hidden&&G.loaded&&G.state==='play';return[
+  atTable&&{icon:'restart',label:_t('restart'),onSelect:()=>{startLevel(G.diffKey,G.level);closeOverlays();}},
+  atTable&&{icon:'view',label:_t('recenter'),onSelect:recenter},
+  {heading:_t('settings')},
+  {icon:'theme',label:_t('theme'),value:save.settings.theme,options:['jade','lacquer','moon'].map(k=>({value:k,label:_t('theme.'+k)})),onChoose:applyTheme},
+  {icon:'sound',label:_t('sound'),checked:save.settings.sound,onToggle:toggleSound},
+  {icon:'glow',label:_t('dim'),checked:save.settings.highlight,onToggle(on){save.settings.highlight=on;persist();hud();}},
+  {icon:'help',label:_t('howTo'),html:`<p>${_t('menu.lede')}</p><p>${_t('keys')}</p>`},
+  !atTable&&GameNav.language()];}});
+document.getElementById('app').appendChild(GameNav.bar(nav));
+function navBack(){if($('#menu').hidden)nav.setBack(openMenu,_t('backToMenu'));else nav.setBack();}
 
 /* ---------- Menu ---------- */
 let menuSel=save.lastDiff,menuLevel=save.prog[menuSel]?save.prog[menuSel].unlocked:1;
@@ -392,25 +406,19 @@ function renderMenu(){
   $('#resumeBtn').hidden=!inGame;
   if(inGame)$('#resumeBtn').innerHTML=`<span>${_t('resume')}</span><small>${G.d.name} · ${G.daily?prettyDate(G.dateStr):_t('lv',{n:G.level})} · ${_t('tilesLeft',{n:aliveCount()})}</small>`;
   const db=save.daily[todayStr()];$('#dailyMeta').textContent=prettyDate(todayStr())+(db?_t('best',{n:fmt(db)}):_t('notPlayed'));
-  document.querySelectorAll('[data-theme-k]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themeK===save.settings.theme)));
-  $('#optSound').setAttribute('aria-pressed',String(save.settings.sound));$('#optHighlight').setAttribute('aria-pressed',String(save.settings.highlight));
 }
 function openMenu(){renderMenu();openOverlay('menu');}
 $('#lvPrev').onclick=()=>{menuLevel--;renderMenu();};$('#lvNext').onclick=()=>{menuLevel++;renderMenu();};
 $('#playBtn').onclick=()=>{Sfx.ensure();if(G.loaded&&G.fresh&&G.state==='play'&&!G.daily&&G.diffKey===menuSel&&G.level===menuLevel){closeOverlays();showBanner();return;}startLevel(menuSel,menuLevel);closeOverlays();};
 $('#resumeBtn').onclick=()=>{Sfx.ensure();closeOverlays();};
 $('#dailyBtn').onclick=()=>{Sfx.ensure();startLevel('daily',1);closeOverlays();};
-document.querySelectorAll('[data-theme-k]').forEach(b=>b.onclick=()=>{applyTheme(b.dataset.themeK);renderMenu();});
-$('#optSound').onclick=()=>{toggleSound();renderMenu();};
-$('#optHighlight').onclick=()=>{save.settings.highlight=!save.settings.highlight;persist();renderMenu();hud();};
 function applyTheme(k){const th=THEMES[k]||THEMES.jade;save.settings.theme=k in THEMES?k:'jade';persist();scene.background.set(th.bg);scene.fog.color.copy(lin(th.bg));feltMat.color.copy(lin(th.felt)).multiplyScalar(1.35);backMat.color.copy(lin(th.back));poolMat.color.copy(lin(th.pool));Object.entries(th.css).forEach(([a,b])=>document.documentElement.style.setProperty(a,b));}
 function toggleSound(){save.settings.sound=!save.settings.sound;persist();hud();if(save.settings.sound)Sfx.click();}
 
 /* toolbar */
-$('#btnMenu').onclick=()=>openMenu();
 $('#btnUndo').onclick=undo;$('#btnHint').onclick=hint;$('#btnShuffle').onclick=()=>shuffle(false);
 $('#btnHighlight').onclick=()=>{save.settings.highlight=!save.settings.highlight;persist();hud();};
-$('#btnView').onclick=recenter;$('#btnSound').onclick=toggleSound;
+$('#btnView').onclick=recenter;
 $('#winNext').onclick=()=>{startLevel(G.diffKey,G.level+1);closeOverlays();};
 $('#winReplay').onclick=()=>{startLevel(G.diffKey,G.level);closeOverlays();};
 $('#winMenu').onclick=()=>{menuSel=G.daily?menuSel:G.diffKey;menuLevel=G.daily?menuLevel:Math.min(G.level+1,save.prog[G.diffKey].unlocked);openMenu();};
@@ -429,7 +437,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)saveResume(
 let lastT=performance.now(),clock=0,sparkT=0;
 function frame(now){
   const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;clock+=dt;
-  const running=G.loaded&&G.state==='play'&&!overlayOpen()&&!document.hidden&&G.dealing===0;
+  const running=G.loaded&&G.state==='play'&&!overlayOpen()&&!nav.isOpen()&&!document.hidden&&G.dealing===0;
   if(running){G.elapsed+=dt;if(G.comboT>0)G.comboT=Math.max(0,G.comboT-dt);if(G.d.timed){G.timeLeft-=dt;if(G.timeLeft<=0){G.timeLeft=0;timeout();}}}
   if(G.hintT>0){G.hintT-=dt;if(G.hintT<=0)G.hint=null;}
   runTweens(dt);runParts(dt);

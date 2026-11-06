@@ -63,9 +63,6 @@ button{font:inherit;color:inherit}
 .tool[aria-pressed="true"] svg{color:var(--accent)}
 .tool .n{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:700;line-height:19px;font-variant-numeric:tabular-nums}
 .tool.empty .n{background:var(--rail-line);color:var(--paper-dim)}
-#btnSound .mute{display:none}
-#btnSound[aria-pressed="false"] .mute{display:inline}
-#btnSound[aria-pressed="false"] .wave{display:none}
 @media (max-width:600px){
   .tool{min-width:0;flex:1 1 0;padding:8px 2px 7px;font-size:10px;max-width:72px}
   .toolbar{gap:5px}
@@ -74,6 +71,20 @@ button{font:inherit;color:inherit}
   .stat .v{font-size:17px}
   .combo-bar{right:auto;width:100%}
 }
+
+/* back button and menu drawer (shared/js/gamenav.js): lacquer rail buttons with a gold edge, a drawer like the sheets */
+:root{--gn-size:44px;--gn-radius:12px;--gn-bg:var(--rail);--gn-fg:var(--paper);--gn-border:1px solid var(--rail-line);--gn-press:translateY(1px);--gn-stroke:1.7;--gn-top:14px;--gn-side:16px;--gn-z:35;
+  --gn-font:var(--f-ui);--gn-title-font:800 30px/1.05 var(--f-display);--gn-panel-bg:var(--sheet);--gn-panel-fg:var(--paper);--gn-panel-radius:18px;--gn-muted:var(--paper-dim);--gn-line:var(--rail-line);
+  --gn-hover:var(--chip-on);--gn-accent:var(--accent);--gn-accent-ink:var(--accent-ink);--gn-backdrop:var(--scrim)}
+.gnav-btn{backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.gnav-btn:hover{border-color:var(--accent)}
+.gnav-drawer .gnav-item{font-weight:500}
+.gnav-drawer .gnav-heading{color:var(--accent);letter-spacing:.22em}
+.gnav-drawer .gnav-seg{background:var(--chip);border:1px solid var(--rail-line)}
+.gnav-drawer .gnav-close{background:var(--chip);border:1px solid var(--rail-line)}
+/* the level and stats rail leaves room for the two corner buttons */
+.hud-top{padding-left:calc(max(16px,env(safe-area-inset-left,0px)) + 56px);padding-right:calc(max(16px,env(safe-area-inset-right,0px)) + 56px)}
+.overlay{padding-top:calc(70px + env(safe-area-inset-top,0px))!important}
 
 /* floating text */
 #fx{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
@@ -129,12 +140,6 @@ h2.title{font-size:clamp(30px,6vw,42px)}
 .btn.grow{flex:1 1 160px}
 .btn:disabled{opacity:.4;cursor:default}
 .row{display:flex;gap:10px;flex-wrap:wrap}
-.settings{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding-top:18px;border-top:1px solid var(--rail-line);font-size:12.5px;color:var(--paper-dim)}
-.seg{display:flex;border:1px solid var(--rail-line);border-radius:999px;overflow:hidden}
-.seg button,.pill{appearance:none;border:0;background:transparent;padding:7px 12px;font-size:12.5px;cursor:pointer;color:var(--paper-dim)}
-.seg button[aria-pressed="true"]{background:var(--chip-on);color:var(--accent)}
-.pill{border:1px solid var(--rail-line);border-radius:999px}
-.pill[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
 .keys{font-size:12px;color:var(--paper-dim);line-height:1.8}
 kbd{font-family:var(--f-ui);font-size:11px;border:1px solid var(--rail-line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--paper);margin-right:3px}
 #stars{display:flex;gap:10px}

@@ -13,6 +13,7 @@
   // platform.js lives in shared/js/, so the hub is two folders up.
   var hubUrl = here ? new URL("../../index.html", here).href : "/index.html";
   var onHub = location.href.split(/[?#]/)[0] === hubUrl;
+  var backHandler = null;
 
   var Platform = {
     /** true inside the Android/iOS app, false in a browser */
@@ -30,12 +31,17 @@
         else if (navigator.vibrate) navigator.vibrate(ms || 12);
       } catch (e) { /* ignore */ }
     },
+    /** What the Android back button does in this page: fn() returns true when it handled it.
+     *  shared/js/gamenav.js sets this, so the back button does what the top-left button does. */
+    onBack: function (fn) { backHandler = fn; },
   };
 
   // Android back button / back gesture (needs the @capacitor/app plugin, see docs/ANDROID.md):
-  // inside a game → back to where you came from (normally the hub); on the hub → close the app.
+  // inside a game → whatever the game's back button does (see onBack), else back to where you
+  // came from (normally the hub); on the hub → close the app.
   if (isApp && plugins.App) {
     plugins.App.addListener("backButton", function (ev) {
+      if (backHandler && backHandler()) return;
       if (onHub) plugins.App.exitApp();
       else if (ev && ev.canGoBack) history.back();
       else location.replace(hubUrl);

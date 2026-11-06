@@ -1117,9 +1117,38 @@
     state = s;
     document.body.className = "state-" + s;
     show("menu", s === "menu");
-    show("pause", s === "pause");
     show("result", s === "result");
+    // Pausing opens the menu drawer, and closing the drawer resumes (see nav below).
+    if (s === "pause") nav.open(); else if (nav.isOpen()) nav.close();
+    placeNav();
     if (s === "play") startLoop(); else { stopLoop(); renderOnce(); }
+  }
+
+  // ---------- Back (top left) and the menu drawer (top right) ----------
+  // On a road, back goes to the start screen and the drawer is the pause menu.
+  var nav = GameNav.create({
+    title: function () { return state === "pause" ? _t("paused") : "Camper Crew"; },
+    onOpen: function () { if (state === "play") setState("pause"); },
+    onClose: function () { if (state === "pause") setState("play"); },
+    items: function () {
+      var onRoad = state === "pause";
+      return [
+        onRoad && { icon: "play", label: _t("resume"), onSelect: function () {} },
+        onRoad && { icon: "restart", label: _t("restartRoad"), onSelect: function () { startRoad(G.n); setState("play"); } },
+        { icon: "help", label: _t("how"), html: "<ul>" + [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) { return "<li>" + _t("how." + n) + "</li>"; }).join("") + "</ul><p>" + _t("how.stars") + "</p>" },
+        state === "menu" && GameNav.language(),
+      ];
+    },
+  });
+  var navBar = GameNav.bar(nav);
+  document.body.appendChild(navBar);
+  function toMenu() {
+    if (state === "result") { $("resultMenuBtn").click(); return; }
+    menuRoad = G.n; refreshMenu(); setState("menu");
+  }
+  function placeNav() {
+    if (state === "menu") { navBar.append(nav.back, nav.menu); nav.setBack(); }
+    else { $("hud").prepend(nav.back); $("hud").append(nav.menu); nav.setBack(toMenu, _t("backToMenu")); }
   }
 
   function finish(arrived) {
@@ -1152,11 +1181,6 @@
   $("prevRoad").onclick = function () { menuRoad = Math.max(1, menuRoad - 1); refreshMenu(); startRoad(menuRoad); renderOnce(); };
   $("nextRoad").onclick = function () { menuRoad = Math.min(save.unlocked, menuRoad + 1); refreshMenu(); startRoad(menuRoad); renderOnce(); };
   $("playBtn").onclick = function () { startRoad(menuRoad); setState("play"); };
-  $("arcadeBtn").onclick = function () { Platform.home(); };
-  $("pauseBtn").onclick = function () { if (state === "play") setState("pause"); };
-  $("resumeBtn").onclick = function () { setState("play"); };
-  $("restartBtn").onclick = function () { startRoad(G.n); setState("play"); };
-  $("menuBtn").onclick = function () { menuRoad = G.n; refreshMenu(); setState("menu"); };
   $("retryBtn").onclick = function () { startRoad(G.n); setState("play"); };
   $("nextBtn").onclick = function () { menuRoad = G.n + 1; startRoad(G.n + 1); setState("play"); };
   $("resultMenuBtn").onclick = function () { menuRoad = Math.min(save.unlocked, G.n + (save.best[G.n] ? 1 : 0)); refreshMenu(); startRoad(menuRoad); setState("menu"); };

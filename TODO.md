@@ -19,7 +19,7 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 
 ## Games
 
-- [ ] "Back to arcade" button in four games: see **Release issues**, item 1
+- [x] "Back to arcade" button in four games: see **Release issues**, item 1 (now in every game: back top left, menu top right, issue H-1)
 - [x] Language work for Unscrew, per the decision above
 - [ ] Colour-blind check: can Unscrew's screws and boxes be told apart without colour?
 - [ ] Unscrew: more 3D models, one category at a time (issue U-1; catalogue and recipe in [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md)). Vehicles and industry first
@@ -38,7 +38,7 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 
 Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each item says which release needs it. All four can be done by Claude in a session: just ask for the item by number.
 
-1. [ ] **No way back to the hub in four games.** Jade Pavilion, Nuts & Bolts, Outbound and Unscrew have no button that calls `Platform.home()` (Graphite and Camper Crew do). On Android the back button covers it; on iPhone a player is stuck in the game until they kill the app, and Apple rejects that. Add a "Back to arcade" button to each game's own menu, styled per game, with the label in English and Dutch in its `strings.js`.
+1. [x] **No way back to the hub in four games.** *(Done 6 November 2026: every game has a back button top left and a menu with "Back to arcade" top right, see issue H-1 in [docs/ISSUES.md](docs/ISSUES.md).)* Jade Pavilion, Nuts & Bolts, Outbound and Unscrew have no button that calls `Platform.home()` (Graphite and Camper Crew do). On Android the back button covers it; on iPhone a player is stuck in the game until they kill the app, and Apple rejects that. Add a "Back to arcade" button to each game's own menu, styled per game, with the label in English and Dutch in its `strings.js`.
    *Needed for: iPhone (required). Nice for Android and the browser.*
 2. [ ] **Outbound vibrates through `navigator.vibrate` directly** (`games/outbound/game.js`). That doesn't exist on iPhone and skips the native Haptics plugin on Android. Replace it with `Platform.haptic(60)`.
    *Needed for: iPhone. Better on Android.*

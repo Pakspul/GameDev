@@ -89,7 +89,17 @@ _No issues yet._
 
 ## Hub and shared
 
-_No issues yet._
+### H-1: No way back from a game to the main menu
+
+- **Status:** done (6 November 2026)
+- **Source:** player feedback, November 2026: going from the main menu into a game, there is no button to go back to the main menu.
+- **What was noticed:** every game had its own idea of navigation. Graphite and Camper Crew had an "Arcade" link on their start screen, Crystal Reels a back arrow; Jade Pavilion, Nuts & Bolts, Outbound and Unscrew had no way back at all (on an iPhone a player was stuck in the game). Back, pause, settings and restart sat in a different corner in every game.
+- **Done:** one pattern for every game, in each game's own style ([shared/js/gamenav.js](../shared/js/gamenav.js) and [shared/css/gamenav.css](../shared/css/gamenav.css)):
+  - **Top left, back.** In a level it goes to the game's own menu; on that menu it goes to the arcade. The Android back button does the same.
+  - **Top right, ☰.** A drawer from the right, like the hub's menu, with what fits the game: restart, rules, shop, settings, sound, the language (on the game's menu), and always **Back to arcade** at the bottom. Opening it pauses timed games; in Camper Crew and Wallbreaker it is the pause menu.
+  - The shapes and colours come from each game (`--gn-*` variables in its `style.css`): Jade's lacquer, Nuts & Bolts' hex buttons, Unscrew's steel-lipped cards, Graphite's graph paper, and so on.
+  - The smoke test fails for a game without both buttons, or whose menu doesn't open.
+- **Side effects:** settings that lived on a game's start screen moved into the drawer (Jade's table, sound and dim switches; Outbound's appearance, smart tap and lane trace; Graphite's settings sheet), as did buttons that crowded the top bars (restart, full screen, mute, rules, profile). The pause dialogs of Unscrew, Camper Crew and Wallbreaker became the drawer; Wallbreaker's help, stats and settings moved from its home screen into the drawer, and its balance became the way into the shop.
 
 ## Wallbreaker
 

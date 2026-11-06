@@ -35,14 +35,12 @@ async function check(name, fn) {
 function ok(v, msg) { if (!v) throw new Error(msg); }
 const wb = (expr) => page.evaluate(expr);
 const click = async (text) => { await page.getByRole("button", { name: text, exact: false }).first().click(); await page.waitForTimeout(150); };
+// Back (top left, shared/js/gamenav.js) until Wallbreaker's own menu, where it would leave for the arcade.
 async function toMenu() {
-  if (await wb("!!window.Wallbreaker.engine")) {
-    await page.click("#pauseBtn");
-    await page.waitForTimeout(150);
-    await click("Quit to menu");
-  }
-  while (await page.getByRole("button", { name: "← Back" }).count()) { await page.getByRole("button", { name: "← Back" }).first().click(); await page.waitForTimeout(100); }
+  if (await page.locator(".gnav-drawer[open]").count()) { await page.keyboard.press("Escape"); await page.waitForTimeout(150); }
+  for (let i = 0; i < 6 && !(await page.locator(".gnav-back.gnav-to-arcade").count()); i++) { await page.click(".gnav-back"); await page.waitForTimeout(150); }
 }
+const openMenu = async () => { await page.click(".gnav-menu"); await page.waitForTimeout(250); };
 
 await page.goto(base);
 await page.waitForTimeout(600);
@@ -117,8 +115,31 @@ await check("clearing a level pays credits per the formula and moves on", async 
   const after = await wb("window.Wallbreaker.save.credits");
   ok(after - before >= 20 && after - before <= 40, `level 1 paid ${after - before}`);
   await page.screenshot({ path: join(OUT, "wallbreaker-result.png") });
-  await click("Menu");
+  await page.locator("#overlay").getByRole("button", { name: "Menu", exact: true }).click();
   await toMenu();
+});
+
+await check("in a level, the menu pauses and closing it plays on; back quits to the mode's menu", async () => {
+  await page.locator(".mode-card", { hasText: "Zen" }).click();
+  await click("Play");
+  await wb("window.Wallbreaker.engine.tap()");
+  await page.waitForTimeout(200);
+  await openMenu();
+  ok(await page.locator(".gnav-drawer[open]").isVisible(), "the menu drawer opened");
+  const t0 = await wb("window.Wallbreaker.engine.playTime");
+  await page.waitForTimeout(300);
+  ok((await wb("window.Wallbreaker.engine.playTime")) === t0, "paused while the menu is open");
+  await click("Resume");
+  ok(!(await page.locator(".gnav-drawer[open]").count()), "Resume closed the menu");
+  await page.waitForTimeout(300);
+  ok((await wb("window.Wallbreaker.engine.playTime")) > t0, "playing again");
+  await page.click(".gnav-back");
+  await page.waitForTimeout(200);
+  ok(!(await wb("!!window.Wallbreaker.engine")), "back left the level");
+  ok(await page.locator(".screen-head h2", { hasText: "Zen" }).isVisible(), "on Zen's menu");
+  await page.click(".gnav-back");
+  await page.waitForTimeout(200);
+  ok(await page.locator(".logo").isVisible(), "and back again to Wallbreaker's menu");
 });
 
 await check("a run shows its code, and that code replays the same run", async () => {
@@ -140,6 +161,7 @@ await check("a run shows its code, and that code replays the same run", async ()
 });
 
 await check("settings: colour-blind palette, reduced motion, left-handed layout and haptics all work", async () => {
+  await openMenu();
   await click("Settings");
   const toggle = (label) => page.locator("label", { hasText: label }).locator("input").click();
   await page.locator("label", { hasText: "Brick colours" }).locator("select").selectOption("cb");
@@ -160,6 +182,7 @@ await check("settings: colour-blind palette, reduced motion, left-handed layout 
   ok((await wb("window.__buzz")) === 0, "no vibration");
   await page.screenshot({ path: join(OUT, "wallbreaker-settings-play.png") });
   await toMenu();
+  await openMenu();
   await click("Settings");
   await page.locator("label", { hasText: "Brick colours" }).locator("select").selectOption("default");
   await toggle("Reduce motion"); await toggle("Left-handed layout"); await toggle("Vibration");

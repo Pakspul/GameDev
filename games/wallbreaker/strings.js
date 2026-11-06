@@ -3,9 +3,6 @@
 (function () {
   const en = {
     "metaDesc": "A brick breaker with seven modes and endless levels. No ads, no purchases, no tracking.",
-    "pause": "Pause",
-    "arcade": "← Arcade",
-    "back": "← Back",
     "play": "Play",
     "promise": "No ads, no timers, no purchases. Credits are earned by playing, and only by playing.",
     "shop": "Shop", "help": "How to play", "stats": "Stats", "settings": "Settings",
@@ -244,7 +241,6 @@
     "set.palette": "Brick colours", "set.palette.default": "Standard", "set.palette.cb": "Colour-blind safe",
     "set.reducedMotion": "Reduce motion", "set.leftHanded": "Left-handed layout", "set.autoLaunch": "Launch the ball automatically",
     "set.aimAssist": "Aim assist (Descent, Puzzle)", "set.sensitivity": "Paddle sensitivity",
-    "set.language": "Language",
     "set.save": "Save data",
     "set.saveNote": "Your progress is stored on this device only. Export it to keep a copy or move it to another device.",
     "set.saveText": "Save data as text",
@@ -263,9 +259,6 @@
 
   const nl = {
     "metaDesc": "Een brick breaker met zeven spelsoorten en eindeloze levels. Geen advertenties, geen aankopen, geen tracking.",
-    "pause": "Pauze",
-    "arcade": "← Arcade",
-    "back": "← Terug",
     "play": "Spelen",
     "promise": "Geen advertenties, geen wachttijden, geen aankopen. Credits verdien je met spelen, en alleen met spelen.",
     "shop": "Winkel", "help": "Zo speel je", "stats": "Statistieken", "settings": "Instellingen",
@@ -504,7 +497,6 @@
     "set.palette": "Kleuren blokjes", "set.palette.default": "Standaard", "set.palette.cb": "Kleurenblindveilig",
     "set.reducedMotion": "Minder beweging", "set.leftHanded": "Linkshandige indeling", "set.autoLaunch": "Bal vanzelf lanceren",
     "set.aimAssist": "Mikhulp (Afdaling, Puzzel)", "set.sensitivity": "Gevoeligheid batje",
-    "set.language": "Taal",
     "set.save": "Opgeslagen voortgang",
     "set.saveNote": "Je voortgang staat alleen op dit apparaat. Exporteer hem om een kopie te bewaren of naar een ander apparaat te verhuizen.",
     "set.saveText": "Voortgang als tekst",

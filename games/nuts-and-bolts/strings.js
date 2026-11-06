@@ -2,13 +2,9 @@
 // with data-i18n attributes in index.html (see shared/js/i18n.js).
 I18n.add({
   en: {
-    "menuBtn": "Levels, daily puzzle and stats",
-    "menuBtn.tip": "Menu (M)",
+    "backToMenu": "Back to the workshop",
     "restart": "Restart level",
-    "restart.tip": "Restart level (R)",
     "fs": "Full screen",
-    "fs.tip": "Full screen (F)",
-    "fs.exit": "Exit full screen",
     "fs.denied": "Full screen isn't allowed here. Open the page on its own to use it.",
     "chip": "Washers. Open the shop",
     "chip.tip": "Shop (S)",
@@ -108,13 +104,9 @@ I18n.add({
     "buy": "Buy {name} for {price} washers",
   },
   nl: {
-    "menuBtn": "Levels, dagpuzzel en statistieken",
-    "menuBtn.tip": "Menu (M)",
+    "backToMenu": "Terug naar de werkplaats",
     "restart": "Level herstarten",
-    "restart.tip": "Level herstarten (R)",
     "fs": "Volledig scherm",
-    "fs.tip": "Volledig scherm (F)",
-    "fs.exit": "Volledig scherm verlaten",
     "fs.denied": "Volledig scherm mag hier niet. Open de pagina los om het te gebruiken.",
     "chip": "Ringen. Open de winkel",
     "chip.tip": "Winkel (S)",

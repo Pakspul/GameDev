@@ -77,6 +77,22 @@ async function boot() {
   };
   app.resetProgress = () => { store.clear(); location.reload(); };
 
+  // Back (top left) and the menu drawer (top right), shared with every game: the lobby and each machine
+  // put the two buttons in their own top bar. In a machine, back goes to the lobby; in the lobby, to the arcade.
+  app.nav = GameNav.create({
+    title: _t("title"),
+    items: () => {
+      const sm = app.screen && app.screen.sm;
+      return [
+        sm && { icon: "info", label: _t("info"), disabled: !sm.accepts("info"), onSelect: () => { if (sm.accepts("info")) app.showInfo(app.screen); } },
+        { icon: "trophy", label: _t("profile"), onSelect: () => app.showProfile() },
+        { icon: "gear", label: _t("settings"), disabled: sm && !sm.accepts("menu"), onSelect: () => { if (!sm || sm.accepts("menu")) app.showSettings(); } },
+        { icon: "sound", label: _t("sound"), checked: !profile.settings.muted, onToggle: (on) => { profile.settings.muted = !on; app.audio.applySettings(); app.persist(); if (app.screen) app.screen.updateControls(); } },
+        !sm && GameNav.language(),
+      ];
+    },
+  });
+
   app.handleEvents = (events) => {
     for (const e of events) {
       if (e.type === "levelUp") levelUp(app, e);

@@ -17,12 +17,12 @@ export class Lobby {
     this.balance = h("b", { text: fmt(app, p.balance) });
     this.levelEl = h("span", { class: "level-badge", text: String(xp.level) });
     this.xpFill = h("i", { style: { width: Math.round(xp.fraction * 100) + "%" } });
-    const top = h("header", { class: "topbar lobby-top" },
-      h("button", { type: "button", class: "icon-btn", "aria-label": t("arcade"), onclick: () => { app.audio.sfx("tap"); window.Platform ? window.Platform.home() : null; } }, icon("back")),
+    app.nav.setBack();
+    app.nav.back.disabled = false;
+    const top = h("header", { class: "topbar lobby-top" }, app.nav.back,
       h("div", { class: "topbar-mid" }, h("div", { class: "machine-name", text: t("title") }), h("div", { class: "xp-row" }, this.levelEl, h("div", { class: "xp-bar", role: "progressbar", "aria-label": t("xp") }, this.xpFill))),
       h("div", { class: "balance" }, symbolSvg("coin", "coin-icon"), this.balance),
-      h("button", { type: "button", class: "icon-btn", "aria-label": t("profile"), onclick: () => { app.audio.sfx("tap"); app.showProfile(); } }, icon("trophy")),
-      h("button", { type: "button", class: "icon-btn", "aria-label": t("settings"), onclick: () => { app.audio.sfx("tap"); app.showSettings(); } }, icon("gear")));
+      app.nav.menu);
 
     this.bonusBtn = h("button", { type: "button", class: "bonus-card", onclick: () => this.collect() });
     this.missionsEl = h("section", { class: "missions", "aria-label": t("missions") });

@@ -11,8 +11,6 @@ for (const t in ALL_TIERS) ALL_TIERS[t].name = _t("tier." + t.replace(/^[cs]-/, 
 const MODE_LABEL = { flat: "", box: _t("modeLabel.box"), shape: _t("modeLabel.shape") };
 
 const ICON = {
-  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
-  restart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v5h5"/></svg>',
   heart: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.4C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.1 5.4 3 1.8-1.9 3.3-3 5.4-3 3.6 0 5.7 3.7 4.2 7.1C19.5 16.4 12 21 12 21z"/></svg>',
   heartPlus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7-4.3-8.9-8.8C1.7 8 3.7 4.5 7 4.5c2 0 3.4 1 5 2.8 1.6-1.8 3-2.8 5-2.8 3.3 0 5.3 3.5 3.9 6.7"/><path d="M18 14v6M15 17h6" stroke-linecap="round"/></svg>',
   probe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>',
@@ -29,9 +27,6 @@ const ICON = {
   play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12.5-7.5z"/></svg>',
   chevL: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
   chevR: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
-  auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>',
-  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>',
-  moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
   flat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M8 8h5v4M16 16h-5"/><path d="M14.5 10.5L13 12l-1.5-1.5"/></svg>',
   cube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>',
   shapes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V9h6v5h6v6z"/><path d="M15 14c0-4 2-6 6-6v12h-6"/></svg>'
@@ -1089,13 +1084,9 @@ const Game = {
   init() {
     this.board2 = new Board($("#boardCanvas"), { interactive: true, pad: 14 });
     this.wireBoard(this.board2);
-    $("#backBtn").innerHTML = ICON.back;
-    $("#restartBtn").innerHTML = ICON.restart;
     $("#zoomIn").innerHTML = ICON.plus;
     $("#zoomOut").innerHTML = ICON.minus;
     $("#hintIcon").innerHTML = ICON.bulb;
-    $("#backBtn").onclick = () => App.show("home");
-    $("#restartBtn").onclick = () => this.start(this.tier, this.level, { daily: this.daily });
     $("#hintBtn").onclick = () => this.hint();
     $("#zoomIn").onclick = () => this.board && this.board.zoomBy(1.4);
     $("#zoomOut").onclick = () => this.board && this.board.zoomBy(1 / 1.4);
@@ -1370,7 +1361,7 @@ const Shop = {
           if (id === "lane") { Store.settings.laneTrace = true; Store.saveSettings(); }
         }
       } else if (act === "wear") { Store.settings.skin = id; Store.saveSettings(); Theme.read(); }
-      this.render(this.focusId); Home.renderPoints(); Home.renderSettings(); if (App.view === "game") Game.renderHud();
+      this.render(this.focusId); Home.renderPoints(); if (App.view === "game") Game.renderHud();
     });
   },
   open(focus) {
@@ -1428,14 +1419,6 @@ const Home = {
     $("#nextPage").onclick = () => { this.page++; this.renderGrid(); };
     $("#playBtn").onclick = () => { const t = Store.curTier(); Game.start(t, Store.unlocked(t)); };
     $("#dailyBtn").onclick = () => { const d = todayStr(), cfg = DAILY[new Date().getDay()]; Game.start(cfg.tier, cfg.level, { daily: d }); };
-    $("#smartTap").onclick = () => { Store.settings.smartTap = !Store.settings.smartTap; Store.saveSettings(); this.renderSettings(); };
-    $("#laneTrace").onclick = () => { Store.settings.laneTrace = !Store.settings.laneTrace; Store.saveSettings(); this.renderSettings(); };
-    const tb = { auto: [ICON.auto, _t("theme.auto")], light: [ICON.sun, _t("theme.light")], dark: [ICON.moon, _t("theme.dark")] };
-    for (const b of document.querySelectorAll("#themeSeg button")) {
-      const [ic, label] = tb[b.dataset.themeOpt];
-      b.innerHTML = ic + "<span>" + label + "</span>";
-      b.onclick = () => { Store.settings.theme = b.dataset.themeOpt; Store.saveSettings(); Theme.apply(Store.settings.theme); this.renderSettings(); };
-    }
     const mb = { flat: [ICON.flat, _t("mode.flat")], "3d": [ICON.cube, _t("mode.3d")], shapes: [ICON.shapes, _t("mode.shapes")] };
     for (const b of document.querySelectorAll("#modeSeg button")) {
       const [ic, label] = mb[b.dataset.mode];
@@ -1458,10 +1441,6 @@ const Home = {
   },
   renderPoints() { $("#pointsVal").textContent = Store.balance(); },
   renderSettings() {
-    $("#smartTap").setAttribute("aria-checked", String(!!Store.settings.smartTap));
-    $("#laneRow").hidden = !Store.owns("lane");
-    $("#laneTrace").setAttribute("aria-checked", String(!!Store.settings.laneTrace));
-    for (const b of document.querySelectorAll("#themeSeg button")) b.setAttribute("aria-checked", String(b.dataset.themeOpt === Store.settings.theme));
     for (const b of document.querySelectorAll("#modeSeg button")) b.setAttribute("aria-checked", String(b.dataset.mode === Store.settings.mode));
   },
   renderDaily() {
@@ -1542,14 +1521,46 @@ const Hero = {
 };
 
 /* ---------- app ---------- */
+// Back (top left) and the menu drawer (top right): settings everywhere, plus restart, shop and rules in a level.
+const nav = GameNav.create({
+  title: "Outbound",
+  items: () => {
+    const inGame = App.view === "game", s = Store.settings;
+    const toggle = (key, icon) => ({
+      icon, label: _t(key), note: _t(key + ".note"), checked: !!s[key],
+      onToggle(on) { s[key] = on; Store.saveSettings(); },
+    });
+    return [
+      inGame && { icon: "restart", label: _t("restart"), onSelect: () => Game.start(Game.tier, Game.level, { daily: Game.daily }) },
+      { icon: "shop", label: _t("pointsShop"), onSelect: () => Shop.open() },
+      inGame && { icon: "help", label: _t("how"), html: "<ul>" + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => "<li>" + _t("how." + n) + "</li>").join("") + "</ul>" },
+      { heading: _t("settings") },
+      {
+        icon: "theme", label: _t("appearance"), value: s.theme,
+        options: ["auto", "light", "dark"].map((v) => ({ value: v, label: _t("theme." + v) })),
+        onChoose(v) { s.theme = v; Store.saveSettings(); Theme.apply(v); },
+      },
+      toggle("smartTap", "tap"),
+      Store.owns("lane") && toggle("laneTrace", "route"),
+      !inGame && GameNav.language(),
+    ];
+  },
+});
+
 const App = {
   view: "home",
   show(v) {
     this.view = v;
     $("#home").hidden = v !== "home";
     $("#game").hidden = v !== "game";
+    this.placeNav();
     if (v === "home") { Game.token++; Overlay.hide(); Home.render(); Hero.board.resize(true); }
     else { Game.board2.resize(true); if (Game.board3) Game.board3.resize(true); }
+  },
+  placeNav() {
+    const bar = this.view === "game" ? $(".gbar") : $("#homeBar");
+    bar.prepend(nav.back); bar.append(nav.menu);
+    if (this.view === "game") nav.setBack(() => App.show("home"), _t("backToLevels")); else nav.setBack();
   }
 };
 
@@ -1560,6 +1571,7 @@ function start(data) {
   Game.init();
   Shop.init();
   Hero.init();
+  App.placeNav();
   Home.render();
   const snap = data && data.game;
   if (snap && ALL_TIERS[snap.tier] && snap.level > 0) Game.start(snap.tier, snap.level, { restore: snap, daily: snap.daily || null });
@@ -1572,7 +1584,7 @@ function start(data) {
     const cur = root.getAttribute("data-theme");
     if (cur !== ourTheme) {
       hostTheme = cur; ourTheme = cur;
-      if (Store.settings.theme !== "auto") { Store.settings.theme = "auto"; Store.saveSettings(); Home.renderSettings(); }
+      if (Store.settings.theme !== "auto") { Store.settings.theme = "auto"; Store.saveSettings(); nav.refresh(); }
     }
     Theme.read();
   }).observe(root, { attributes: true, attributeFilter: ["data-theme"] });

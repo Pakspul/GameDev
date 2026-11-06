@@ -79,13 +79,21 @@ button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outli
 .tool .badge{position:absolute;top:-7px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:var(--accent);color:#fff;font-family:var(--f-display);font-size:11px;line-height:20px;text-align:center;box-shadow:0 2px 0 var(--accent-dk)}
 .tool.on{background:#fff1e6;box-shadow:0 4px 0 var(--accent-dk);outline:2px solid var(--accent)}
 .tool:disabled{opacity:.45;cursor:default;transform:none}
+/* Back button and menu drawer (shared/js/gamenav.js): workshop buttons with a steel lip, a drawer like the menu card */
+:root{--gn-size:42px;--gn-radius:13px;--gn-bg:var(--card);--gn-fg:var(--ink);--gn-shadow:0 3px 0 var(--steel-sh);--gn-press:translateY(2px);--gn-stroke:2.8;--gn-icon:20px;--gn-top:10px;--gn-side:16px;
+  --gn-font:var(--f-body);--gn-title-font:400 28px/1 var(--f-display);--gn-panel-bg:var(--card);--gn-panel-fg:var(--ink);--gn-muted:var(--ink-2);--gn-line:var(--line);--gn-hover:#eef3f8;
+  --gn-accent:var(--accent);--gn-accent-ink:#fff;--gn-backdrop:rgba(23,33,46,.42);--gn-z:12}
+.gnav-btn:active{box-shadow:0 1px 0 var(--steel-sh)}
+.gnav-bar{max-width:592px;margin:0 auto}
+.gnav-drawer .gnav-item{font-weight:700}
+.gnav-drawer .gnav-heading,.gnav-drawer .gnav-seg button{font-weight:800}
 #viewBtn{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 98px);z-index:5;border-radius:50%;width:46px;height:46px}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 100px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:99px;font-weight:700;font-size:14px;z-index:30;pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
 #toast.on{opacity:1}
 #loading{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--f-display);font-size:14px;color:var(--ink-2);z-index:4}
 
 /* ---------- Menu ---------- */
-#menu{position:fixed;inset:0;z-index:10;overflow:auto;pointer-events:none;display:flex;flex-direction:column;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(env(safe-area-inset-top,0px) + 18px) calc(env(safe-area-inset-bottom,0px) + 16px)}
+#menu{position:fixed;inset:0;z-index:10;overflow:auto;pointer-events:none;display:flex;flex-direction:column;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(env(safe-area-inset-top,0px) + 66px) calc(env(safe-area-inset-bottom,0px) + 16px)}
 #menu>*{pointer-events:auto}
 .brand{display:flex;align-items:center;gap:12px;align-self:flex-start;pointer-events:none!important}
 .brand h1{font-family:var(--f-display);font-weight:400;font-size:clamp(34px,9vw,52px);line-height:.9;margin:0;color:var(--ink);text-shadow:0 3px 0 #fff}

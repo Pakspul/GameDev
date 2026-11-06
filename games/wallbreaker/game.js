@@ -151,20 +151,28 @@ function lives(n) { return Number.isFinite(n) ? "♥ " + Math.max(0, n) : ""; }
 
 // ---- Screens ---------------------------------------------------------------------------------------------
 const overlay = () => $("#overlay");
-function showScreen(node, { modal = false } = {}) {
+let screenBack = null;       // where the back button goes from the screen on show (null: the arcade)
+/** Show a menu screen. `back` is where the back button (and Android back) goes from it: Wallbreaker's
+ *  home by default, null on the home screen itself (then it goes to the arcade). */
+function showScreen(node, { modal = false, back = home } = {}) {
+  screenBack = back;
   const o = overlay();
   o.replaceChildren(node);
   o.hidden = false;
   o.classList.toggle("modal", modal);
   o.scrollTop = 0;
-  const first = o.querySelector("[autofocus]") || o.querySelector("button");
+  placeNav();
+  const first = o.querySelector("[autofocus]") || o.querySelector(".screen > :not(.screen-head) button");
   if (first && matchMedia("(hover: hover)").matches) first.focus({ preventScroll: true });
 }
-function hideScreen() { overlay().hidden = true; overlay().replaceChildren(); }
+function hideScreen() { overlay().hidden = true; overlay().replaceChildren(); placeNav(); }
 
-function backBtn(to = home) { return h("button", { class: "ghost back", type: "button", onclick: () => { sound.play("click"); to(); } }, _t("back")); }
-function screen(title, ...body) {
-  return h("section", { class: "screen" }, h("div", { class: "screen-head" }, backBtn(), h("h2", {}, title), h("span", { class: "bal" }, credits(save.credits))), ...body);
+/** The balance, top right next to the menu: a tap opens the shop. */
+function wallet() { return h("button", { type: "button", class: "bal", "aria-label": _t("shop"), onclick: () => { sound.play("click"); shop(); } }, credits(save.credits)); }
+/** A menu screen: the back button (to `back`), a title, the balance and the menu (see placeNav). */
+function screen(title, ...body) { return screenWith(title, wallet(), body); }
+function screenWith(title, right, body) {
+  return h("section", { class: "screen" }, h("div", { class: "screen-head" }, h("h2", {}, title), right || h("span")), ...body);
 }
 
 function leaveLevel() {
@@ -189,17 +197,10 @@ function home() {
       info ? h("span", { class: "prog" }, info) : null);
   };
   showScreen(h("section", { class: "screen home" },
-    h("div", { class: "home-top" },
-      h("button", { class: "ghost", type: "button", onclick: () => window.Platform && Platform.home() }, _t("arcade")),
-      h("span", { class: "bal" }, credits(save.credits))),
+    h("div", { class: "screen-head" }, h("span"), wallet()),
     h("h1", { class: "logo" }, h("span", {}, "WALL"), h("span", {}, "BREAKER")),
     h("div", { class: "modes" }, MODE_ORDER.map(card)),
-    h("div", { class: "home-row" },
-      h("button", { type: "button", class: "secondary", onclick: () => shop() }, _t("shop")),
-      h("button", { type: "button", class: "secondary", onclick: () => help() }, _t("help")),
-      h("button", { type: "button", class: "secondary", onclick: () => stats() }, _t("stats")),
-      h("button", { type: "button", class: "secondary", onclick: () => settings() }, _t("settings"))),
-    h("p", { class: "fine" }, _t("promise"))));
+    h("p", { class: "fine" }, _t("promise"))), { back: null });
   if (!save.seenHelp) { save.seenHelp = true; persist(); }
 }
 
@@ -713,9 +714,7 @@ function shop(tab = "boosts", back = home) {
     tab = t; for (const b of tabBar.children) { b.classList.toggle("on", b === ev.currentTarget); b.setAttribute("aria-selected", String(b === ev.currentTarget)); } draw();
   } }, _t("shop." + t))));
   draw();
-  showScreen(h("section", { class: "screen" },
-    h("div", { class: "screen-head" }, h("button", { class: "ghost back", type: "button", onclick: () => back() }, _t("back")), h("h2", {}, _t("shop")), head),
-    tabBar, content, h("p", { class: "fine center" }, _t("shop.never"))));
+  showScreen(screenWith(_t("shop"), head, [tabBar, content, h("p", { class: "fine center" }, _t("shop.never"))]), { back });
 }
 function swatch(id, shelf) {
   const el = h("i", { class: "sw sw-" + shelf, "aria-hidden": "true" });
@@ -761,9 +760,7 @@ function settings(back = home) {
     h("input", { type: "range", min, max, step, value: s[k], oninput: (ev) => set(k, Number(ev.target.value)) }));
   const io = h("textarea", { rows: "3", "aria-label": _t("set.saveText"), placeholder: _t("set.pastePlaceholder") });
   const file = h("input", { type: "file", accept: "application/json,.json,.txt", hidden: true, onchange: async (ev) => { const f = ev.target.files[0]; if (f) io.value = await f.text(); } });
-  const langs = h("div", { class: "chips" }, I18n.languages.map((l) => h("button", { type: "button", class: "chip" + (l.code === I18n.lang ? " on" : ""), lang: l.code, onclick: () => { persist(); I18n.set(l.code); } }, l.name)));
-  showScreen(h("section", { class: "screen" },
-    h("div", { class: "screen-head" }, h("button", { class: "ghost back", type: "button", onclick: () => back() }, _t("back")), h("h2", {}, _t("settings")), h("span")),
+  showScreen(screenWith(_t("settings"), null, [
     h("div", { class: "panel" },
       slider("sound", "set.sound", 0, 1, 0.05),
       slider("music", "set.music", 0, 1, 0.05),
@@ -777,7 +774,6 @@ function settings(back = home) {
       toggle("autoLaunch", "set.autoLaunch"),
       toggle("aimAssist", "set.aimAssist"),
       slider("sensitivity", "set.sensitivity", 0.5, 2, 0.05)),
-    h("div", { class: "panel" }, h("h3", {}, _t("set.language")), langs),
     h("div", { class: "panel" },
       h("h3", {}, _t("set.save")),
       h("p", { class: "fine" }, _t("set.saveNote")),
@@ -802,31 +798,63 @@ function settings(back = home) {
       h("button", { type: "button", class: "link danger", onclick: () => {
         if (!confirm(_t("set.resetConfirm"))) return;
         save = freshSave(); persist(); applySettings(); toast(_t("set.reset")); settings(back);
-      } }, _t("set.resetBtn")))));
+      } }, _t("set.resetBtn")))]), { back });
+}
+
+// ---- Back (top left) and the menu drawer (top right), shared/js/gamenav.js --------------------------------
+// In a level the drawer is the pause menu: opening it pauses, closing it plays on. On the menus it holds
+// the shop, rules, stats, settings and the language.
+const nav = GameNav.create({
+  title: () => (session && paused ? _t("paused") : "Wallbreaker"),
+  onOpen() { pauseGame({ drawer: false }); },
+  // Closing resumes, unless the chosen item showed a screen (settings) or left the level: those run
+  // right after onClose, so wait for them before deciding.
+  onClose() { queueMicrotask(() => { if (session && paused && overlay().hidden) resumeGame(); }); },
+  items: () => {
+    const s = session, inLevel = s && !s.ending;
+    return [
+      inLevel && { icon: "play", label: _t("resume"), onSelect() {} },
+      inLevel && { icon: "restart", label: _t("restart"), onSelect() { const o = s.opts; leaveLevel(); playLevel(s.mode, s.number, o); } },
+      s && { icon: "help", label: _t("help"), note: inLevel ? _t("pause.note") : "", html: "<ul>" + ["c1", "c2", "c3", "c4"].map((k) => "<li>" + _t("help." + k) + "</li>").join("") + "</ul>" },
+      inLevel && { icon: "gear", label: _t("settings"), onSelect() { settings(() => { hideScreen(); nav.open(); }); } },
+      !s && { icon: "shop", label: _t("shop"), onSelect: () => shop() },
+      !s && { icon: "help", label: _t("help"), onSelect: () => help() },
+      !s && { icon: "trophy", label: _t("stats"), onSelect: () => stats() },
+      !s && { icon: "gear", label: _t("settings"), onSelect: () => settings() },
+      !s && GameNav.language(),
+    ];
+  },
+});
+/** Put the two buttons where they belong: in the HUD during a level, else in the head of the menu screen. */
+function placeNav() {
+  const head = !overlay().hidden && overlay().querySelector(".screen-head");
+  if (head) {
+    head.prepend(nav.back); head.append(nav.menu);
+    if (screenBack) nav.setBack(() => { sound.play("click"); screenBack(); }); else nav.setBack();
+  } else if (session) {
+    $("#hud").prepend(nav.back); $("#hud").append(nav.menu);
+    nav.setBack(quitLevel, _t("quit"));
+  }
+}
+/** Leave the level for its mode's menu. Quitting mid-level costs nothing. */
+function quitLevel() {
+  const m = session && session.mode;
+  leaveLevel();
+  if (m === "run") runScreen(); else if (m) openMode(m); else home();
 }
 
 // ---- Pause --------------------------------------------------------------------------------------------------
-function pauseGame() {
+function pauseGame({ drawer = true } = {}) {
   if (!session || session.ending || paused) return;
   paused = true;
   sound.stopMusic();
   stopLoop();
   R.draw(session.engine, performance.now(), { aim });
-  showPause();
-}
-function showPause() {
-  const s = session;
-  showScreen(h("section", { class: "screen result" },
-    h("h2", {}, _t("paused")),
-    h("p", { class: "fine" }, _t("pause.note")),
-    h("div", { class: "buttons" },
-      h("button", { type: "button", class: "primary", autofocus: true, onclick: () => resumeGame() }, _t("resume")),
-      h("button", { type: "button", class: "secondary", onclick: () => { const o = s.opts; leaveLevel(); playLevel(s.mode, s.number, o); } }, _t("restart")),
-      h("button", { type: "button", class: "secondary", onclick: () => settings(() => showPause()) }, _t("settings")),
-      h("button", { type: "button", class: "secondary", onclick: () => { const m = s.mode; leaveLevel(); m === "run" ? runScreen() : openMode(m); } }, _t("quit")))), { modal: true });
+  if (drawer) nav.open();
 }
 function resumeGame() {
   if (!session) return;
+  if (nav.isOpen()) { nav.close(); return; } // closing the drawer resumes (see nav.onClose)
   hideScreen();
   paused = false;
   sound.startMusic();
@@ -930,7 +958,6 @@ function init() {
   on(window, "keyup", onKey);
   on(window, "resize", resize);
   on(document, "visibilitychange", () => { if (document.visibilityState === "hidden") { pauseGame(); persist(); sound.suspend(); } else sound.resume(); });
-  on($("#pauseBtn"), "click", () => pauseGame());
   on(window, "contextmenu", (ev) => { if (session) ev.preventDefault(); });
   resize();
   home();

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Nuts &amp; Bolts</title>
 <link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="../../shared/css/gamenav.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,23 +19,12 @@
 
 <div id="app" class="pat-pegs">
   <header class="topbar">
-    <div class="left">
-      <button id="menuBtn" class="hexbtn" data-i18n-attr="aria-label:menuBtn;title:menuBtn.tip">
-        <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span>
-      </button>
-    </div>
+    <div class="left" id="navLeft"></div>
     <div class="title">
       <span id="diffPill" class="pill"></span>
       <h1 id="levelTitle"></h1>
     </div>
-    <div class="right">
-      <button id="restartBtn" class="hexbtn" data-i18n-attr="aria-label:restart;title:restart.tip">
-        <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4.5 4v4.5H9"/></svg></span>
-      </button>
-      <button id="fsBtn" class="hexbtn" data-i18n-attr="aria-label:fs;title:fs.tip">
-        <span class="face"><svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span>
-      </button>
-    </div>
+    <div class="right" id="navRight"></div>
   </header>
 
   <div class="status">
@@ -154,6 +144,7 @@
 </div>
 <script src="../../shared/js/platform.js"></script>
 <script src="../../shared/js/i18n.js"></script>
+<script src="../../shared/js/gamenav.js"></script>
 <script src="strings.js"></script>
 <script src="../../shared/js/economy.js"></script>
 <script src="economy.js"></script>

@@ -102,11 +102,6 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); 
   padding: calc(env(safe-area-inset-top, 0px) + 12px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 28px) max(16px, env(safe-area-inset-left, 0px));
 }
 .topline { display: flex; justify-content: space-between; align-items: center; }
-.ghost {
-  display: inline-flex; align-items: center; gap: 2px; padding: 8px 12px 8px 6px; border-radius: 99px;
-  font-weight: 700; color: var(--muted);
-}
-.ghost:active { background: var(--paper-2); }
 .round {
   width: 44px; height: 44px; border-radius: 50%; display: inline-grid; place-items: center;
   background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow);
@@ -275,19 +270,20 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); 
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { transform: translateY(14px) scale(.97); opacity: 0; } }
 
-.sheet { text-align: left; max-height: 90vh; overflow: auto; }
-.sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.sheet-head h2 { margin: 0; font-size: 1.6rem; }
-.setting { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
-.setting:first-of-type { border-top: 0; }
-.setting small { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
-.switch { flex: none; width: 50px; height: 30px; border-radius: 99px; background: var(--line); position: relative; transition: background .15s; }
-.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
-.switch[aria-checked="true"] { background: var(--accent); }
-.switch[aria-checked="true"]::after { transform: translateX(20px); }
-.seg { display: flex; gap: 2px; padding: 3px; background: var(--paper-2); border-radius: 10px; }
-.seg button { padding: 6px 10px; border-radius: 8px; font-size: .85rem; font-weight: 700; color: var(--muted); }
-.seg button[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+/* ---------- back button and menu drawer (shared/js/gamenav.js), drawn on graph paper ---------- */
+:root {
+  --gn-bg: var(--card); --gn-fg: var(--ink); --gn-border: 1px solid var(--line); --gn-shadow: var(--shadow);
+  --gn-stroke: 2.2; --gn-font: var(--font-ui); --gn-title-font: 800 1.7rem/1 var(--font-display);
+  --gn-panel-bg: var(--paper); --gn-panel-fg: var(--ink); --gn-muted: var(--muted); --gn-line: var(--line);
+  --gn-hover: var(--paper-2); --gn-accent: var(--accent); --gn-accent-ink: var(--accent-ink);
+  --gn-backdrop: color-mix(in srgb, var(--paper) 55%, rgba(0,0,0,.35));
+}
+.gnav-drawer {
+  background-image: linear-gradient(var(--rule) 1px, transparent 1px), linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.gnav-drawer .gnav-close { background: var(--card); border: 1px solid var(--line); }
+.gnav-heading { color: var(--accent); }
 
 @media (min-width: 560px) {
   .grid { grid-template-columns: repeat(10, 1fr); }

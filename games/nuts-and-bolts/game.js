@@ -1228,7 +1228,6 @@ function NBCore() {
   $("undoBtn").addEventListener("click", undo);
   $("hintBtn").addEventListener("click", hint);
   $("spareBtn").addEventListener("click", addSpare);
-  $("restartBtn").addEventListener("click", restart);
   $("replayBtn").addEventListener("click", restart);
   $("nextBtn").addEventListener("click", () => {
     if (!M) return;
@@ -1241,21 +1240,14 @@ function NBCore() {
   const root = document.documentElement;
   const fsSupported = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
   const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
-  if (!fsSupported) $("fsBtn").hidden = true;
   async function toggleFs() {
     try {
       if (fsElement()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
       else await (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
     } catch (e) { toast(_t("fs.denied")); }
   }
-  function updateFsIcon() {
-    const on = !!fsElement();
-    $("fsIcon").innerHTML = on ? '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>' : '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>';
-    $("fsBtn").setAttribute("aria-label", _t(on ? "fs.exit" : "fs"));
-  }
-  $("fsBtn").addEventListener("click", toggleFs);
-  document.addEventListener("fullscreenchange", updateFsIcon);
-  document.addEventListener("webkitfullscreenchange", updateFsIcon);
+  document.addEventListener("fullscreenchange", () => nav.refresh());
+  document.addEventListener("webkitfullscreenchange", () => nav.refresh());
 
   let wakeLock = null;
   async function requestWake() {
@@ -1305,11 +1297,36 @@ function NBCore() {
     renderDiffs(); renderDaily(); renderStats();
     $("shop").hidden = true;
     $("menu").hidden = false;
+    syncNav();
     $("playBtn").focus({ preventScroll: true });
   }
-  const closeMenu = () => { $("menu").hidden = true; };
+  const closeMenu = () => { $("menu").hidden = true; syncNav(); };
+
+  // Back (top left) and the menu drawer (top right), as hex buttons in the top bar. In a puzzle, back
+  // opens the workshop; in the workshop it leaves for the arcade (the bar then sits above the workshop).
+  const nav = GameNav.create({
+    title: "Nuts & Bolts",
+    items: () => {
+      const inPuzzle = $("menu").hidden;
+      return [
+        inPuzzle && { icon: "restart", label: _t("restart"), onSelect: restart },
+        { icon: "shop", label: _t("shop"), onSelect: openShop },
+        fsSupported && { icon: "fullscreen", label: _t("fs"), checked: !!fsElement(), onToggle: toggleFs },
+        { icon: "help", label: _t("how"), html: [1, 2, 3].map(n => "<p>" + _t("how." + n) + "</p>").join("") },
+        !inPuzzle && GameNav.language(),
+      ];
+    },
+  });
+  for (const b of [nav.back, nav.menu]) { b.classList.add("hexbtn"); b.firstChild.classList.add("face"); }
+  $("navLeft").append(nav.back);
+  $("navRight").append(nav.menu);
+  function syncNav() {
+    const inMenu = !$("menu").hidden;
+    $("app").classList.toggle("menu-open", inMenu);
+    if (inMenu) nav.setBack(); else nav.setBack(openMenu, _t("backToMenu"));
+  }
+  syncNav();
   const levelValue = () => { const v = parseInt($("levelInput").value, 10); return Math.min(maxLevel(menuDiff), Math.max(1, isNaN(v) ? 1 : v)); };
-  $("menuBtn").addEventListener("click", openMenu);
   $("menuCancel").addEventListener("click", closeMenu);
   $("lvlMinus").addEventListener("click", () => setLevelInput(levelValue() - 1));
   $("lvlPlus").addEventListener("click", () => setLevelInput(levelValue() + 1));
@@ -1350,7 +1367,7 @@ function NBCore() {
   }
   $("boardGrid").addEventListener("click", onShopClick);
   $("finishGrid").addEventListener("click", onShopClick);
-  function openShop() { renderShop(); $("menu").hidden = true; $("shop").hidden = false; $("shopClose").focus({ preventScroll: true }); }
+  function openShop() { renderShop(); $("menu").hidden = true; syncNav(); $("shop").hidden = false; $("shopClose").focus({ preventScroll: true }); }
   const closeShop = () => { $("shop").hidden = true; };
   $("washerChip").addEventListener("click", openShop);
   $("shopClose").addEventListener("click", closeShop);

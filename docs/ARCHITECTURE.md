@@ -22,7 +22,8 @@ How the repository is organised, why, and how to improve it step by step without
 │   ├── wallbreaker/         src/ holds the engine, generator, modes, economy (config.js has every number), renderer and save
 │   └── coin-dozer/          src/ holds the physics board (Rapier), the machine's rules, economy, themes, renderer and save; config.js has every number
 ├── shared/                  Things every game uses, kept in exactly one place
-│   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md)
+│   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md), gamenav.js (back button and menu)
+│   ├── css/                 gamenav.css: the neutral look of the back button and menu, which each game restyles
 │   ├── vendor/three/        three.js r128 (the 3D engine), served locally
 │   ├── vendor/rapier/       Rapier 0.19.3 (rigid-body physics, WebAssembly inside an ES module), used by Coin Dozer
 │   └── icons/               App icon
@@ -106,6 +107,15 @@ shared/js/platform.js
 ```
 
 Each game then calls `Platform.home()` from **its own** menu, styled in its own way. The look stays separate; only the plumbing is shared.
+
+### Navigation: the same in every game, in each game's style
+
+Every game has the same two corner buttons, from `shared/js/gamenav.js` (`GameNav.create`):
+
+- **Top left, back.** In a level it goes to the game's own menu, on that menu to the arcade. The game says where with `nav.setBack(fn, label)` whenever its screen changes; `nav.setBack()` means "to the arcade". The Android back button does the same (`Platform.onBack`).
+- **Top right, ☰.** A drawer from the right, like the hub's menu. The game lists its items (actions, switches, choices, folding "how to play" text) in a function that runs on every open; "Back to arcade" is always added at the bottom. `onOpen`/`onClose` let a game pause while it's open.
+
+The game decides where the two buttons go: into its own top bar (Graphite, Outbound, Nuts & Bolts, Crystal Reels, the head of each Wallbreaker menu screen, and the HUD of Unscrew, Camper Crew and Wallbreaker) or into a bar of their own fixed to the top corners (`GameNav.bar(nav)`, for screens without a header). The look comes from `--gn-*` variables that each game sets in its `style.css` (listed at the top of `shared/css/gamenav.css`); a game may restyle `.gnav-btn` further, as Nuts & Bolts does with its hex buttons. `npm test` fails for a game without both buttons.
 
 ### 2. Extract when you touch, not in one big refactor
 

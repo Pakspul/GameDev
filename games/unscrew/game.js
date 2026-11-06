@@ -249,7 +249,7 @@ function onTap(x,y){if(state!=='play'||!LS||LS.done||LS.paused)return;
   const hits=pickRay.intersectObjects(LS.screws.filter(s=>s.state==='in'&&!s.hidden).map(s=>s.hit),false);if(!hits.length)return;
   if(CUR.mode==='2d')return tapScrew(hits[0].object.userData.screw);
   const ph=pickRay.intersectObjects(LS.meshes,false)[0];if(!ph||hits[0].distance<=ph.distance+0.12)tapScrew(hits[0].object.userData.screw)}
-addEventListener('keydown',e=>{if(e.key==='Escape'&&state==='play'&&$('#modal').hidden)openPause()});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&state==='play'&&$('#modal').hidden)nav.open()});
 
 /* --- screen helpers --- */
 const HOLE_POS=[[.5,.41],[.33,.69],[.67,.69]];
@@ -298,7 +298,7 @@ function nextBox(){return LS.qi<LS.queue.length?{c:LS.queue[LS.qi++],n:0,arrived
 const bestBox=c=>bestBoxOf(LS.boxes.filter(b=>b&&b.state==='ready'),c);
 const key=(m=G.mode,d=G.diff)=>m+'-'+d;
 function startLevel(){
-  state='play';closeModal();$('#loading').hidden=false;$('#hud').hidden=false;$('#tools').hidden=false;$('#menu').hidden=true;LS=null;
+  state='play';closeModal();$('#loading').hidden=false;$('#hud').hidden=false;$('#tools').hidden=false;$('#menu').hidden=true;LS=null;placeNav();
   setTimeout(()=>{
     const cfg=cfgFor(G.diff,G.level),lv=buildLevel(G.mode,G.diff,G.level,cfg);setCurrent(lv);
     LS={cfg,lv,screws:lv.screws,total:lv.screws.length,removed:0,boxes:[],queue:lv.queue,qi:0,buffer:[],cap:cfg.B,busy:0,levelScore:0,combo:0,lastBox:0,
@@ -390,7 +390,6 @@ function fallPart(p){const m=p.mesh,is2=CUR.mode==='2d',mats=[];m.traverse(o=>{i
   anims.push(dt=>{t+=dt;vel.y-=16*dt;m.position.addScaledVector(vel,dt);m.rotation.x+=spin.x*dt;m.rotation.y+=spin.y*dt;m.rotation.z+=spin.z*dt;
     if(t>0.8)mats.forEach(([mm,o])=>mm.opacity=o*Math.max(0,1-(t-0.8)/0.6));if(t>1.4){m.parent&&m.parent.remove(m);return false}})}
 $('#viewBtn').onclick=()=>{if(!CUR||CUR.mode!=='3d')return;orbit.tw={az:0.75,pol:1.02};orbit.dist=orbit.fit};
-$('#pauseBtn').onclick=()=>openPause();
 
 /* --- modals --- */
 function modal(title,body,actions){$('#mTitle').textContent=title;$('#mBody').innerHTML=body;const a=$('#mActions');a.innerHTML='';
@@ -403,13 +402,21 @@ function openShop(after){const diff=LS?G.diff:save.sel.diff;
   const body=`<div class="wallet">${COIN}<span>${fmt(save.coins)}</span></div><p class="snote">${_t('shop.note',{diff:_t('diff.'+diff)})}</p><div class="shop">${TOOL_ORDER.map(id=>{const t=TOOLS[id];
     return`<div class="srow">${t.icon}<div><span class="nm">${t.name}</span><div class="ds">${t.desc}</div></div><span class="sprice" aria-label="${_t('priceN',{n:toolPrice(id,diff)})}">${COIN}${toolPrice(id,diff)}</span></div>`}).join('')}</div>`;
   modal(_t('shop.title'),body,[[_t('done'),after,'primary']])}
-function openPause(){if(!LS)return;LS.paused=true;const soundBtn=()=>_t(save.sound?'sound.on':'sound.off');
-  modal(_t('pause'),`<p>${_t('pause.body',{level:G.level,removed:LS.removed,total:LS.total})}</p>`,[
-    [_t('pause.resume'),()=>{LS.paused=false;checkSoon()},'primary'],
-    [_t('menu.shop'),()=>{openShop(()=>{LS.paused=false;checkSoon()});return'keep'}],
-    [_t('pause.restart'),()=>startLevel()],
-    [soundBtn(),()=>{save.sound=!save.sound;persist();$('#mActions').children[3].textContent=soundBtn();return'keep'}],
-    [_t('toMenu'),()=>showMenu()]])}
+/* --- back (top left) and the menu drawer (top right); the drawer pauses a level while it's open --- */
+const resume=()=>{if(LS){LS.paused=false;checkSoon()}};
+const nav=GameNav.create({title:'Unscrew',
+  onOpen(){if(LS)LS.paused=true},
+  onClose:resume,
+  items:()=>{const play=state==='play'&&LS;return[
+    play&&{icon:'restart',label:_t('pause.restart'),onSelect:()=>startLevel()},
+    play&&CUR&&CUR.mode==='3d'&&{icon:'view',label:_t('resetCamera'),onSelect:()=>$('#viewBtn').click()},
+    {icon:'shop',label:_t('shop.title'),onSelect:()=>{if(play){LS.paused=true;openShop(resume)}else openShop(()=>renderMenu())}},
+    {icon:'sound',label:_t('sound'),checked:save.sound,onToggle(on){save.sound=on;persist()}},
+    {icon:'help',label:_t('how.title'),html:'<ul>'+[1,2,3,4,5].map(n=>`<li>${_t('how.'+n)}</li>`).join('')+'</ul>'},
+    !play&&GameNav.language()]}});
+const navBar=GameNav.bar(nav);document.body.appendChild(navBar);
+function placeNav(){if(state==='play'){const top=$('#hud .top');top.prepend(nav.back);top.append(nav.menu);nav.setBack(showMenu,_t('backToMenu'))}
+  else{navBar.append(nav.back,nav.menu);nav.setBack()}}
 function stuck(){LS.paused=true;sfx.fail();const acts=[];const resume=()=>{LS.paused=false};
   const label=id=>_t('stuck.buy',{name:TOOLS[id].name,price:COIN+toolPrice(id)});
   if(canUse('drill')&&affordable('drill'))acts.push([label('drill'),()=>{resume();useTool('drill')},'primary']);
@@ -454,7 +461,7 @@ $('#contBtn').onclick=()=>{ensureAudio();const r=save.runs[key(save.sel.mode,sav
 $('#newBtn').onclick=()=>{ensureAudio();newRun();startLevel()};
 $('#shopBtn').onclick=()=>{ensureAudio();openShop(()=>renderMenu())};
 function buildDemo(){const m=save.sel.mode;const lv=buildLevel(m,'normal',m==='2d'?6:1,cfgFor('normal',3),'demo');setCurrent(lv);spawnScrews(lv);orbit.auto=m==='3d'&&!reduceMotion;requestAnimationFrame(()=>fitCamera(true))}
-function showMenu(){state='menu';LS=null;closeModal();$('#hud').hidden=true;$('#tools').hidden=true;$('#viewBtn').hidden=true;$('#menu').hidden=false;$('#loading').hidden=true;$('#fx').innerHTML='';renderMenu();buildDemo()}
+function showMenu(){state='menu';LS=null;closeModal();placeNav();$('#hud').hidden=true;$('#tools').hidden=true;$('#viewBtn').hidden=true;$('#menu').hidden=false;$('#loading').hidden=true;$('#fx').innerHTML='';renderMenu();buildDemo()}
 
 /* --- loop --- */
 let last=performance.now();

@@ -188,6 +188,21 @@ img{max-width:100%}
   }
   .hexbtn.brass { --face: var(--brass); --face-lo: var(--brass-face-lo); --edge: var(--brass-lo); --fg: var(--brass-ink); }
 
+  /* ---------- back button and menu drawer (shared/js/gamenav.js) ----------
+     The two buttons are hex buttons like the rest of the bar; the drawer is a workshop panel. */
+  :root {
+    --gn-stroke: 2.6; --gn-accent: var(--brass); --gn-accent-ink: var(--brass-ink);
+    --gn-font: var(--body); --gn-title-font: 400 30px/1 var(--display);
+    --gn-panel-bg: var(--panel); --gn-panel-fg: var(--ink); --gn-panel-radius: 24px; --gn-muted: var(--muted);
+    --gn-line: var(--panel-line); --gn-hover: rgba(0, 0, 0, 0.22); --gn-backdrop: var(--scrim);
+  }
+  .gnav-drawer .gnav-item { font-weight: 700; }
+  .gnav-drawer .gnav-head h2 { letter-spacing: 0.01em; }
+  .gnav-drawer .gnav-ico { color: var(--brass); }
+  /* In the workshop the top bar stays above it, so back (to the arcade) and the menu stay in reach. */
+  #app.menu-open .topbar { position: relative; z-index: 21; }
+  #menu.overlay { padding-top: calc(env(safe-area-inset-top, 0px) + 82px); }
+
   /* ---------- stage ---------- */
   #stage {
     position: relative;
