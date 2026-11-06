@@ -89,7 +89,7 @@ The tables below come from the `economy.js` files. If you change a number there,
 |---|---|---|---|---|
 | 3-star clear pays | 24 | 45 | 75 | 120 |
 | Hint (peek) | 12 | 25 | 40 | 60 |
-| Spare bolt (boost), 1st / 2nd | 50 / 95 | 90 / 180 | 150 / 300 | 240 / 480 |
+| Spare bolt (boost), one per level | 50 | 90 | 150 | 240 |
 
 The daily is a Hard level: 150 for 3 stars, plus 15 per streak day up to +75. Players start with 90. Stars: within par 3, help −1, more than 1.5× par another −1.
 

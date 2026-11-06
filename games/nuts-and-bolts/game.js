@@ -258,7 +258,7 @@ function NBCore() {
   const TYPE_NAME = {};
   for (const k of ["mixed", "tall", "short", "mystery"]) TYPE_NAME[k] = _t("type." + k);
   // Prices follow the tier you're playing (games/nuts-and-bolts/economy.js, docs/ECONOMY.md).
-  const MAX_SPARES = 2;
+  const MAX_SPARES = 1;
   const hintCost = () => ECO.price("hint", M ? M.diff : "medium");
   const spareCost = () => ECO.price("spare", M ? M.diff : "medium", M ? M.spares : 0);
 
@@ -339,7 +339,7 @@ function NBCore() {
   const $ = id => document.getElementById(id);
   $("earnNote").textContent = _t("earn", {
     e: ECO.reward("easy"), m: ECO.reward("medium"), h: ECO.reward("hard"), x: ECO.reward("expert"),
-    hint: ECO.price("hint", "hard"), spare: ECO.price("spare", "hard"), spare2: ECO.price("spare", "hard", 1)
+    hint: ECO.price("hint", "hard"), spare: ECO.price("spare", "hard")
   });
   const app = $("app"), stage = $("stage"), glCanvas = $("gl"), fxCanvas = $("fx"), veil = $("veil"), toastEl = $("toast");
   const fx = fxCanvas.getContext("2d");
@@ -499,6 +499,9 @@ function NBCore() {
   const shadowGeo = new THREE.PlaneGeometry(2.3, 2.3);
   const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false });
   const ringGeo = new THREE.RingGeometry(0.92, 1.06, 48);
+  // empty pad marking where a spare bolt will appear
+  const padGeo = new THREE.RingGeometry(0.7, 0.8, 40);
+  const padMat = new THREE.MeshBasicMaterial({ color: 0xe0a526, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
   const acornHexGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.16, 6);
   const acornDomeGeo = new THREE.LatheGeometry((function () {
     const p = [new THREE.Vector2(0.001, 0), new THREE.Vector2(0.3, 0)];
@@ -524,11 +527,16 @@ function NBCore() {
     scene.add(obj);
     return { obj, body, decal, color, hidden: !!hidden, rot: 0 };
   }
+  function makePad() {
+    const pad = new THREE.Mesh(padGeo, padMat); pad.rotation.x = -Math.PI / 2; pad.renderOrder = -1;
+    scene.add(pad);
+    return pad;
+  }
 
   // ================================================================ state
   // M: { mode, diff, level, type, par, day, caps, bolts, hid, counts, history, spares, hints, initial, won }
   let M = null;
-  let V = { bolts: [], nuts: [] };
+  let V = { bolts: [], nuts: [], pads: [] };
   let sel = -1;
   let version = 0;
   let winTimer = 0, hintBusy = false, loading = false;
@@ -562,9 +570,15 @@ function NBCore() {
 
   // ================================================================ layout
   const tanHalf = Math.tan((camera.fov / 2) * Math.PI / 180);
+  // Slots for spares not bought yet are part of the grid from the start, so buying one
+  // drops it onto its pad instead of reshuffling the board.
   function layout() {
     const w = Math.max(stage.clientWidth, 1), h = Math.max(stage.clientHeight, 1), aspect = w / h;
-    const caps = M.caps, N = caps.length;
+    const reserve = Math.max(0, MAX_SPARES - M.spares);
+    while (V.pads.length > reserve) scene.remove(V.pads.shift());
+    while (V.pads.length < reserve) V.pads.push(makePad());
+    const caps = M.caps.concat(V.pads.map(() => 1)), N = caps.length;
+    const slots = V.bolts.concat(V.pads.map(pad => ({ pad, x: 0, y: 0 })));
     let best = null;
     for (let cols = 1; cols <= N; cols++) {
       const rows = Math.ceil(N / cols);
@@ -581,7 +595,10 @@ function NBCore() {
     let idx = 0, top = best.H / 2;
     best.counts.forEach((cnt, r) => {
       const baseY = top - best.hs[r] + 0.16;
-      for (let k = 0; k < cnt; k++) { const b = V.bolts[idx++]; b.x = (k - (cnt - 1) / 2) * SX; b.y = baseY; b.group.position.set(b.x, b.y, 0); }
+      for (let k = 0; k < cnt; k++) {
+        const b = slots[idx++]; b.x = (k - (cnt - 1) / 2) * SX; b.y = baseY;
+        if (b.pad) b.pad.position.set(b.x, b.y + 0.01, 0); else b.group.position.set(b.x, b.y, 0);
+      }
       top -= best.hs[r] + ROW_GAP;
     });
     camera.aspect = aspect;
@@ -736,7 +753,8 @@ function NBCore() {
     anims.clear(); effects = []; particles = []; fxDirty = true;
     V.bolts.forEach(b => { scene.remove(b.group); if (b.acorn) scene.remove(b.acorn); if (b.ring) scene.remove(b.ring); });
     V.nuts.forEach(arr => arr.forEach(n => scene.remove(n.obj)));
-    V = { bolts: [], nuts: [] };
+    V.pads.forEach(p => scene.remove(p));
+    V = { bolts: [], nuts: [], pads: [] };
   }
   function buildScene() {
     clearScene();
