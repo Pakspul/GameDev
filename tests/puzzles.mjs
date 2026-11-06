@@ -9,14 +9,14 @@
 //
 //   node tests/puzzles.mjs            check
 //   node tests/puzzles.mjs --print    print fresh fingerprints (after an intended change)
-import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-const require = createRequire(import.meta.url);
+// The level files are classic scripts that only set globals, but "type": "module" makes Node
+// treat them as ES modules. import() loads them on any Node; require() of ESM needs 20.19+.
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "games", "graphite", "levels");
-for (const f of ["common.js", "sudoku.js", "takuzu.js", "stars.js", "calcudoku.js"]) require(join(DIR, f));
+for (const f of ["common.js", "sudoku.js", "takuzu.js", "stars.js", "calcudoku.js"]) await import(pathToFileURL(join(DIR, f)).href);
 const { GraphiteSudoku: S, GraphiteTakuzu: T, GraphiteStars: B, GraphiteCalcudoku: K } = globalThis;
 
 const FINGERPRINTS = {
