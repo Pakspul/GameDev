@@ -46,13 +46,17 @@ await mkdir(DIST);
 for (const entry of INCLUDE) {
   await cp(join(ROOT, entry), join(DIST, entry), { recursive: true, filter: (src) => !SKIP_FILES.has(basename(src)) });
 }
-// The slots debug menu and its forcing code are for development only: never in a release build (TOOL-03).
-await rm(join(DIST, "games", "slots", "src", "debug"), { recursive: true, force: true });
-{
-  const gameJs = join(DIST, "games", "slots", "game.js");
+// Development-only tools never ship in a release build: their folder is removed and the
+// `// <debug> … // </debug>` block that loads them is cut out of the game's script.
+//   slots:   the debug menu and its forcing code, ?debug (TOOL-03)
+//   unscrew: the model inspector, ?models (docs/UNSCREW-MODELS.md)
+for (const [game, dir, needle] of [["slots", "src/debug", "debug"], ["unscrew", "dev", "inspector"]]) {
+  const gameJs = join(DIST, "games", game, "game.js");
+  if (!(await stat(gameJs).catch(() => null))) continue; // not in this build (--game)
+  await rm(join(DIST, "games", game, dir), { recursive: true, force: true });
   const code = await readFile(gameJs, "utf8");
-  const stripped = code.replace(/\n *\/\/ <debug>[\s\S]*?\/\/ <\/debug>\n/, "\n");
-  if (stripped === code || stripped.includes("debug")) throw new Error("Couldn't strip the debug block from games/slots/game.js");
+  const stripped = code.replace(/(\r?\n) *\/\/ <debug>[\s\S]*?\/\/ <\/debug>\r?\n/, "$1"); // \r: a Windows checkout has CRLF
+  if (stripped === code || stripped.includes(needle)) throw new Error(`Couldn't strip the debug block from games/${game}/game.js`);
   await writeFile(gameJs, stripped);
 }
 if (HIDDEN.length) {

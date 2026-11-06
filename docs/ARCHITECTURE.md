@@ -17,7 +17,7 @@ How the repository is organised, why, and how to improve it step by step without
 │   │   └── fonts/           Self-hosted fonts + their licences
 │   ├── nuts-and-bolts/
 │   ├── outbound/
-│   ├── unscrew/
+│   ├── unscrew/             models/ holds the 3D models: kit.js (building blocks), one file per category, order.js (level order); dev/inspector.js is the model inspector (?models, left out of builds)
 │   └── graphite/            levels/ holds one generator per puzzle type; worker.js runs them off the main thread
 ├── shared/                  Things every game uses, kept in exactly one place
 │   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md)
@@ -31,6 +31,7 @@ How the repository is organised, why, and how to improve it step by step without
 ├── tests/smoke.mjs          npm test: opens every game in a headless phone browser
 ├── tests/puzzles.mjs        npm test: Graphite's generators give unique puzzles, and the same ones every time
 ├── tests/economy.mjs        npm test: every game's prices and rewards follow docs/ECONOMY.md
+├── tests/unscrew.mjs        npm test: every Unscrew model is loaded, in the fixed level order, and named in every language
 ├── docs/                    Guides (this file, Android publishing, roadmap)
 ├── dist/                    (generated) the exact files that go into the app; not committed
 └── android/                 (generated once by Capacitor, then committed) the Android project
@@ -57,7 +58,7 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Jade Pavilion | English + Dutch | ~610 | three.js 3D table | `jade-pavilion-v1` | Seeded generator, daily challenge, table themes |
 | Nuts & Bolts | English + Dutch | ~1,320 | three.js + 2D canvas particles | `nutsbolts:*` | Solver runs in a Web Worker (built from a Blob), washers currency |
 | Outbound | English + Dutch | ~2,650 | 2D canvas, three.js loaded on demand for 3D modes | `outbound.*` | Three level generators (flat, box, shapes), light/dark theme, haptics, shop |
-| Unscrew | English + Dutch | ~880 | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators, coins and shop |
+| Unscrew | English + Dutch | ~1,120 (of which ~650 in `models/`) | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators (see [UNSCREW-MODELS.md](UNSCREW-MODELS.md)), coins and shop |
 | Graphite | English + Dutch | ~2,200 | 2D canvas, redraws only on change | `graphite.v1` | Four logic puzzle types, generators in a Web Worker, logic-based hints, four dailies |
 | Crystal Reels | English + Dutch | ~6,000 (ES modules) | DOM + SVG, no canvas except particles; frame loop only while something moves | `honest-arcade.slots.save.0/1` | Slot machines with play money; maths engine + simulator in `games/slots/src/engine`, see [SLOTS.md](SLOTS.md) |
 | Camper Crew | English + Dutch | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
