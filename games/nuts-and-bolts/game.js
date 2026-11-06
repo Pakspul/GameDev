@@ -30,6 +30,7 @@ function NBCore() {
   //  tall:    few long bolts, lots of nuts per colour
   //  short:   many 3-nut bolts
   //  mystery: mixed, but nuts under the top one are hidden until uncovered
+  //  keyed:   mixed, but some bolts only take nuts of their own colour
   const SHAPES = {
     mixed: {
       easy:   { colors: ramp(3, 5, 5),  caps: [3, 4, 4],    extra: [4, 4], keepEmpty: 2, maxSame: 0.34, cand: 1 },
@@ -51,7 +52,10 @@ function NBCore() {
     }
   };
   SHAPES.mystery = SHAPES.mixed;
-  const TYPE_CYCLE = ["mixed", "short", "tall", "mixed", "mystery"];
+  SHAPES.keyed = SHAPES.mixed;
+  // How many bolts a keyed level locks to a colour.
+  const KEYS = { easy: 2, medium: 3, hard: 3, expert: 3 };
+  const TYPE_CYCLE = ["mixed", "short", "tall", "keyed", "mystery"];
   function typeFor(level) {
     if (level <= 2) return "mixed";
     return TYPE_CYCLE[(level - 1) % TYPE_CYCLE.length];
@@ -70,16 +74,19 @@ function NBCore() {
     return g;
   }
 
-  function canMove(bolts, caps, counts, i, j) {
+  // keys[j] is the only colour bolt j takes, or -1 for any colour. Left out: no keyed bolts.
+  function canMove(bolts, caps, counts, i, j, keys) {
     if (i === j) return false;
     const a = bolts[i], b = bolts[j];
     if (!a.length || isComplete(a, counts) || isComplete(b, counts)) return false;
     if (b.length >= caps[j]) return false;
+    if (keys && keys[j] >= 0 && keys[j] !== a[a.length - 1]) return false;
     return !b.length || b[b.length - 1] === a[a.length - 1];
   }
 
-  function solve(bolts0, caps, counts, limit) {
+  function solve(bolts0, caps, counts, limit, keys) {
     const n = bolts0.length;
+    keys = keys || bolts0.map(() => -1);
     const bolts = bolts0.map(b => b.slice());
     const colorSet = new Set();
     bolts.forEach(b => b.forEach(c => colorSet.add(c)));
@@ -91,7 +98,7 @@ function NBCore() {
     function key() {
       const parts = new Array(n);
       for (let i = 0; i < n; i++) {
-        let s = caps[i] + ':';
+        let s = caps[i] + (keys[i] >= 0 ? "#" + keys[i] : "") + ':';
         const b = bolts[i];
         for (let k = 0; k < b.length; k++) s += String.fromCharCode(97 + b[k]);
         parts[i] = s;
@@ -124,6 +131,7 @@ function NBCore() {
           const t = bolts[j];
           const room = caps[j] - t.length;
           if (room <= 0 || isComplete(t, counts)) continue;
+          if (keys[j] >= 0 && keys[j] !== top) continue;
           let s = 0;
           const m = Math.min(g, room);
           if (t.length) {
@@ -133,11 +141,14 @@ function NBCore() {
             if (tHomo) { s += 6; if (t.length + m === counts[top]) s += 60; }
             if (homo && !tHomo) s -= 8;
           } else {
-            if (seenEmpty.has(caps[j])) continue;
-            seenEmpty.add(caps[j]);
-            if (homo && caps[j] <= caps[i]) continue;
+            // Empty bolts of the same size and key are interchangeable.
+            const kind = keys[j] >= 0 ? caps[j] + "#" + keys[j] : caps[j];
+            if (seenEmpty.has(kind)) continue;
+            seenEmpty.add(kind);
+            if (homo && caps[j] <= caps[i] && keys[j] === keys[i]) continue;
             s -= 2;
             if (caps[j] >= counts[top]) s += 2;
+            if (keys[j] === top) s += 4;
           }
           if (m === g) s += 3; else s -= 5;
           if (!homo && m === g) s += 1;
@@ -162,7 +173,7 @@ function NBCore() {
     return { solved, moves: solved ? path.slice() : [], nodes, exhausted };
   }
 
-  function build(D, level, r) {
+  function build(D, level, r, nkeys) {
     const nc = D.colors(level);
     const pool = ORDER.slice(0, Math.max(nc + 2, 8)).slice(0, 12);
     shuffle(pool, r);
@@ -172,7 +183,7 @@ function NBCore() {
     colors.forEach(c => {
       const cap = D.caps[Math.floor(r() * D.caps.length)];
       counts[c] = cap;
-      specs.push({ cap, empty: false });
+      specs.push({ cap, empty: false, color: c });
     });
     const extra = shuffle(D.extra.slice(), r);
     extra.forEach((cap, k) => specs.push({ cap, empty: k < D.keepEmpty }));
@@ -201,7 +212,21 @@ function NBCore() {
       for (let k = 1; k < b.length; k++) { pairs++; if (b[k] === b[k - 1]) same++; }
     }
     if (pairs && same / pairs > D.maxSame) return null;
-    return { bolts, caps: specs.map(s => s.cap), counts };
+
+    // A keyed bolt is the home of its own colour: it was sized for it, so the colour fits.
+    const keys = specs.map(() => -1);
+    if (nkeys) {
+      const own = shuffle(specs.map((s, i) => i).filter(i => specs[i].color !== undefined), r).slice(0, nkeys);
+      for (const i of own) {
+        const b = bolts[i], c = b[0];
+        let run = 0;
+        while (run < b.length && b[run] === c) run++;
+        // Taking the top off would leave another colour complete on it, locked away from home.
+        if (b.length && c !== specs[i].color && run === counts[c]) return null;
+        keys[i] = specs[i].color;
+      }
+    }
+    return { bolts, caps: specs.map(s => s.cap), counts, keys };
   }
 
   // seedKey defaults to diff+level, so a level number is the same puzzle for everyone.
@@ -212,9 +237,9 @@ function NBCore() {
     let best = null, found = 0;
     for (let attempt = 0; attempt < 120 && found < D.cand; attempt++) {
       const r = rng(hash(seed + ":" + type + ":" + attempt));
-      const lvl = build(D, level, r);
+      const lvl = build(D, level, r, type === "keyed" ? KEYS[diff] : 0);
       if (!lvl) continue;
-      const res = solve(lvl.bolts, lvl.caps, lvl.counts, 60000);
+      const res = solve(lvl.bolts, lvl.caps, lvl.counts, 60000, lvl.keys);
       if (!res.solved) continue;
       found++;
       if (!best || res.nodes > best.nodes) best = Object.assign(lvl, { nodes: res.nodes, solution: res.moves.length });
@@ -256,7 +281,7 @@ function NBCore() {
   const DIFF_INFO = { easy: {}, medium: {}, hard: {}, expert: {} };
   for (const k in DIFF_INFO) { DIFF_INFO[k].name = _t("diff." + k); DIFF_INFO[k].meta = _t("diff." + k + ".meta"); }
   const TYPE_NAME = {};
-  for (const k of ["mixed", "tall", "short", "mystery"]) TYPE_NAME[k] = _t("type." + k);
+  for (const k of ["mixed", "tall", "short", "mystery", "keyed"]) TYPE_NAME[k] = _t("type." + k);
   // Prices follow the tier you're playing (games/nuts-and-bolts/economy.js, docs/ECONOMY.md).
   const MAX_SPARES = 1;
   const hintCost = () => ECO.price("hint", M ? M.diff : "medium");
@@ -307,7 +332,7 @@ function NBCore() {
   function dailyType(key) {
     const p = key.split("-").map(Number);
     const n = Math.floor(Date.UTC(p[0], p[1] - 1, p[2]) / 86400000);
-    return ["mixed", "tall", "mystery", "short"][n % 4];
+    return ["mixed", "tall", "mystery", "short", "keyed"][n % 5];
   }
   function liveStreak() {
     return eco.daily.last === today() || eco.daily.last === yesterday() ? eco.daily.streak : 0;
@@ -317,10 +342,10 @@ function NBCore() {
   let worker = null, reqId = 0;
   const pending = new Map();
   function runLocal(msg) {
-    return msg.type === "gen" ? C.generate(msg.diff, msg.level, msg.ltype, msg.seed) : C.solve(msg.bolts, msg.caps, msg.counts, msg.limit);
+    return msg.type === "gen" ? C.generate(msg.diff, msg.level, msg.ltype, msg.seed) : C.solve(msg.bolts, msg.caps, msg.counts, msg.limit, msg.keys);
   }
   try {
-    const src = "const C=(" + NBCore.toString() + ")();onmessage=function(e){var d=e.data;var out=d.type==='gen'?C.generate(d.diff,d.level,d.ltype,d.seed):C.solve(d.bolts,d.caps,d.counts,d.limit);postMessage({id:d.id,out:out});};";
+    const src = "const C=(" + NBCore.toString() + ")();onmessage=function(e){var d=e.data;var out=d.type==='gen'?C.generate(d.diff,d.level,d.ltype,d.seed):C.solve(d.bolts,d.caps,d.counts,d.limit,d.keys);postMessage({id:d.id,out:out});};";
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
     worker.onmessage = e => { const p = pending.get(e.data.id); if (p) { pending.delete(e.data.id); p.res(e.data.out); } };
     worker.onerror = () => {
@@ -509,14 +534,34 @@ function NBCore() {
     return p;
   })(), 28);
 
-  function makeBoltView(cap, spare) {
+  // A keyed bolt has a base in its colour and a tag with its icon at the front, so it reads without colour too.
+  const keyBaseMats = {};
+  const keyBaseMat = key => keyBaseMats[key] || (keyBaseMats[key] = new THREE.MeshPhongMaterial({ color: new THREE.Color(COLORS[key].hex).multiplyScalar(0.72), shininess: 60, specular: 0x555555 }));
+  const tagGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.07, 32).rotateX(Math.PI / 2);
+  const tagRimGeo = new THREE.TorusGeometry(0.2, 0.028, 8, 32);
+  const tagIconGeo = new THREE.PlaneGeometry(0.3, 0.3);
+  function makeTag(key) {
+    const tag = new THREE.Group();
+    const coin = new THREE.Mesh(tagGeo, MATS[key].body);
+    const rim = new THREE.Mesh(tagRimGeo, steelMat);
+    const icon = new THREE.Mesh(tagIconGeo, MATS[key].decal); icon.position.z = 0.037; icon.renderOrder = 1;
+    tag.add(coin, rim, icon);
+    tag.position.set(0, 0.07, 0.86);
+    tag.rotation.x = -TILT;
+    return tag;
+  }
+
+  function makeBoltView(cap, spare, key) {
+    const keyed = key >= 0;
     const group = new THREE.Group();
-    const base = new THREE.Mesh(baseGeo, spare ? spareBaseMat : baseMat);
+    const base = new THREE.Mesh(baseGeo, spare ? spareBaseMat : keyed ? keyBaseMat(key) : baseMat);
     const shaft = new THREE.Mesh(shaftGeo(cap), steelMat); shaft.position.y = BASE_TOP;
     const sh = new THREE.Mesh(shadowGeo, shadowMat); sh.rotation.x = -Math.PI / 2; sh.position.y = -0.03; sh.renderOrder = -1;
     group.add(sh, base, shaft);
+    const tag = keyed ? makeTag(key) : null;
+    if (tag) group.add(tag);
     scene.add(group);
-    return { group, cap, x: 0, y: 0, acorn: null, acornToken: 0, ring: null };
+    return { group, cap, x: 0, y: 0, acorn: null, acornToken: 0, ring: null, tag };
   }
   function makeNutView(color, hidden) {
     const obj = new THREE.Group();
@@ -534,7 +579,7 @@ function NBCore() {
   }
 
   // ================================================================ state
-  // M: { mode, diff, level, type, par, day, caps, bolts, hid, counts, history, spares, hints, initial, won }
+  // M: { mode, diff, level, type, par, day, caps, bolts, hid, keys, counts, history, spares, hints, initial, won }
   let M = null;
   let V = { bolts: [], nuts: [], pads: [] };
   let sel = -1;
@@ -760,7 +805,7 @@ function NBCore() {
     clearScene();
     sel = -1;
     const firstSpare = M.caps.length - M.spares;
-    M.caps.forEach((cap, i) => V.bolts.push(makeBoltView(cap, i >= firstSpare)));
+    M.caps.forEach((cap, i) => V.bolts.push(makeBoltView(cap, i >= firstSpare, M.keys[i])));
     M.bolts.forEach((b, bi) => V.nuts.push(b.map((c, k) => makeNutView(c, M.hid[bi][k]))));
     layout();
     M.bolts.forEach((b, bi) => { if (C.isComplete(b, M.counts)) setAcorn(bi, true, 0, true); });
@@ -898,9 +943,15 @@ function NBCore() {
       return;
     }
     if (sel === i) { deselect(); return; }
-    if (C.canMove(B, M.caps, M.counts, sel, i)) { doMove(sel, i); return; }
+    if (C.canMove(B, M.caps, M.counts, sel, i, M.keys)) { doMove(sel, i); return; }
+    // The move would fit but for the bolt's key: say so instead of picking that bolt up.
+    if (C.canMove(B, M.caps, M.counts, sel, i)) { shakeSelected(); wiggleTag(i); toast(_t("toast.keyed")); return; }
     if (selectable(i)) { deselect(); select(i); return; }
     shakeSelected();
+  }
+  function wiggleTag(bi) {
+    const tag = V.bolts[bi].tag; if (!tag) return;
+    addEffect(0, 0.45, p => { tag.scale.setScalar(1 + Math.sin(p * Math.PI * 3) * (1 - p) * 0.35); }, () => tag.scale.setScalar(1));
   }
   function shakeSelected() {
     const arr = V.nuts[sel]; if (!arr.length) return;
@@ -938,7 +989,7 @@ function NBCore() {
     if (!canPay(cost)) return;
     hintBusy = true; updateHud();
     const v = version;
-    const res = await call({ type: "solve", bolts: M.bolts, caps: M.caps, counts: M.counts, limit: 150000 });
+    const res = await call({ type: "solve", bolts: M.bolts, caps: M.caps, counts: M.counts, keys: M.keys, limit: 150000 });
     hintBusy = false; updateHud();
     if (!M || v !== version) return;
     if (!res || !res.solved) {
@@ -968,7 +1019,7 @@ function NBCore() {
     pay(cost);
     if (sel >= 0) deselect();
     M.spares++;
-    M.caps.push(1); M.bolts.push([]); M.hid.push([]); V.nuts.push([]);
+    M.caps.push(1); M.bolts.push([]); M.hid.push([]); M.keys.push(-1); V.nuts.push([]);
     const bv = makeBoltView(1, true); V.bolts.push(bv);
     layout();
     bv.group.scale.setScalar(0.01);
@@ -983,7 +1034,8 @@ function NBCore() {
     M.bolts = M.initial.bolts.map(b => b.slice());
     M.hid = M.initial.hid.map(b => b.slice());
     M.caps = M.initial.caps.slice();
-    for (let s = 0; s < M.spares; s++) { M.caps.push(1); M.bolts.push([]); M.hid.push([]); }
+    M.keys = M.initial.keys.slice();
+    for (let s = 0; s < M.spares; s++) { M.caps.push(1); M.bolts.push([]); M.hid.push([]); M.keys.push(-1); }
     M.history = []; M.won = false;
     buildScene();
     changed();
@@ -1028,7 +1080,7 @@ function NBCore() {
     $("spareCost").textContent = maxed ? _t("max") : spareCost();
   }
   function snapshotM() {
-    return M && { mode: M.mode, diff: M.diff, level: M.level, type: M.type, par: M.par, day: M.day, caps: M.caps, bolts: M.bolts, hid: M.hid, counts: M.counts, history: M.history, spares: M.spares, hints: M.hints, initial: M.initial, won: M.won };
+    return M && { mode: M.mode, diff: M.diff, level: M.level, type: M.type, par: M.par, day: M.day, caps: M.caps, bolts: M.bolts, hid: M.hid, keys: M.keys, counts: M.counts, history: M.history, spares: M.spares, hints: M.hints, initial: M.initial, won: M.won };
   }
   function saveState() { if (M) store.set("state:" + M.mode, snapshotM()); }
 
@@ -1040,11 +1092,14 @@ function NBCore() {
 
   // ================================================================ levels
   function adopt(data) {
+    const noKeys = caps => caps.map(() => -1); // saves from before keyed bolts
+    const keys = (data.keys || noKeys(data.caps)).slice();
+    let initial = data.initial || { caps: data.caps.slice(), bolts: data.bolts.map(b => b.slice()), hid: data.hid.map(b => b.slice()), keys: keys.slice() };
+    if (!initial.keys) initial = Object.assign({}, initial, { keys: noKeys(initial.caps) });
     M = {
       mode: data.mode, diff: data.diff, level: data.level, type: data.type, par: data.par, day: data.day || null,
-      caps: data.caps.slice(), bolts: data.bolts.map(b => b.slice()), hid: data.hid.map(b => b.slice()), counts: data.counts,
-      history: (data.history || []).slice(), spares: data.spares | 0, hints: data.hints | 0, won: !!data.won,
-      initial: data.initial || { caps: data.caps.slice(), bolts: data.bolts.map(b => b.slice()), hid: data.hid.map(b => b.slice()) }
+      caps: data.caps.slice(), bolts: data.bolts.map(b => b.slice()), hid: data.hid.map(b => b.slice()), keys, counts: data.counts,
+      history: (data.history || []).slice(), spares: data.spares | 0, hints: data.hints | 0, won: !!data.won, initial
     };
     current = M.mode === "daily" ? { mode: "daily", diff: current.diff, level: current.level } : { mode: "level", diff: M.diff, level: M.level };
     store.set("current", current);
@@ -1063,7 +1118,7 @@ function NBCore() {
     if (token !== loadToken) return;
     loading = false; veil.hidden = true;
     if (!gen) { toast(_t("toast.genFailed")); return; }
-    adopt(Object.assign({ caps: gen.caps, bolts: gen.bolts, hid: hiddenMask(gen.bolts, gen.type), counts: gen.counts, type: gen.type, par: gen.par }, meta));
+    adopt(Object.assign({ caps: gen.caps, bolts: gen.bolts, hid: hiddenMask(gen.bolts, gen.type), keys: gen.keys, counts: gen.counts, type: gen.type, par: gen.par }, meta));
   }
   function startLevel(diff, level) {
     current = { mode: "level", diff, level }; store.set("current", current);
@@ -1324,7 +1379,7 @@ function NBCore() {
 
   function valid(s) {
     return !!(s && (s.mode === "level" || s.mode === "daily") && DIFF_KEYS.includes(s.diff) && Array.isArray(s.bolts) && Array.isArray(s.caps) && Array.isArray(s.hid) &&
-      s.bolts.length === s.caps.length && s.hid.length === s.bolts.length && s.counts && s.initial && s.initial.hid && TYPE_NAME[s.type] && s.par > 0);
+      s.bolts.length === s.caps.length && s.hid.length === s.bolts.length && (!s.keys || s.keys.length === s.bolts.length) && s.counts && s.initial && s.initial.hid && TYPE_NAME[s.type] && s.par > 0);
   }
   function start(data) {
     applyTheme();

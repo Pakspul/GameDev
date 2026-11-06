@@ -22,6 +22,7 @@ Template: copy this to the top for a new day
 ## 2026-11-06
 
 **Done**
+- Nuts & Bolts got a new level type from a player's idea (**N-1**): **Keyed bolts**, bolts with a coloured base and tag that only take nuts of their own colour. It replaces the second Mixed level in the cycle (levels 4, 9, 14, …) and joins the daily rotation; the solver and hints know the rule, and every other level is unchanged.
 - New [docs/ISSUES.md](docs/ISSUES.md): issues and player feedback per game, with IDs (`U-1`, `J-1`, …). First issue: **U-1**, players find Unscrew's 3D models too few and too alike.
 - Unscrew got two new 3D models in two new categories: a **villa** (two floors, flat roofs, a glass balustrade, solar panels, a pool with a screwed-on rim) and a **giraffe** (the first animal: spots that hide screws, a leaning neck with a mane, an acacia tree). Eight models now.
 - New [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md): the models sorted into nine categories with ideas for each, the rules a model must follow to keep all its parts, and a step-by-step recipe (and a ready prompt) for adding a model, so one model can be handed to an AI agent at a time.

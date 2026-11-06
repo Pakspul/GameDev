@@ -26,7 +26,18 @@ _No issues yet._
 
 ## Nuts & Bolts
 
-_No issues yet._
+### N-1: Bolts that only take one colour
+
+- **Status:** in progress (built, needs a playtest)
+- **Source:** player idea, November 2026: "you know what is fun, if certain bolts only accept a certain colour."
+- **What was noticed:** the rules never change within a level: any nut fits any bolt with room on top of its own colour. Level types vary the shape of the board (bolt lengths, hidden nuts), but not the rules, so a new rule adds a kind of thinking the game doesn't have yet.
+- **Done (6 November 2026):** a new level type, **Keyed bolts** (Dutch: *Kleurbouten*). Some bolts have a base in one colour and a tag with that colour's icon, so the rule reads without colour too. Such a bolt only takes nuts of its colour. Other colours may start on it and have to be moved off; it can never be used as a parking spot.
+  - The generator keys 2 bolts on Easy and 3 on the other tiers. A keyed bolt is always the bolt that was sized for its colour, so that colour fits on it. Boards where taking nuts off a keyed bolt would leave another colour complete on it are thrown away.
+  - The solver knows about keys, so every keyed level is proven solvable and hints work. Dropping a nut on a keyed bolt of the wrong colour shakes the nut, wiggles the tag and says why in a toast.
+  - Keyed levels take the second Mixed slot of the level cycle (levels 4, 9, 14, … in every tier) and are the fifth daily type.
+- **Side effects:** levels 4, 9, 14, … are new puzzles; stars already earned there stay. All other levels are unchanged (96 sample levels of the other types came out identical before and after). A level in progress resumes as it was. The daily rotation went from four types to five, so today's daily can change type for players who haven't started it.
+- **Watch:** an Expert keyed level takes about 0.4 s to build on a desktop (median, worst 1.4 s), against 0.03 s for Mixed, because many Expert candidates with keys turn out to have no solution. Four keys on Expert was twice as slow and no harder, so it's three. Check on a slow phone.
+- **Ideas for later:** a keyed empty bolt, and keys combined with Mystery nuts on Expert.
 
 ## Outbound
 
