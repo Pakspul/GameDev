@@ -21,6 +21,7 @@
   /* board colours (read by game.js) */
   --b-cell: #fffdf8;
   --b-grid: #cdc4b2;
+  --b-grid-tint: rgba(37, 39, 44, .2); /* thin lines over coloured regions */
   --b-ink: #25272c;
   --b-peer: rgba(47, 95, 208, .07);
   --b-same: rgba(47, 95, 208, .16);
@@ -45,7 +46,7 @@
     --rule: rgba(150, 180, 255, .05); --bad: #ff6b62;
     --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 28px -18px rgba(0,0,0,.9);
     --c-sudoku: #7ea4ff; --c-takuzu: #f0975a; --c-stars: #b596ff; --c-calcudoku: #52c993;
-    --b-cell: #202126; --b-grid: #3d3f46; --b-ink: #ece8df;
+    --b-cell: #202126; --b-grid: #3d3f46; --b-grid-tint: rgba(236, 232, 223, .2); --b-ink: #ece8df;
     --b-peer: rgba(126, 164, 255, .08); --b-same: rgba(126, 164, 255, .2);
     --b-sun: #e8972c; --b-sun-soft: #9a6a2c; --b-moon: #6d80d4; --b-moon-soft: #44507f;
     --b-tile: #2a2b31; --b-glyph: #fff8ec;
@@ -59,7 +60,7 @@
   --rule: rgba(150, 180, 255, .05); --bad: #ff6b62;
   --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 28px -18px rgba(0,0,0,.9);
   --c-sudoku: #7ea4ff; --c-takuzu: #f0975a; --c-stars: #b596ff; --c-calcudoku: #52c993;
-  --b-cell: #202126; --b-grid: #3d3f46; --b-ink: #ece8df;
+  --b-cell: #202126; --b-grid: #3d3f46; --b-grid-tint: rgba(236, 232, 223, .2); --b-ink: #ece8df;
   --b-peer: rgba(126, 164, 255, .08); --b-same: rgba(126, 164, 255, .2);
   --b-sun: #e8972c; --b-sun-soft: #9a6a2c; --b-moon: #6d80d4; --b-moon-soft: #44507f;
   --b-tile: #2a2b31; --b-glyph: #fff8ec;

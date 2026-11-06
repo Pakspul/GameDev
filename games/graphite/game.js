@@ -145,7 +145,7 @@ function readColors() {
   const cs = getComputedStyle(document.body);
   const v = (n) => cs.getPropertyValue(n).trim();
   return {
-    cell: v("--b-cell"), grid: v("--b-grid"), ink: v("--b-ink"), peer: v("--b-peer"), same: v("--b-same"),
+    cell: v("--b-cell"), grid: v("--b-grid"), gridTint: v("--b-grid-tint"), ink: v("--b-ink"), peer: v("--b-peer"), same: v("--b-same"),
     sun: v("--b-sun"), sunSoft: v("--b-sun-soft"), moon: v("--b-moon"), moonSoft: v("--b-moon-soft"),
     tile: v("--b-tile"), glyph: v("--b-glyph"), regions: v("--b-regions").split(/\s+/),
     accent: v("--accent"), bad: v("--bad"), muted: v("--muted"), paper: v("--paper"),
@@ -414,9 +414,9 @@ function clashes() {
   return out;
 }
 
-function drawGridLines(thickBetween) {
+function drawGridLines(thickBetween, thin = colors.grid) {
   const n = G.p.n, { pad, cs } = geo, L = pad, R = pad + n * cs;
-  ctx.strokeStyle = colors.grid; ctx.lineWidth = 1;
+  ctx.strokeStyle = thin; ctx.lineWidth = 1;
   ctx.beginPath();
   for (let k = 1; k < n; k++) {
     const p = Math.round(pad + k * cs) + 0.5;
@@ -574,7 +574,7 @@ function drawStars() {
     ctx.fillStyle = colors.regions[p.regions[i] % colors.regions.length];
     ctx.fillRect(x, y, cs + 0.5, cs + 0.5);
   }
-  drawGridLines((a, b) => p.regions[a] !== p.regions[b]);
+  drawGridLines((a, b) => p.regions[a] !== p.regions[b], colors.gridTint);
   for (let i = 0; i < n * n; i++) {
     const { x, y } = cellRect(i);
     const v = cells[i];
