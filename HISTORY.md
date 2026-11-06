@@ -19,6 +19,22 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-06
+
+**Done**
+- New [docs/ISSUES.md](docs/ISSUES.md): issues and player feedback per game, with IDs (`U-1`, `J-1`, …). First issue: **U-1**, players find Unscrew's 3D models too few and too alike.
+- Unscrew got two new 3D models in two new categories: a **villa** (two floors, flat roofs, a glass balustrade, solar panels, a pool with a screwed-on rim) and a **giraffe** (the first animal: spots that hide screws, a leaning neck with a mane, an acacia tree). Eight models now.
+- New [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md): the models sorted into nine categories with ideas for each, the rules a model must follow to keep all its parts, and a step-by-step recipe (and a ready prompt) for adding a model, so one model can be handed to an AI agent at a time.
+- New `npm run unscrew:models`: generates every model at every difficulty and reports screws per level and the share of parts kept; `--shots` saves screenshots.
+
+**Decided**
+- Adding models reshuffles which object each 3D level number shows. Saves hold no objects, so the save key stays `unscrew.v2`.
+- Grow the models one category at a time; vehicles and industry first, as they are still empty.
+
+**Next**
+- Issue **U-2**: the report shows the older models silently drop 5–45% of their parts, some of them visibly (a gap in the cottage's wall). Fix model by model.
+- More models from the catalogue.
+
 ## 2026-11-04 (slots)
 
 **Done**

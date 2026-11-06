@@ -345,7 +345,100 @@ function genRobot(R,cfg){
   const ant=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.6,10),partMat('#9aa6b5'));ant.position.y=0.37;decor(tpp,ant);
   const ball=new THREE.Mesh(new THREE.SphereGeometry(0.13,16,12),new THREE.MeshStandardMaterial({color:srgb('#ff6b6b'),emissive:srgb('#ff3b3b'),emissiveIntensity:.5}));ball.position.y=0.72;decor(tpp,ball)
 }
-const GENS3D=[['cottage',genCottage],['room',genRoom],['mill',genMill],['castle',genCastle],['rocket',genRocket],['robot',genRobot]];
+function genVilla(R,cfg){
+  const cx=cfg.cx,pal=R.pick(PALS),acc=R.pick(PALS.filter(p=>p!==pal)),y0=0.3,FR='#3d4450',SL='#e3ded3';
+  const W=R.f(4.8,5.3),D=R.f(3.2,3.5),H1=R.f(2.1,2.35),H2=R.f(1.9,2.15),hz=-0.9,BW=W+4.4,BD=D+5.6;
+  const base=box(BW,0.3,BD,'#cfd8b8',V(0,0.15,0),Q(),{static:true,r:0.06});
+  // ground floor: smooth white render panels
+  const g=box(W,H1,D,'#8d929c',V(0,y0+H1/2,hz),Q(),{faces:['+x','-x','+z','-z']});
+  cladBox(g,['+z','-z','+x','-x'],{dir:'v',w:0.62,cols:['#f4f1ea','#ebe6dc'],postColor:'#d9d4c8'});
+  const ds=R.pick([-1,1]),dX=ds*W*0.28;
+  const door=onFace(g,'+z',dX,-H1/2+0.85,0.95,1.7,0.14,acc.dark,{gap:PT});
+  const hd=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.6,0.06),partMat('#d9dee6',{metalness:.5,roughness:.3}));hd.position.set(-ds*0.3,0,0.1);decor(door,hd);
+  if(cx>0.25)onFace(g,'+z',dX,-H1/2+1.95,1.5,0.14,0.8,FR,{gap:PT,faces:['+y']});
+  if(cx>0.5){const gd=onFace(g,'+z',-ds*W*0.22,-H1/2+0.8,1.9,1.6,0.14,'#c9ccd3',{gap:PT});
+    for(let k=0;k<4;k++){const ln=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.04,0.03),partMat('#a3adbb'));ln.position.set(0,-0.6+k*0.4,0.08);decor(gd,ln)}}
+  else win(g,'+z',-ds*W*0.22,0.1,1.8,1.2,PT,pal,{frame:FR});
+  win(g,'+x',0,0.15,1.2,1.0,PT,pal,{frame:FR});if(cx>0.3)win(g,'-x',0,0.15,1.2,1.0,PT,pal,{frame:FR});
+  for(let i=0;i<(cx>0.75?2:1);i++)win(g,'-z',cx>0.75?(i?1:-1)*W*0.25:0,0.15,1.1,1.0,PT,pal,{frame:FR});
+  box(1.2,0.16,0.55,'#b9c0c9',V(dX,y0+0.08,hz+D/2+PT+0.45),Q(),{faces:['+y']});
+  // flat roof over the ground floor, doubling as the balcony floor
+  const S1W=W+2*PT+0.4,S1D=D+2*PT+0.4,s1t=y0+H1+0.22;
+  box(S1W,0.22,S1D,SL,V(0,y0+H1+0.11,hz),Q(),{faces:['+y']});
+  // upper floor: timber-clad box on one side, set back to the rear
+  const W2=W*R.f(0.56,0.62),D2=D-R.f(0.15,0.4),ux=-ds*(W-W2)/2,uz=hz-(D-D2)/2;
+  const u=box(W2,H2,D2,'#8d929c',V(ux,s1t+H2/2,uz),Q(),{faces:['+x','-x','+z','-z']});
+  // planks at least 0.52 apart (the minimum screw spacing in finalize), so every plank keeps a screw
+  cladBox(u,['+z','-z','+x','-x'],{dir:'h',w:0.6,cols:[pal.main,shade(pal.main,0.9)],postColor:pal.trim});
+  win(u,'+z',0,0.1,Math.min(1.9,W2*0.6),1.0,PT,pal,{frame:FR});
+  win(u,ds>0?'+x':'-x',0,-H2/2+0.9,1.0,1.7,PT,pal,{frame:FR});
+  if(cx>0.4)win(u,'-z',0,0.1,1.2,0.9,PT,pal,{frame:FR});
+  const roof=box(W2+2*PT+0.5,0.22,D2+2*PT+0.5,SL,V(ux,s1t+H2+0.11,uz),Q(),{faces:['+y']});
+  if(cx>0.6)for(const a of(cx>1?[-0.65,0.65]:[0])){const sp=onFace(roof,'+y',a,0.1,1.1,0.8,0.14,'#24406b');
+    for(const v of[-0.2,0.2]){const ln=new THREE.Mesh(new THREE.BoxGeometry(1.04,0.02,0.03),partMat('#8fb0dd'));ln.position.set(0,0.075,v);decor(sp,ln)}}
+  // glass balustrade on the open part of the lower roof; screws face outward, away from the upper floor,
+  // so the balustrade and the wall behind it never block each other
+  const rail=(A,B,y,nx,nz)=>{const dx=B[0]-A[0],dz=B[1]-A[1],L=Math.hypot(dx,dz),n=Math.max(1,Math.round(L/1.2)),q=eul(0,Math.atan2(nx,nz),0);
+    for(let i=0;i<n;i++){const k=(i+0.5)/n;box(L/n-0.06,0.9,0.1,'#bfe3f2',V(A[0]+dx*k,y+0.45,A[1]+dz*k),q,{faces:['+z'],mat:{transparent:true,opacity:0.6,roughness:0.1}})}
+    if(cx>0.35)box(L+0.1,0.12,0.2,'#5b6270',V((A[0]+B[0])/2,y+0.96,(A[1]+B[1])/2),q,{faces:['+y']})};
+  const xin=ux+ds*(W2/2+PT+0.35),xout=ds*(S1W/2-0.15),zf=hz+S1D/2-0.15,zb=hz-S1D/2+0.15;
+  if(cx>0.15)rail([Math.min(xin,xout),zf],[Math.max(xin,xout),zf],s1t,0,1);
+  if(cx>0.5)rail([xout,zf-0.2],[xout,zb],s1t,ds,0);
+  // pool with a screwed-on rim, and sun loungers
+  const px=-ds*1.75,pz=hz+D/2+PT+1.6,pw=2.2,pd=1.5,rt='#f2efe8';
+  const water=new THREE.Mesh(new THREE.BoxGeometry(pw,0.02,pd),partMat('#5fc4ea',{roughness:.1,metalness:.1}));water.position.set(px,0.16,pz);decor(base,water);
+  for(const s of[-1,1]){box(pw+0.72,0.16,0.36,rt,V(px,y0+0.08,pz+s*(pd/2+0.18)),Q(),{faces:['+y']});
+    box(0.36,0.16,pd,rt,V(px+s*(pw/2+0.18),y0+0.08,pz),Q(),{faces:['+y']})}
+  if(cx>0.4)for(let i=0;i<(cx>0.8?2:1);i++){const lx=-ds*(3.55+i*0.6);
+    const lo=box(0.55,0.24,1.4,acc.light,V(lx,y0+0.12,pz),Q(),{faces:['+y']});
+    onFace(lo,'+y',0,0.42,0.5,0.5,0.14,acc.main,{noAnchor:true})}
+  props(R,cx,R.shuffle([[W/2+1.25,hz-D/2-0.75,-1],[-W/2-1.25,hz-D/2-0.75,-1],[ds*(BW/2-0.75),BD/2-0.8,1]]).slice(0,1+Math.round(cx*1.5)),y0);
+}
+function genGiraffe(R,cfg){
+  const cx=cfg.cx,y0=pad(R,3.6,'#e6d49a');
+  const coat=R.pick(['#f2c14e','#efb84a','#f5cc66']),spot=R.pick(['#9a5a2c','#8a4b25','#a8662f']),dark='#5b3f2e',light='#fbe7b5';
+  const gz=-0.7,legH=R.f(1.8,2.05),hoof=0.42,BW=1.5,BH=R.f(1.2,1.35),BL=R.f(2.6,2.9);
+  // spots are plates over the screw grid: each one hides the screw beneath it (covers must be 0.14 thick)
+  const spots=(host,f,cand,n,lo,hi)=>{for(const[a,b]of R.shuffle(cand).slice(0,n)){const s=R.f(lo,hi);onFace(host,f,a,b,s,s*R.f(0.85,1),0.14,spot,{r:0.1})}};
+  // legs on hooves
+  for(const sx of[-1,1])for(const sz of[-1,1]){const lx=sx*0.5,lz=gz+sz*(BL/2-0.4),fx=sx>0?'+x':'-x',fz=sz>0?'+z':'-z';
+    box(0.54,hoof,0.6,dark,V(lx,y0+hoof/2,lz),Q(),{faces:['+y',fx,fz]});
+    const leg=box(0.4,legH,0.4,coat,V(lx,y0+hoof+legH/2,lz),Q(),{faces:[fx,fz]});
+    if(cx>0.35)onFace(leg,fx,0,legH/2-0.33,0.38,0.4,0.14,spot,{r:0.08})}
+  // body with spots
+  const by=y0+hoof+legH+BH/2,body=box(BW,BH,BL,coat,V(0,by,gz),Q(),{faces:['+x','-x','+y','-z']});
+  const nS=Math.min(4,2+Math.round(cx*1.5)),ea=BL/2-0.4,eb=BH/2-0.33,side=[[-ea,eb],[0,-eb],[ea,eb],[-ea,-eb],[ea,-eb],[0,eb]];
+  spots(body,'+x',side.slice(0,4),nS,0.5,0.6);spots(body,'-x',side.slice(2),nS,0.5,0.6);
+  if(cx>0.5)spots(body,'+y',[[-0.42,0],[0.42,0],[-0.42,BL/2-0.4],[0.42,BL/2-0.4]],Math.min(4,Math.round(cx*2)),0.46,0.56);
+  // neck leaning forward, with a mane down the back
+  const t=R.f(0.3,0.42),NL=R.f(2.6,3.0),NW=0.62,q=eul(t,0,0),dir=V(0,1,0).applyQuaternion(q);
+  const nb=V(0,by+BH/2-0.15,gz+BL/2-0.42),neck=box(NW,NL,NW,coat,nb.clone().addScaledVector(dir,NL/2),q,{faces:['+x','-x','+z']});
+  const mane=onFace(neck,'-z',0,0.1,0.2,NL*0.85,0.14,dark);
+  const en=NL/2-0.4,nc=[[0,-en],[0,0],[0,en]],nn=cx>0.6?2:1;
+  spots(neck,'+x',nc,nn,0.46,0.52);spots(neck,'-x',nc,nn,0.46,0.52);
+  // head: snout, eyes, ears and two ossicones
+  const top=nb.clone().addScaledVector(dir,NL),HL=R.f(1.15,1.3),HW=0.72,HH=0.62,hc=top.clone().add(V(0,0.18,0.28));
+  const head=box(HW,HH,HL,coat,hc,Q(),{faces:['+x','-x','+y']});
+  const snout=onFace(head,'+z',0,-0.08,0.52,0.44,0.34,light);
+  for(const s of[-1,1]){const ns=new THREE.Mesh(new THREE.SphereGeometry(0.045,10,8),partMat(dark));ns.position.set(s*0.12,0.06,0.18);decor(snout,ns);
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(0.08,14,10),partMat('#17212e',{roughness:.25}));eye.position.set(s*(HW/2+0.01),0.1,HL*0.12);decor(head,eye);
+    onFace(head,s>0?'+x':'-x',s*0.4,0.2,0.3,0.16,0.3,coat);
+    const ox=s*0.27,oz=hc.z-0.25,oy=hc.y+HH/2;
+    const oc=cyl(0.12,0.46,coat,V(ox,oy+0.23,oz),Q(),{side:false});
+    const knob=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.15,0.12,16),partMat(dark));knob.position.y=0.17;decor(oc,knob)}
+  // tail with a tuft
+  const tail=onFace(body,'-z',0,BH/2-0.6,0.18,1.0,0.14,coat);if(cx>0.3)onFace(tail,'-z',0,-0.34,0.34,0.36,0.14,dark,{r:0.06});
+  // acacia tree and a few bushes or rocks
+  // the tree stands behind the neck, so neither blocks the other's screws
+  if(cx>0.25){const tx=R.pick([-1,1])*2.3,tzz=gz-1.55,th=R.f(3.4,3.9);
+    cyl(0.2,th,'#7a5236',V(tx,y0+th/2,tzz),Q(),{side:false});
+    cyl(1.25,0.36,'#7fae4f',V(tx,y0+th+0.18,tzz),Q());
+    if(cx>0.6)cyl(0.8,0.3,'#93c260',V(tx+0.15,y0+th+0.51,tzz-0.1),Q())}
+  const bs=R.shuffle([[-2.1,1.8],[1.8,2.2],[-1.9,-0.2],[2.2,0.4],[-1.6,2.9]]);
+  for(let i=0;i<1+Math.round(cx*1.5)&&i<bs.length;i++){const[x,z]=bs[i];
+    if(R.chance(0.5))blob(R.f(0.42,0.55),'#7bb661',V(x,y0+0.4,z),R,3);else blob(R.f(0.35,0.48),'#a3a7ad',V(x,y0+0.28,z),R,3)}
+}
+const GENS3D=[['cottage',genCottage],['room',genRoom],['mill',genMill],['castle',genCastle],['rocket',genRocket],['robot',genRobot],['villa',genVilla],['giraffe',genGiraffe]];
 function pick3D(diff,level,salt){const n=GENS3D.length,cyc=Math.floor((level-1)/n);const ord=rng(`cyc|${diff}|${cyc}|${salt}`).shuffle([...Array(n).keys()]);return GENS3D[ord[(level-1)%n]]}
 
 /* ----- 2D generator: opaque plates stacked flush ----- */

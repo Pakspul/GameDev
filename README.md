@@ -57,6 +57,8 @@ docs/               guides
 - [HISTORY.md](HISTORY.md): what was done, per day
 - [docs/ROADMAP.md](docs/ROADMAP.md): tips and ideas for new games
 - [docs/BACKLOG.md](docs/BACKLOG.md): the next games: ten puzzle games and one chaotic action game
+- [docs/ISSUES.md](docs/ISSUES.md): issues and player feedback, per game
+- [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md): Unscrew's 3D models by category, ideas for new ones, and a recipe for adding one
 - [docs/NAMING.md](docs/NAMING.md): notes for choosing the final name ("Honest Arcade" is a working title)
 - [PRIVACY.md](PRIVACY.md): privacy policy (short version: we collect nothing)
 

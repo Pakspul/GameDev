@@ -1,0 +1,77 @@
+# Issues
+
+Problems and feedback, **per game**: things players noticed, bugs, and weak spots in a game's design. For concrete next steps across the whole project, see [TODO.md](../TODO.md); for new games, see [BACKLOG.md](BACKLOG.md).
+
+## How to use this file
+
+- One entry per issue, under its game. Give it the next free ID for that game (`U-2`, `J-1`, …) and never reuse an ID, so commits and the [history](../HISTORY.md) can refer to it.
+- Say **where it came from** (a player, a playtest, a test, a review) and **when**, and describe what was noticed before proposing a fix.
+- **Status:** `open` → `in progress` → `done` (or `won't fix`, with the reason). Keep done issues in the list, so the reasoning stays findable.
+- An issue that turns into a big job gets its own doc (like [UNSCREW-MODELS.md](UNSCREW-MODELS.md)); the entry here then links to it.
+
+| Prefix | Game |
+|---|---|
+| `J-` | Jade Pavilion |
+| `N-` | Nuts & Bolts |
+| `O-` | Outbound |
+| `U-` | Unscrew |
+| `G-` | Graphite |
+| `S-` | Crystal Reels (slots) |
+| `C-` | Camper Crew |
+| `H-` | The hub and anything shared |
+
+## Jade Pavilion
+
+_No issues yet._
+
+## Nuts & Bolts
+
+_No issues yet._
+
+## Outbound
+
+_No issues yet._
+
+## Unscrew
+
+### U-1: Too few 3D models, so the levels feel the same
+
+- **Status:** in progress
+- **Source:** player feedback, November 2026
+- **What was noticed:** 3D mode had only six models: cottage, bedroom, windmill, castle, rocket and robot. Each one is generated with random sizes, colours and details, but after six levels you have seen every kind of object, and from then on it is "another cottage". Players called it a lack of diversity.
+- **Why it matters:** in a take-apart game the object *is* the reward. A new thing to take apart keeps people playing more than a slightly different version of an old one.
+- **Plan:**
+  1. *Done (6 November 2026):* two new models, from two new categories: a **villa** (a modern house: two floors, flat roofs, a balcony, a pool) and a **giraffe** (the first animal: screwed-on spots, a neck, a mane and an acacia tree). That makes eight.
+  2. *Next:* grow the collection category by category: houses, animals, vehicles, industry and more. The catalogue of categories, model ideas and a step-by-step recipe for adding one (written so that an AI agent can pick up a model on its own) is in [UNSCREW-MODELS.md](UNSCREW-MODELS.md).
+  3. *Later:* once there are a dozen or more models, make the level picker aware of categories, so two houses don't come up in a row.
+- **Tool:** `npm run unscrew:models` reports screws and kept parts per model and difficulty, and takes screenshots with `--shots`.
+- **Note:** adding a model reshuffles which model each 3D level number shows (the order is a seeded shuffle of all models). Saves only hold level numbers, scores, stars and coins, never the object itself, so nothing breaks. A run in progress just continues on a different object. The save key `unscrew.v2` stays the same on purpose.
+
+### U-2: Older models silently lose parts
+
+- **Status:** open
+- **Source:** found while building the villa and the giraffe (U-1), 6 November 2026
+- **What was noticed:** `finalize()` drops every part that ends up without a screw. The new report (`npm run unscrew:models`) shows the older models keep only 55–96% of the parts they build: the castle about 55–73%, the cottage and the robot about 68–72%. Some of that is harmless (a hidden core under cladding), but some is visible: the cottage's front wall shows a gap where a plank went missing.
+- **Likely causes** (see the rules in [UNSCREW-MODELS.md](UNSCREW-MODELS.md#2-know-the-rules-of-the-screws)): planks closer together than the 0.52 minimum screw spacing (the cottage uses 0.36–0.46 planks), fence rails whose screws are only valid where a picket covers them, and parts that block each other so the solver breaks the deadlock by deleting screws.
+- **Proposal:** go through the models one by one with `npm run unscrew:models -- <name> --shots`, fix the visible drops, and aim for 90% kept. This changes the levels (fine, see the note under U-1).
+
+## Graphite
+
+_No issues yet._
+
+## Crystal Reels (slots)
+
+### S-1: End-to-end test: the pick feature screen doesn't appear
+
+- **Status:** open
+- **Source:** `npm test`, 6 November 2026 (also fails on the code before that day's changes, so it is older)
+- **What was noticed:** in `tests/slots/e2e.mjs`, *Feature: pick on machine 2* reports "✗ the pick feature screen appeared". The pick still ends back in Idle with nothing pending, so the feature runs, but the test doesn't see its screen. Everything else in `npm test` passes, but `npm test` as a whole fails on this one check.
+- **Next:** find out whether the screen is skipped or the test looks too late or for the wrong element.
+
+## Camper Crew
+
+_No issues yet._
+
+## Hub and shared
+
+_No issues yet._

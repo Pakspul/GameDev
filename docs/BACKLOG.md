@@ -21,6 +21,8 @@ Ordered roughly by value for effort: high on the list = ad-heavy genre in the st
 | 9 | **Sonar** | Minesweeper | Minesweeper on the surface of 3D shapes (cube, torus, ring) that you rotate. Boards are generated so they never need a guess. | Outbound's surface generator (shapes with neighbours) |
 | 10 | **Letterwerk** | Wordle, Wordscapes | Word puzzles in Dutch **and** English: a daily guess-the-word and a "make words from these letters" grid. Few good ad-free Dutch word games exist. | Graphite's daily engine; needs open word lists (licence check) |
 
+**Not a new game, but on the list too:** more 3D models for Unscrew, sorted by category, in [UNSCREW-MODELS.md](UNSCREW-MODELS.md).
+
 **Honourable mentions:** *Untangle* (drag points until no lines cross: tiny, pure touch), a Sokoban-style box pusher, and the whodunit logic grid already on the roadmap.
 
 ## Part 2: a chaotic action game

@@ -22,6 +22,8 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] "Back to arcade" button in four games: see **Release issues**, item 1
 - [x] Language work for Unscrew, per the decision above
 - [ ] Colour-blind check: can Unscrew's screws and boxes be told apart without colour?
+- [ ] Unscrew: more 3D models, one category at a time (issue U-1; catalogue and recipe in [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md)). Vehicles and industry first
+- [ ] Unscrew: older models silently lose parts (issue U-2)
 - [ ] Battery: pause rendering when nothing moves or the app is in the background
 - [ ] Optional cleanup: remove the `window.claude` leftovers from the artifact days
 - [ ] Graphite: play every type and tier on the phone. Are the tiers well spaced? Is Star Battle Expert (10×10, 2 stars) quick enough to generate on an older phone?
@@ -81,6 +83,6 @@ Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each
 
 ## Bugs & notes
 
-_Write down anything you notice while playing: game, what happened, on which phone._
+_Write down anything you notice while playing: game, what happened, on which phone._ Anything that needs more than a line goes into [docs/ISSUES.md](docs/ISSUES.md), per game.
 
 -
