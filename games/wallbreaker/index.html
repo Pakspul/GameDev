@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b1020">
+<title>Wallbreaker</title>
+<meta name="description" content="A brick breaker with seven modes and endless levels. No ads, no purchases, no tracking." data-i18n-attr="content:metaDesc">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="cv" aria-label="Wallbreaker"></canvas>
+
+<header id="hud" hidden>
+  <button type="button" class="hud-btn" id="pauseBtn" data-i18n-attr="aria-label:pause">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="4" y="3" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="10.5" y="3" width="3.5" height="12" rx="1" fill="currentColor"/></svg>
+  </button>
+  <span id="hudLeft"></span>
+  <span id="hudMid"></span>
+  <span id="hudRight"></span>
+</header>
+
+<div id="overlay" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<noscript>Wallbreaker needs JavaScript.</noscript>
+
+<script src="../../shared/js/platform.js"></script>
+<script src="../../shared/js/i18n.js"></script>
+<script src="strings.js"></script>
+<script type="module" src="game.js"></script>
+</body>
+</html>

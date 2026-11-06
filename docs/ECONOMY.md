@@ -128,6 +128,10 @@ Outbound works out the balance from the save every time (what you've earned minu
 
 All three already follow rule 3 in spirit (help shows in your result). If one of them ever gets a currency, give it an `economy.js` and follow this document.
 
+## Wallbreaker: its own economy
+
+Wallbreaker (credits) follows its own plan rather than this document: fixed prices for boosts, Workshop upgrades and cosmetics, and pay per level from `10 + 2 × √level`. It has no help to buy and no tiers, so "levels of the tier" doesn't fit. Its numbers live in `games/wallbreaker/src/config.js` and are tested by `tests/wallbreaker/rules.test.mjs`; the reasons, and the two places it differs from the rules above (boosts are bought ahead; a 3-star replay pays 50%), are in [WALLBREAKER.md](WALLBREAKER.md#where-wallbreaker-differs-from-docseconomymd). Rule 9 holds as everywhere: credits can never be bought.
+
 ## Adding a currency to a game, or a new item
 
 1. Create `games/<name>/economy.js` with `Economy.register("<name>", { rewards, anchor, items })`, and load it in `index.html` after `../../shared/js/economy.js` and before `game.js`.
