@@ -79,6 +79,18 @@ for (const lang of LANGS) for (const { name, path } of pages) {
       const r = await page.request.get(base + h);
       if (!r.ok()) problems.push(`hub link broken: ${h} (${r.status()})`);
     }
+    // The menu opens with the version in it, and each of its links opens its own box.
+    await page.click("#menu-btn");
+    if (!(await page.$eval("#menu", (d) => d.open && /\d/.test(document.getElementById("version").textContent))))
+      problems.push("menu doesn't open, or shows no version");
+    await page.keyboard.press("Escape");
+    for (const id of await page.$$eval("#menu [data-opens]", (bs) => bs.map((b) => b.dataset.opens))) {
+      await page.click("#menu-btn");
+      await page.waitForTimeout(300);
+      await page.click(`#menu [data-opens="${id}"]`);
+      if (!(await page.$eval(`#${id}`, (d) => d.open))) problems.push(`menu link "${id}" doesn't open its box`);
+      await page.keyboard.press("Escape");
+    }
   } else {
     const canvas = await page.$$eval("canvas", (cs) => cs.some((c) => c.width > 0 && c.height > 0));
     if (!canvas) problems.push("no visible canvas rendered");

@@ -36,6 +36,7 @@ Template: copy this to the top for a new day
 - New `tests/unscrew.mjs` (part of `npm test`): every model file is loaded, every model is in the order list and named in both languages, and the order list only grows at the end.
 - New **model inspector** for Unscrew, development only (`games/unscrew/index.html?models` in `npm run dev`): any model at any difficulty, level and variant, with its dropped parts as red ghosts, unused slots, x-ray, an explode slider, tap-a-part to see what holds it, step-by-step taking apart, and "play this level". `npm run build` strips it, like the slots debug menu. See [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md#5-check-it).
 - The build's debug-block strip now handles CRLF line endings, so `npm run build` works on a Windows checkout again.
+- The hub got a **menu** (the ☰ button top right) that slides in from the right with the language picker, **Our mission** (the promise from [MISSION.md](MISSION.md), short and in both languages) and **What's new** (a change log per version) and a **Source code** link to [the GitHub repo](https://github.com/Pakspul/GameDev), with the version (**v0.1**) quietly at the bottom. New releases go at the top of `CHANGES` in [index.html](index.html), with `version` in `package.json` raised to match.
 
 **Decided**
 - Adding models reshuffles which object each 3D level number shows. Saves hold no objects, so the save key stays `unscrew.v2`.
