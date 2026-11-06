@@ -22,6 +22,11 @@ Template: copy this to the top for a new day
 ## 2026-11-06
 
 **Done**
+- New game: **Wallbreaker**, a brick breaker built from the game plan and acceptance criteria ([docs/WALLBREAKER.md](docs/WALLBREAKER.md)), all six build slices at once: one engine (fixed 120 Hz, swept-circle collision so nothing tunnels) under seven modes (Classic, Zen, Descent, Run, Daily, Puzzle, Time Attack); level 1 fixed and every other level generated from a seed, checked for reachability and at most 15% steel; bosses every 10th level; ten brick types; 16 good capsules and 6 risky ones you catch or dodge; credits, boosts, a Workshop and 24 cosmetics; save export and import; settings for colour-blind colours, reduced motion, left-handed layout, haptics, auto-launch, aim assist and sensitivity; synthesised sound packs; offline install with a service worker. English and Dutch. On the hub as the seventh card, and the hub's version is now **v0.2**.
+- 30 Puzzle walls, each proven solvable by a solver that plays them with the real engine (`npm run wallbreaker:puzzles`); 8 Time Attack walls.
+- Tests for the acceptance criteria: `tests/wallbreaker/rules.test.mjs` (38 tests in Node) and `tests/wallbreaker/e2e.mjs` (a phone browser: every mode starts, relative drag, boosts, quitting, settings, offline), both in `npm test`. `npm run wallbreaker:sim` lets an autopilot play Classic and prints pay per level.
+- An autopilot playing 150 levels found three ways a level could drag on forever; each got a small fix in the config: a ball that touches nothing useful for 10 s gets a small turn, a ball takes a portal at most twice per paddle hit, and with 3 bricks or fewer left for 15 s the ball leans toward them. Steel is never placed next to other steel, so it can't seal bricks off.
+- [PRIVACY.md](PRIVACY.md) now names every game in the app, Graphite and Wallbreaker included.
 - Nuts & Bolts got a new level type from a player's idea (**N-1**): **Keyed bolts**, bolts with a coloured base and tag that only take nuts of their own colour. It replaces the second Mixed level in the cycle (levels 4, 9, 14, …) and joins the daily rotation; the solver and hints know the rule, and every other level is unchanged.
 - New [docs/ISSUES.md](docs/ISSUES.md): issues and player feedback per game, with IDs (`U-1`, `J-1`, …). First issue: **U-1**, players find Unscrew's 3D models too few and too alike.
 - Unscrew got two new 3D models in two new categories: a **villa** (two floors, flat roofs, a glass balustrade, solar panels, a pool with a screwed-on rim) and a **giraffe** (the first animal: spots that hide screws, a leaning neck with a mane, an acacia tree). Eight models now.
@@ -39,11 +44,14 @@ Template: copy this to the top for a new day
 - The hub got a **menu** (the ☰ button top right) that slides in from the right with the language picker, **Our mission** (the promise from [MISSION.md](MISSION.md), short and in both languages) and **What's new** (a change log per version) and a **Source code** link to [the GitHub repo](https://github.com/Pakspul/GameDev), with the version (**v0.1**) quietly at the bottom. New releases go at the top of `CHANGES` in [index.html](index.html), with `version` in `package.json` raised to match.
 
 **Decided**
+- Wallbreaker keeps its own economy (fixed prices, boosts bought ahead, 3-star replays pay 50%) instead of the arcade's "levels of the tier" rules, because it has no help to buy and no tiers. Explained in [docs/ECONOMY.md](docs/ECONOMY.md) and [docs/WALLBREAKER.md](docs/WALLBREAKER.md).
+- Wallbreaker is on the hub and in production builds, not behind the experimental flag, so it can be tried on a phone from the website. Its feel and pacing gates are still open (see TODO).
 - Adding models reshuffles which object each 3D level number shows. Saves hold no objects, so the save key stays `unscrew.v2`.
 - Grow the models one category at a time; vehicles and industry first, as they are still empty.
 - The level order of the models is written down in one list (`MODEL_ORDER` in `models/order.js`), apart from the files, so moving a model between files or reordering script tags never changes a level. New models go at the end.
 
 **Next**
+- Wallbreaker's feel gate on a real phone, then the pacing playtest.
 - Issue **U-2**: the report shows the older models silently drop 5–45% of their parts, some of them visibly (a gap in the cottage's wall). Fix model by model.
 - U-1 step 3: with twenty-four models, make the level picker avoid two models of one category in a row.
 - More models from the catalogue.

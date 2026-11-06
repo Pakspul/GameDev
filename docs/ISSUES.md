@@ -18,6 +18,7 @@ Problems and feedback, **per game**: things players noticed, bugs, and weak spot
 | `G-` | Graphite |
 | `S-` | Crystal Reels (slots) |
 | `C-` | Camper Crew |
+| `W-` | Wallbreaker |
 | `H-` | The hub and anything shared |
 
 ## Jade Pavilion
@@ -89,3 +90,7 @@ _No issues yet._
 ## Hub and shared
 
 _No issues yet._
+
+## Wallbreaker
+
+_No issues yet._ Built on 6 November 2026; the feel gate (a real phone) is still to come, see [WALLBREAKER.md](WALLBREAKER.md#not-verified-here-needs-a-person-and-a-phone).

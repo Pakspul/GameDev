@@ -18,7 +18,8 @@ How the repository is organised, why, and how to improve it step by step without
 │   ├── nuts-and-bolts/
 │   ├── outbound/
 │   ├── unscrew/             models/ holds the 3D models: kit.js (building blocks), one file per category, order.js (level order); dev/inspector.js is the model inspector (?models, left out of builds)
-│   └── graphite/            levels/ holds one generator per puzzle type; worker.js runs them off the main thread
+│   ├── graphite/            levels/ holds one generator per puzzle type; worker.js runs them off the main thread
+│   └── wallbreaker/         src/ holds the engine, generator, modes, economy (config.js has every number), renderer and save
 ├── shared/                  Things every game uses, kept in exactly one place
 │   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md)
 │   ├── vendor/three/        three.js r128 (the 3D engine), served locally
@@ -32,6 +33,7 @@ How the repository is organised, why, and how to improve it step by step without
 ├── tests/puzzles.mjs        npm test: Graphite's generators give unique puzzles, and the same ones every time
 ├── tests/economy.mjs        npm test: every game's prices and rewards follow docs/ECONOMY.md
 ├── tests/unscrew.mjs        npm test: every Unscrew model is loaded, in the fixed level order, and named in every language
+├── tests/wallbreaker/       npm test: Wallbreaker's acceptance criteria (rules.test.mjs in Node, e2e.mjs in a phone browser)
 ├── docs/                    Guides (this file, Android publishing, roadmap)
 ├── dist/                    (generated) the exact files that go into the app; not committed
 └── android/                 (generated once by Capacitor, then committed) the Android project
@@ -60,6 +62,7 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Outbound | English + Dutch | ~2,650 | 2D canvas, three.js loaded on demand for 3D modes | `outbound.*` | Three level generators (flat, box, shapes), light/dark theme, haptics, shop |
 | Unscrew | English + Dutch | ~1,120 (of which ~650 in `models/`) | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators (see [UNSCREW-MODELS.md](UNSCREW-MODELS.md)), coins and shop |
 | Graphite | English + Dutch | ~2,200 | 2D canvas, redraws only on change | `graphite.v1` | Four logic puzzle types, generators in a Web Worker, logic-based hints, four dailies |
+| Wallbreaker | English + Dutch | ~3,300 (ES modules) | 2D canvas, frame loop only while a level is played | `wallbreaker.save` | Brick breaker, seven modes on one engine (`src/engine.js`, fixed 120 Hz, swept collision); seeded levels; its own economy in `src/config.js`; service worker for offline install. See [WALLBREAKER.md](WALLBREAKER.md) |
 | Crystal Reels | English + Dutch | ~6,000 (ES modules) | DOM + SVG, no canvas except particles; frame loop only while something moves | `honest-arcade.slots.save.0/1` | Slot machines with play money; maths engine + simulator in `games/slots/src/engine`, see [SLOTS.md](SLOTS.md) |
 | Camper Crew | English + Dutch | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
 

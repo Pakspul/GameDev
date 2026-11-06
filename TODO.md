@@ -57,6 +57,14 @@ Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each
 - [ ] Add the new game to [PRIVACY.md](PRIVACY.md)'s list once the app is built (it stores progress locally and nothing else)
 - [ ] Optional: a cooldown on the free refill (`refill.cooldownMinutes` in `games/slots/data/game.json`; the specification default is 10)
 
+## Wallbreaker (see [docs/WALLBREAKER.md](docs/WALLBREAKER.md))
+
+- [ ] **Feel gate:** play on a real mid-range phone (`npm run dev`, phone on the same Wi-Fi). Is the ball speed right, does the relative drag feel right, are the edges forgiving enough? Tune `physics` in `games/wallbreaker/src/config.js`
+- [ ] Measure on that phone: 60 fps with 200 bricks and 12 balls, and touch-to-paddle latency under 50 ms
+- [ ] **Pacing gate:** a playtest with a few people; compare with `npm run wallbreaker:sim`, then tune prices and rewards in the config
+- [ ] Play all 30 Puzzle walls and the 8 Time Attack walls: are they fun, in a good order, and are the medal times fair?
+- [ ] Decide the open items: Daily leaderboard (local or online), sound (synthesised, original or licensed), Descent's four power-ups, checkpoints every 5th level, name check
+
 ## Android app, priority 1 (see [docs/RELEASE.md](docs/RELEASE.md), chapter 1)
 
 - [ ] Install Node.js 22+ and Android Studio
@@ -69,7 +77,7 @@ Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each
 
 - [ ] Developer account (US$25 one-time + ID verification)
 - [ ] **Find 12 testers early.** The closed test takes 14 days.
-- [ ] Privacy policy up to date (release issue 4) and online at a public URL
+- [ ] Privacy policy online at a public URL (the text now names all seven games in the app)
 - [ ] Store listing: short and full description (with the mission), 9:16 screenshots, 1024×500 feature graphic
 - [ ] Forms: privacy policy URL, ads = no, data safety = nothing collected, content rating, target audience
 - [ ] Internal test → closed test (12 testers × 14 days) → apply for production → release 🎉

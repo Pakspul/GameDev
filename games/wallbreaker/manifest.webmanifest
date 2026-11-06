@@ -1,0 +1,14 @@
+{
+  "name": "Wallbreaker",
+  "short_name": "Wallbreaker",
+  "description": "A brick breaker with seven modes and endless levels. No ads, no purchases, no tracking.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
