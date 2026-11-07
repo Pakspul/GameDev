@@ -1,14 +1,14 @@
 {
   "name": "honest-arcade",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Ad-free games built with three.js and plain web tech: puzzles, a brick breaker and slot machines with play money. Playable in the browser, packaged for Android (and later iOS) with Capacitor.",
+  "description": "Ad-free games built with three.js and plain web tech: puzzles, a brick breaker, a coin pusher and slot machines with play money. Playable in the browser, packaged for Android (and later iOS) with Capacitor.",
   "type": "module",
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "build": "node scripts/build.mjs",
     "preview": "npm run build && node scripts/serve.mjs --dist",
-    "test": "node tests/puzzles.mjs && node tests/economy.mjs && node tests/unscrew.mjs && npm run test:slots && npm run test:wallbreaker && npm run build -- --experimental && node tests/smoke.mjs && node tests/slots/e2e.mjs && node tests/wallbreaker/e2e.mjs",
+    "test": "node tests/puzzles.mjs && node tests/economy.mjs && node tests/unscrew.mjs && npm run test:slots && npm run test:wallbreaker && npm run test:coin-dozer && npm run build -- --experimental && node tests/smoke.mjs && node tests/slots/e2e.mjs && node tests/wallbreaker/e2e.mjs && node tests/coin-dozer/e2e.mjs",
     "fonts": "node scripts/vendor-fonts.mjs",
     "test:slots": "node scripts/slots-validate.mjs && node --test tests/slots/*.test.mjs && node scripts/slots-sim.mjs --check",
     "slots:sim": "node scripts/slots-sim.mjs",
@@ -17,7 +17,9 @@
     "unscrew:models": "node scripts/unscrew-models.mjs",
     "test:wallbreaker": "node --test tests/wallbreaker/*.test.mjs",
     "wallbreaker:puzzles": "node scripts/wallbreaker-puzzles.mjs",
-    "wallbreaker:sim": "node scripts/wallbreaker-sim.mjs"
+    "wallbreaker:sim": "node scripts/wallbreaker-sim.mjs",
+    "test:coin-dozer": "node --test tests/coin-dozer/*.test.mjs",
+    "coin-dozer:sim": "node scripts/coin-dozer-sim.mjs"
   },
   "devDependencies": {
     "playwright": "1.63.0"

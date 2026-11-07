@@ -19,6 +19,19 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-07
+
+**Done**
+- New game: **Coin Dozer**, a coin pusher built from its specification ([docs/COIN-DOZER.md](docs/COIN-DOZER.md)), all seven build steps. Real rigid-body physics with [Rapier](https://rapier.rs) (vendored in `shared/vendor/rapier/`, like three.js): coins as rounded cylinders that stack, slide and tip, a kinematic pusher on a 2.4 s cycle, sleeping bodies, a fixed 60 Hz step and a seeded board. Gold and lucky coins, four gem cuts and 32 figures over four machine themes (Classic, Space, Candy, Ocean), coin showers, fever, jackpots and the wide shelf, anti-stall that looks like normal physics, a lifeline so the bank never stays empty, credits, milestones, a Workshop and a collection. Instanced coins in three.js r128, synthesised sound limited to 12 voices, haptics, settings, saving of the whole board, offline install. English and Dutch. On the hub as a new card; the hub's version is now **v0.3**.
+- Tests for the acceptance criteria, in `npm test`: `tests/coin-dozer/rules.test.mjs` (31 tests on the real physics), `sim.test.mjs` (the cascade rate over 200 advances) and `e2e.mjs` (a phone browser: start, aim, drop, buttons, Workshop, collection, settings, reload, corrupt save, landscape, offline). The 10,000-cycle stability run is a separate CI job. `npm run coin-dozer:sim` prints the cascade rate and payout.
+- Tuning with the simulation found a loop: a big cascade starts a coin shower, whose coins start another big cascade. A cascade-triggered shower now waits 40 s after the last one.
+
+**Decided**
+- Coin Dozer follows the arcade where the spec and the codebase differ (listed in docs/COIN-DOZER.md): English and Dutch, every button in the bottom bar (settings moved to the pause card), credits per game. A theme's 12 collectibles are its 4 gems and 8 figures.
+
+**Next**
+- The feel gate on a real phone, and the performance numbers that need one (see TODO).
+
 ## 2026-11-06
 
 **Done**

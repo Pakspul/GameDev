@@ -65,6 +65,13 @@ Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each
 - [ ] Play all 30 Puzzle walls and the 8 Time Attack walls: are they fun, in a good order, and are the medal times fair?
 - [ ] Decide the open items: Daily leaderboard (local or online), sound (synthesised, original or licensed), Descent's four power-ups, checkpoints every 5th level, name check
 
+## Coin Dozer (see [docs/COIN-DOZER.md](docs/COIN-DOZER.md))
+
+- [ ] **Feel gate:** watch and play it on a real mid-range phone. Does the push feel heavy enough, do stacks tip and cascade, are the gutters fair? Tune `physics` and `board` in `games/coin-dozer/src/config.js`, then check `npm run coin-dozer:sim` (cascade rate today: about 1 in 4, target 1 in 6)
+- [ ] Measure on that phone: 60 fps with 250 coins, above 30 fps in a coin shower, load within 3 s, memory under 150 MB
+- [ ] Listen to the synthesised sounds and tune or replace them
+- [ ] Decide: final name (Coin Dozer?), and whether the hazard modifier (bomb tokens, built but off) becomes a setting
+
 ## Android app, priority 1 (see [docs/RELEASE.md](docs/RELEASE.md), chapter 1)
 
 - [ ] Install Node.js 22+ and Android Studio
