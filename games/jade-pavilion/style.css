@@ -105,7 +105,7 @@ button{font:inherit;color:inherit}
 
 /* sheets */
 .overlay{position:absolute;inset:0;z-index:30;display:flex;overflow:auto;padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--scrim);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
-.sheet{margin:auto;width:min(600px,100%);background:var(--sheet);border:1px solid var(--rail-line);border-radius:18px;padding:clamp(20px,4.5vw,34px);box-shadow:0 40px 120px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:22px;animation:sheetIn .4s cubic-bezier(.2,.8,.2,1)}
+.sheet{box-sizing:border-box;margin:auto;width:min(600px,100%);background:var(--sheet);border:1px solid var(--rail-line);border-radius:18px;padding:clamp(20px,4.5vw,34px);box-shadow:0 40px 120px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:22px;animation:sheetIn .4s cubic-bezier(.2,.8,.2,1)}
 .sheet.narrow{width:min(440px,100%)}
 @keyframes sheetIn{from{opacity:0;transform:translateY(16px) scale(.98)}}
 .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700}
@@ -114,23 +114,18 @@ button{font:inherit;color:inherit}
 h2.title{font-size:clamp(30px,6vw,42px)}
 .lede{color:var(--paper-dim);font-size:14px;line-height:1.65;margin:12px 0 0;max-width:56ch}
 .lede b{color:var(--paper);font-weight:500}
-.diffs{display:grid;gap:8px}
-.diff{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;text-align:left;padding:11px 14px;border-radius:12px;border:1px solid var(--rail-line);background:var(--chip);cursor:pointer;transition:border-color .15s,background .15s}
-.diff:hover{border-color:rgba(240,228,200,.3)}
-.diff[aria-checked="true"]{border-color:var(--accent);background:var(--chip-on)}
 .mini{width:34px;height:45px;border-radius:6px;background:linear-gradient(#faf3e2,#e8dbbb);box-shadow:inset 0 -6px 0 var(--tile-back),0 2px 0 rgba(0,0,0,.4);display:grid;place-items:center;padding-bottom:5px;font:700 21px/1 var(--f-han)}
-.dtx{display:flex;flex-direction:column;min-width:0}
-.nm{font-family:var(--f-display);font-weight:800;font-size:19px;line-height:1.2}
-.ds{font-size:12.5px;color:var(--paper-dim);margin-top:2px;line-height:1.45}
-.pg{font-size:12px;color:var(--paper-dim);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.pg b{display:block;color:var(--paper);font-size:14px;font-weight:700}
-.launch{display:flex;gap:10px;flex-wrap:wrap}
-.stepper{display:flex;align-items:stretch;border:1px solid var(--rail-line);border-radius:12px;overflow:hidden;flex:0 0 auto}
-.stepper button{appearance:none;border:0;background:var(--chip);width:42px;font-size:20px;cursor:pointer}
-.stepper button:disabled{opacity:.3;cursor:default}
-.stepper div{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:6px 12px;min-width:118px}
-.stepper output{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
-#lvStars{font-size:11px;color:var(--paper-dim);margin-top:2px;white-space:nowrap}
+/* The lobby (shared/css/gamelobby.css): lacquer chips, a gold edge on the table you're at. */
+:root{--gn-surface:var(--chip);--gn-ink:var(--paper);--gn-chosen:var(--chip-on);--gn-chosen-ink:var(--paper);--gn-star:var(--accent);--gn-star-off:rgba(240,228,200,.18);--gn-display:var(--f-display);--gn-card-radius:14px;--gn-tile-radius:12px}
+.lobby{display:flex;flex-direction:column;gap:16px}
+.lob-tab[aria-selected="true"]{border-color:var(--accent)}
+.lob-tab .mini{width:24px;height:32px;border-radius:4px;font-size:15px;padding-bottom:4px;box-shadow:inset 0 -4px 0 var(--tile-back),0 2px 0 rgba(0,0,0,.4)}
+.lob-tab small{color:var(--paper-dim);opacity:1}
+.lob-play{background:var(--chip-on);border-color:rgba(220,183,96,.35)}
+.lob-eyebrow{color:var(--accent);letter-spacing:.22em}
+.lob-go{border-radius:12px;font-weight:700}
+.lob-alt{border-radius:12px;background:var(--chip)}
+.lob-lvl.next{border-width:1px;box-shadow:inset 0 0 0 1px var(--accent)}
 .btn{appearance:none;border:1px solid var(--rail-line);background:var(--chip);border-radius:12px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:48px;transition:border-color .15s,filter .15s}
 .btn:hover{border-color:var(--accent)}
 .btn small{font-size:11.5px;font-weight:400;color:var(--paper-dim)}

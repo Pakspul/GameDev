@@ -109,7 +109,8 @@ details.rules ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); di
 .seg.big button svg { width: 19px; height: 19px; }
 
 .topline { justify-content: flex-start; align-items: center; gap: 10px; margin-bottom: -6px; }
-.topline .gnav-menu { margin-left: auto; }
+/* The balance sits next to the menu, as in every game (top right: balance, then ☰). */
+.topline #pointsBtn { margin-left: auto; }
 .points { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
 .points .gem { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--star); color: #2a1d00; }
 .points .gem svg { width: 14px; height: 14px; }

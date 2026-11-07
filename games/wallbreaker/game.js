@@ -154,13 +154,13 @@ const overlay = () => $("#overlay");
 let screenBack = null;       // where the back button goes from the screen on show (null: the arcade)
 /** Show a menu screen. `back` is where the back button (and Android back) goes from it: Wallbreaker's
  *  home by default, null on the home screen itself (then it goes to the arcade). */
-function showScreen(node, { modal = false, back = home } = {}) {
+function showScreen(node, { modal = false, back = home, keepScroll = false } = {}) {
   screenBack = back;
   const o = overlay();
   o.replaceChildren(node);
   o.hidden = false;
   o.classList.toggle("modal", modal);
-  o.scrollTop = 0;
+  if (!keepScroll) o.scrollTop = 0;
   placeNav();
   const first = o.querySelector("[autofocus]") || o.querySelector(".screen > :not(.screen-head) button");
   if (first && matchMedia("(hover: hover)").matches) first.focus({ preventScroll: true });
@@ -187,44 +187,139 @@ function leaveLevel() {
   resize();
 }
 
-function home() {
+// ---- The lobby (shared/js/gamelobby.js) ----------------------------------------------------------------------
+// The same layout as every game's menu: today's wall on top, the modes as tabs, and below the chosen mode
+// one tap to play on, its boosts, and every level with its stars.
+const LOBBY_MODES = MODE_ORDER.filter((m) => m !== "daily");
+const CP = CONFIG.checkpointEvery;
+function home() { lobby(save.lobbyMode); }
+/** Back to a mode's tab in the lobby (from a level, a result or a screen of its own). */
+function openMode(mode) { lobby(mode); }
+
+function lobby(mode) {
   leaveLevel();
-  const card = (mode) => {
-    const info = modeProgress(mode);
-    return h("button", { class: "mode-card m-" + mode, type: "button", onclick: () => { sound.unlock(); sound.play("click"); openMode(mode); } },
-      h("strong", {}, _t("mode." + mode)),
-      h("span", { class: "rule" }, _t("mode." + mode + ".rule")),
-      info ? h("span", { class: "prog" }, info) : null);
-  };
-  showScreen(h("section", { class: "screen home" },
+  if (!LOBBY_MODES.includes(mode)) mode = LOBBY_MODES.includes(save.lobbyMode) ? save.lobbyMode : "classic";
+  if (save.lobbyMode !== mode) { save.lobbyMode = mode; persist(); }
+  const again = !overlay().hidden && !!overlay().querySelector(".lobby"); // switching tabs: keep the scroll
+  showScreen(h("section", { class: "screen home lobby" },
     h("div", { class: "screen-head" }, h("span"), wallet()),
     h("h1", { class: "logo" }, h("span", {}, "WALL"), h("span", {}, "BREAKER")),
-    h("div", { class: "modes" }, MODE_ORDER.map(card)),
-    h("p", { class: "fine" }, _t("promise"))), { back: null });
+    dailyCard(),
+    GameLobby.tabs({
+      label: _t("lobby.modes"), value: mode,
+      options: LOBBY_MODES.map((m) => ({ value: m, label: _t("mode." + m), meta: modeProgress(m) || _t("lobby.new") })),
+      onChoose: (m) => { sound.unlock(); sound.play("click"); lobby(m); },
+    }),
+    modeParts(mode),
+    h("p", { class: "fine center" }, _t("promise"))), { back: null, keepScroll: again });
   if (!save.seenHelp) { save.seenHelp = true; persist(); }
 }
 
 function modeProgress(mode) {
   switch (mode) {
     case "classic": return _t("prog.level", { n: save.classic.level });
-    case "zen": return _t("prog.level", { n: save.zen.level });
-    case "descent": return _t("prog.level", { n: save.descent.level });
+    case "zen": case "descent": return _t("prog.level", { n: reachedIn(mode) });
     case "run": return save.run.active ? _t("prog.runOn", { n: save.run.active.level, code: save.run.active.code }) : save.run.best ? _t("prog.best", { n: save.run.best }) : null;
-    case "daily": { const b = save.daily.best[dateKey()]; return b ? _t("prog.dailyDone", { s: "★".repeat(b.stars) }) : save.daily.streak > 1 && save.daily.last === yesterday() ? _t("prog.streak", { n: save.daily.streak }) : _t("prog.dailyNew"); }
-    case "puzzle": { const st = Object.values(save.puzzle.stars).reduce((a, b) => a + b, 0); return _t("prog.stars", { n: st, max: PUZZLES.length * 3 }); }
-    case "timeattack": { const m = Object.values(save.ta.medal).filter(Boolean).length; return _t("prog.medals", { n: m, max: TIME_ATTACK.length }); }
+    case "puzzle": { const st = Object.values(save.puzzle.stars).reduce((a, b) => a + b, 0); return st ? _t("prog.stars", { n: st, max: PUZZLES.length * 3 }) : null; }
+    case "timeattack": { const m = Object.values(save.ta.medal).filter(Boolean).length; return m ? _t("prog.medals", { n: m, max: TIME_ATTACK.length }) : null; }
   }
   return null;
 }
+function modeParts(mode) {
+  if (mode === "run") return runParts();
+  if (mode === "puzzle") return puzzleParts();
+  if (mode === "timeattack") return taParts();
+  return levelParts(mode);
+}
 
-function openMode(mode) {
-  if (mode === "classic") return preLevel("classic");
-  if (mode === "zen") return preLevel("zen");
-  if (mode === "descent") return preLevel("descent");
-  if (mode === "run") return runScreen();
-  if (mode === "daily") return dailyScreen();
-  if (mode === "puzzle") return puzzleScreen();
-  if (mode === "timeattack") return taScreen();
+function dailyCard() {
+  const key = dateKey(), best = save.daily.best[key];
+  const streak = save.daily.streak > 1 && (save.daily.last === key || save.daily.last === yesterday()) ? save.daily.streak : 0;
+  return GameLobby.daily({
+    eyebrow: _t("mode.daily") + " · " + new Date().toLocaleDateString(I18n.lang, { weekday: "long", day: "numeric", month: "long" }),
+    title: _t("mode.daily.rule"),
+    meta: [best ? "★".repeat(best.stars) + " " + _t("daily.time", { t: fmtTime(best.time) }) : _t("lobby.dailyPays", { n: CONFIG.credits.daily }),
+      streak ? _t("prog.streak", { n: streak }) : null].filter(Boolean).join(" · "),
+    done: !!best, label: best ? _t("res.again") : _t("play"),
+    onClick: () => playLevel("daily", 0, { date: key }),
+  });
+}
+
+/** The highest level reached in Classic, Zen or Descent (replaying an earlier one never lowers it). */
+function reachedIn(mode) {
+  if (mode === "classic") return save.classic.reached;
+  return Math.max(save[mode].level, ...Object.keys(save[mode].stars).map((k) => +k + 1));
+}
+function starStats(values) {
+  const v = values.filter((s) => s > 0);
+  return [[v.length, _t("lobby.cleared")], [v.reduce((a, b) => a + b, 0), _t("lobby.stars")], [v.filter((s) => s === 3).length, _t("lobby.perfect")]];
+}
+
+// Classic, Zen and Descent: endless levels. Classic carries its lives from level to level, so it can be
+// restarted only from a checkpoint (every CP levels); Zen and Descent replay any level reached.
+function levelParts(mode) {
+  const reached = reachedIn(mode), n = mode === "classic" ? save.classic.level : reached;
+  const lives = mode === "classic" ? (save.classic.lives != null ? save.classic.lives : buildMods("classic", { workshop: save.workshop }).lives) : null;
+  const boss = n % 10 === 0 && mode !== "descent";
+  return [
+    GameLobby.play({
+      eyebrow: _t("mode." + mode), title: _t("hud.level", { n }), text: _t("mode." + mode + ".rule"),
+      action: { label: _t("play"), sub: [boss ? _t("pre.boss") : null, lives != null ? _t("pre.lives", { n: lives }) : null].filter(Boolean).join(" · "), onClick: () => playLevel(mode, n) },
+      stats: starStats(Object.values(save[mode].stars)),
+    }),
+    boostPicker(mode),
+    GameLobby.levels({
+      last: reached, next: n,
+      stars: (k) => save[mode].stars[k] || 0,
+      playable: mode === "classic" ? (k) => k <= reached && (k === n || k === 1 || k % CP === 0) : null,
+      onPick: (k) => {
+        if (mode === "classic" && k !== n) { save.classic.level = k; save.classic.lives = null; persist(); }
+        playLevel(mode, k);
+      },
+    }),
+    mode === "classic" && reached > CP ? h("p", { class: "fine" }, _t("lobby.checkpoints", { n: CP })) : null,
+  ];
+}
+
+function puzzleOpen(i) { return i < 3 || (save.puzzle.stars[PUZZLES[i - 1].name] || 0) > 0; }
+function puzzleParts() {
+  const st = (i) => save.puzzle.stars[PUZZLES[i].name] || 0;
+  let next = PUZZLES.findIndex((p, i) => puzzleOpen(i) && !st(i));
+  if (next < 0) next = Math.max(0, PUZZLES.findIndex((p, i) => st(i) < 3));
+  return [
+    GameLobby.play({
+      eyebrow: _t("mode.puzzle"), title: _t("hud.puzzle", { n: next + 1 }), text: _t("mode.puzzle.rule"),
+      action: { label: _t("play"), onClick: () => playLevel("puzzle", 0, { index: next }) },
+      stats: starStats(PUZZLES.map((p, i) => st(i))),
+    }),
+    GameLobby.levels({
+      count: PUZZLES.length, last: PUZZLES.length, next: next + 1, perPage: PUZZLES.length,
+      stars: (k) => st(k - 1), locked: (k) => !puzzleOpen(k - 1),
+      aria: (k) => _t("puz.aria", { n: k, s: st(k - 1) }),
+      onPick: (k) => playLevel("puzzle", 0, { index: k - 1 }),
+    }),
+  ];
+}
+
+function taParts() {
+  const open = (i) => i === 0 || !!save.ta.medal[TIME_ATTACK[i - 1].name];
+  let next = TIME_ATTACK.findIndex((w, i) => open(i) && !save.ta.medal[w.name]);
+  if (next < 0) next = Math.max(0, TIME_ATTACK.findIndex((w) => save.ta.medal[w.name] !== MEDALS[MEDALS.length - 1]));
+  const w = TIME_ATTACK[next];
+  const list = h("div", { class: "list" }, TIME_ATTACK.map((wall, i) => {
+    const m = save.ta.medal[wall.name], best = save.ta.best[wall.name];
+    return h("button", { type: "button", class: "row-btn" + (open(i) ? "" : " locked"), disabled: !open(i), onclick: () => playLevel("timeattack", 0, { index: i }) },
+      h("span", { class: "medal " + (m || "none") }, m ? _t("ta.short." + m) : "–"),
+      h("strong", {}, _t("ta." + wall.name)),
+      h("small", {}, open(i) ? (best ? _t("ta.best", { t: fmtTime(best) }) : _t("ta.goals", { g: wall.gold, s: wall.silver, b: wall.bronze })) : _t("ta.locked")));
+  }));
+  return [
+    GameLobby.play({
+      eyebrow: _t("mode.timeattack"), title: _t("ta." + w.name), text: _t("ta.goals", { g: w.gold, s: w.silver, b: w.bronze }),
+      action: { label: _t("play"), onClick: () => playLevel("timeattack", 0, { index: next }) },
+    }),
+    h("section", { class: "lob-levels" }, h("div", { class: "lob-levels-head" }, h("h3", {}, _t("lobby.walls"))), list),
+  ];
 }
 
 // ---- Boosts picker (Classic, Descent) -------------------------------------------------------------------
@@ -253,50 +348,9 @@ function boostPicker(mode) {
     h("h3", {}, _t("boosts.equip", { n: CONFIG.boosts.maxEquipped })),
     row,
     h("p", { class: "fine" }, _t("boosts.note")),
-    h("button", { type: "button", class: "link", onclick: () => shop("boosts", () => preLevel(mode)) }, _t("boosts.buy")));
+    h("button", { type: "button", class: "link", onclick: () => shop("boosts", () => lobby(mode)) }, _t("boosts.buy")));
 }
 function boostIcon(id) { return { multiStart: "multi2", life: "life", wideStart: "wide", netStart: "net", stickyStart: "sticky", lucky: "score2" }[id]; }
-
-function preLevel(mode) {
-  leaveLevel();
-  let n, extra = null;
-  if (mode === "classic") {
-    n = save.classic.level;
-    const base = buildMods("classic", { workshop: save.workshop }).lives;
-    const lv = save.classic.lives != null ? save.classic.lives : base;
-    extra = h("p", { class: "sub" }, _t("pre.lives", { n: lv }) + (save.classic.lives == null && n > 1 ? " · " + _t("pre.fromCheckpoint", { n }) : ""));
-  } else n = save[mode].level;
-  const body = [
-    h("div", { class: "panel center" },
-      h("p", { class: "big" }, _t("hud.level", { n })),
-      n % 10 === 0 && mode !== "descent" ? h("p", { class: "tag boss" }, _t("pre.boss")) : null,
-      extra,
-      h("p", { class: "sub" }, _t("mode." + mode + ".long")),
-      h("button", { type: "button", class: "primary", autofocus: true, onclick: () => playLevel(mode, n) }, _t("play"))),
-    boostPicker(mode),
-  ];
-  if (mode === "zen" || mode === "classic" || mode === "descent") {
-    const best = mode === "classic" ? save.classic.reached : save[mode].level;
-    if (best > 1) body.push(levelPicker(mode, n, best));
-  }
-  showScreen(screen(_t("mode." + mode), ...body));
-}
-
-/** Replay an earlier level (Zen and Descent any level reached; Classic only checkpoints). */
-function levelPicker(mode, current, best) {
-  const opts = [];
-  if (mode === "classic") { for (let k = 1; k <= best; k = k === 1 ? CONFIG.checkpointEvery : k + CONFIG.checkpointEvery) opts.push(k); }
-  else for (let k = 1; k <= best; k++) opts.push(k);
-  if (opts.length < 2) return null;
-  const sel = h("select", { "aria-label": _t("pre.pick") }, opts.map((k) => h("option", { value: k, selected: k === current }, _t("hud.level", { n: k }))));
-  return h("div", { class: "panel row" },
-    h("label", {}, _t(mode === "classic" ? "pre.pickCheckpoint" : "pre.pick"), sel),
-    h("button", { type: "button", class: "secondary", onclick: () => {
-      const k = Number(sel.value);
-      if (mode === "classic") { save.classic.level = k; save.classic.lives = null; } else save[mode].level = k;
-      persist(); preLevel(mode);
-    } }, _t("pre.go")));
-}
 
 // ---- Starting a level ---------------------------------------------------------------------------------------
 function playLevel(mode, n, opts = {}) {
@@ -431,14 +485,14 @@ function clearedView(s, e) {
       pay = levelPay({ mode: s.mode, level: n, brickCredits: e.brickCredits, stars, prevStars: prev, creditMul: s.creditMul });
       award(pay.total);
       store.stars[n] = Math.max(prev, stars);
-      store.level = n + 1;
+      store.level = s.mode === "classic" ? n + 1 : Math.max(store.level, n + 1);
       if (s.mode === "classic") {
         save.classic.lives = e.lives;
         save.classic.reached = Math.max(save.classic.reached, n + 1);
         save.stats.classicBest = Math.max(save.stats.classicBest, n);
       }
       body.push(payLines(pay, riskyNote));
-      buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => (MODES[s.mode].boosts ? preLevel(s.mode) : playLevel(s.mode, n + 1)) }, _t("res.next")));
+      buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => (MODES[s.mode].boosts ? lobby(s.mode) : playLevel(s.mode, n + 1)) }, _t("res.next")));
       break;
     }
     case "run": {
@@ -504,7 +558,7 @@ function clearedView(s, e) {
       break;
     }
   }
-  buttons.push(h("button", { type: "button", class: "secondary", onclick: () => (s.mode === "run" ? home() : openMode(s.mode)) }, _t("res.menu")));
+  buttons.push(h("button", { type: "button", class: "secondary", onclick: () => openMode(s.mode) }, _t("res.menu")));
   return h("section", { class: "screen result" }, title, s.mode === "timeattack" && !stars ? null : starsEl(stars), ...body, h("div", { class: "buttons" }, buttons));
 }
 
@@ -525,7 +579,7 @@ function failedView(s, e) {
       save.classic.level = cp;
       save.classic.lives = null;
       body.push(h("p", { class: "sub" }, _t("res.checkpoint", { n: cp })));
-      buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => preLevel("classic") }, _t("res.fromCheckpoint", { n: cp })));
+      buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => lobby("classic") }, _t("res.fromCheckpoint", { n: cp })));
     }
   } else if (s.mode === "run") {
     const a = save.run.active;
@@ -537,11 +591,11 @@ function failedView(s, e) {
     } else {
       title = _t("run.over");
       body.push(...endRun());
-      buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => runScreen() }, _t("run.new")));
+      buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => lobby("run") }, _t("run.new")));
     }
   } else if (s.mode === "descent") {
     body.push(h("p", { class: "sub" }, _t("res.reached")));
-    buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => preLevel("descent") }, _t("res.retry")));
+    buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => lobby("descent") }, _t("res.retry")));
   } else if (s.mode === "daily") {
     body.push(h("p", { class: "sub" }, _t("daily.retry")));
     buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => playLevel("daily", 0, { date: s.date }) }, _t("res.retry")));
@@ -550,44 +604,50 @@ function failedView(s, e) {
     body.push(h("p", { class: "sub" }, _t("puz.outText", { n: e.shotLimit })));
     buttons.push(h("button", { type: "button", class: "primary", autofocus: true, onclick: () => playLevel("puzzle", 0, { index: s.index }) }, _t("res.retry")));
   }
-  buttons.push(h("button", { type: "button", class: "secondary", onclick: () => (s.mode === "run" ? home() : openMode(s.mode)) }, _t("res.menu")));
+  buttons.push(h("button", { type: "button", class: "secondary", onclick: () => openMode(s.mode) }, _t("res.menu")));
   return h("section", { class: "screen result" }, h("h2", {}, title), ...body, h("div", { class: "buttons" }, buttons));
 }
 
 // ---- Run ----------------------------------------------------------------------------------------------------
-function runScreen() {
-  leaveLevel();
+function runParts() {
   const a = save.run.active;
-  const body = [];
-  if (a) {
-    body.push(h("div", { class: "panel center" },
-      h("p", { class: "big" }, _t("hud.level", { n: a.level })),
-      h("p", { class: "sub" }, _t("run.code"), " ", h("code", {}, a.code), " · ", lives(a.lives), " · ", credits(a.bank)),
-      perkList(a.perks),
-      h("button", { type: "button", class: "primary", autofocus: true, onclick: () => continueRun() }, _t("run.continue")),
-      h("button", { type: "button", class: "secondary", onclick: () => { const lines = endRun(); persist(); showScreen(screen(_t("mode.run"), h("div", { class: "panel center" }, ...lines, h("button", { type: "button", class: "primary", onclick: () => runScreen() }, _t("run.new"))))); } }, _t("run.abandon"))));
-  } else {
-    const starts = unlockedStarts(save.run.best, save.run.bosses);
-    let pick = null;
-    const chips = h("div", { class: "chips" });
-    const drawChips = () => chips.replaceChildren(
-      h("button", { type: "button", class: "chip" + (pick == null ? " on" : ""), onclick: () => { pick = null; drawChips(); } }, _t("run.startNone")),
-      ...starts.map((id) => h("button", { type: "button", class: "chip" + (pick === id ? " on" : ""), onclick: () => { pick = id; drawChips(); } }, _t("perk." + id))));
-    drawChips();
-    const code = h("input", { type: "text", maxlength: "9", placeholder: "ABC234", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", "aria-label": _t("run.enterCode") });
-    const locked = CONFIG.run.starts.filter(([id]) => !starts.includes(id));
-    body.push(h("div", { class: "panel" },
-      h("p", { class: "sub" }, _t("mode.run.long")),
+  if (a) return [
+    GameLobby.play({
+      eyebrow: _t("mode.run"), title: _t("hud.level", { n: a.level }),
+      text: _t("run.code") + " " + a.code + " · " + lives(a.lives) + " · ◆ " + fmt(a.bank),
+      action: { label: _t("run.continue"), onClick: () => continueRun() },
+      more: [{ label: _t("run.abandon"), onClick: () => abandonRun() }],
+    }),
+    perkList(a.perks),
+  ];
+  const starts = unlockedStarts(save.run.best, save.run.bosses);
+  let pick = null;
+  const chips = h("div", { class: "chips" });
+  const drawChips = () => chips.replaceChildren(
+    h("button", { type: "button", class: "chip" + (pick == null ? " on" : ""), onclick: () => { pick = null; drawChips(); } }, _t("run.startNone")),
+    ...starts.map((id) => h("button", { type: "button", class: "chip" + (pick === id ? " on" : ""), onclick: () => { pick = id; drawChips(); } }, _t("perk." + id))));
+  drawChips();
+  const code = h("input", { type: "text", maxlength: "9", placeholder: "ABC234", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", "aria-label": _t("run.enterCode") });
+  const locked = CONFIG.run.starts.filter(([id]) => !starts.includes(id));
+  return [
+    GameLobby.play({
+      eyebrow: _t("mode.run"), title: save.run.best ? _t("prog.best", { n: save.run.best }) : _t("mode.run"), text: _t("mode.run.rule"),
+      action: { label: _t("run.start"), onClick: () => newRun(freshSeed(), pick) },
+    }),
+    h("div", { class: "panel" },
       h("h3", {}, _t("run.startWith")), chips,
       locked.length ? h("p", { class: "fine" }, _t("run.unlockHint", { what: _t("perk." + locked[0][0]), how: _t("run.ms." + locked[0][1], { n: locked[0][2] }) })) : null,
-      h("button", { type: "button", class: "primary", onclick: () => newRun(freshSeed(), pick) }, _t("run.start")),
       h("div", { class: "row" }, code, h("button", { type: "button", class: "secondary", onclick: () => {
         const seed = codeToSeed(code.value);
         if (seed == null) { toast(_t("run.badCode")); return; }
         newRun(seed, pick);
-      } }, _t("run.playCode")))));
-  }
-  showScreen(screen(_t("mode.run"), ...body));
+      } }, _t("run.playCode")))),
+  ];
+}
+function abandonRun() {
+  const lines = endRun();
+  persist();
+  showScreen(screen(_t("mode.run"), h("div", { class: "panel center" }, ...lines, h("button", { type: "button", class: "primary", onclick: () => lobby("run") }, _t("run.new")))), { back: () => lobby("run") });
 }
 function newRun(seed, start) {
   const perks = {};
@@ -630,45 +690,6 @@ function perkPicker(a, n) {
 
 // ---- Daily ------------------------------------------------------------------------------------------------
 function yesterday() { const d = new Date(); d.setDate(d.getDate() - 1); return dateKey(d); }
-function dailyScreen() {
-  leaveLevel();
-  const key = dateKey();
-  const best = save.daily.best[key];
-  showScreen(screen(_t("mode.daily"), h("div", { class: "panel center" },
-    h("p", { class: "big" }, new Date().toLocaleDateString(I18n.lang, { weekday: "long", day: "numeric", month: "long" })),
-    h("p", { class: "sub" }, _t("mode.daily.long")),
-    best ? h("p", {}, starsEl(best.stars), " ", fmtTime(best.time)) : null,
-    h("p", { class: "fine" }, save.daily.paid === key ? _t("daily.paidAlready") : _t("daily.pays", { n: CONFIG.credits.daily })),
-    save.daily.streak > 1 && (save.daily.last === key || save.daily.last === yesterday()) ? h("p", { class: "fine" }, _t("daily.streak", { n: save.daily.streak })) : null,
-    h("button", { type: "button", class: "primary", autofocus: true, onclick: () => playLevel("daily", 0, { date: key }) }, _t("play")))));
-}
-
-// ---- Puzzle -----------------------------------------------------------------------------------------------
-function puzzleScreen() {
-  leaveLevel();
-  const grid = h("div", { class: "grid" }, PUZZLES.map((p, i) => {
-    const st = save.puzzle.stars[p.name] || 0;
-    const open = i < 3 || (save.puzzle.stars[PUZZLES[i - 1].name] || 0) > 0;
-    return h("button", { type: "button", class: "cell" + (open ? "" : " locked"), disabled: !open, "aria-label": _t("puz.aria", { n: i + 1, s: st }),
-      onclick: () => playLevel("puzzle", 0, { index: i }) }, h("b", {}, i + 1), starsEl(st));
-  }));
-  showScreen(screen(_t("mode.puzzle"), h("p", { class: "sub" }, _t("mode.puzzle.long")), grid));
-}
-
-// ---- Time Attack ------------------------------------------------------------------------------------------
-function taScreen() {
-  leaveLevel();
-  const list = h("div", { class: "list" }, TIME_ATTACK.map((w, i) => {
-    const open = i === 0 || !!save.ta.medal[TIME_ATTACK[i - 1].name];
-    const m = save.ta.medal[w.name];
-    const best = save.ta.best[w.name];
-    return h("button", { type: "button", class: "row-btn" + (open ? "" : " locked"), disabled: !open, onclick: () => playLevel("timeattack", 0, { index: i }) },
-      h("span", { class: "medal " + (m || "none") }, m ? _t("ta.short." + m) : "–"),
-      h("strong", {}, _t("ta." + w.name)),
-      h("small", {}, open ? (best ? _t("ta.best", { t: fmtTime(best) }) : _t("ta.goals", { g: w.gold, s: w.silver, b: w.bronze })) : _t("ta.locked")));
-  }));
-  showScreen(screen(_t("mode.timeattack"), h("p", { class: "sub" }, _t("mode.timeattack.long")), list));
-}
 
 // ---- Shop -------------------------------------------------------------------------------------------------
 function shop(tab = "boosts", back = home) {
@@ -840,7 +861,7 @@ function placeNav() {
 function quitLevel() {
   const m = session && session.mode;
   leaveLevel();
-  if (m === "run") runScreen(); else if (m) openMode(m); else home();
+  openMode(m);
 }
 
 // ---- Pause --------------------------------------------------------------------------------------------------

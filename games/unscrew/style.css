@@ -100,30 +100,30 @@ button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outli
 .brand p{margin:6px 0 0;font-weight:600;color:var(--ink-2);font-size:14px;max-width:30ch}
 .logo{width:52px;height:52px;flex:none}
 .card{margin-top:auto;width:100%;max-width:440px;align-self:center;background:var(--card);border-radius:22px;padding:18px;box-shadow:0 6px 0 rgba(23,33,46,.12),0 24px 48px rgba(23,33,46,.16);display:flex;flex-direction:column;gap:14px}
-.lbl{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
-.sec{display:flex;flex-direction:column;gap:8px}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.opt{display:flex;align-items:center;gap:10px;text-align:left;border:2px solid var(--line);background:#fff;border-radius:14px;padding:9px 10px;cursor:pointer;min-width:0}
-.opt[aria-pressed="true"]{border-color:var(--accent);background:#fff5ee;box-shadow:0 0 0 3px rgba(255,106,19,.15)}
-.opt svg{width:34px;height:34px;flex:none}
-.opt .t{font-family:var(--f-display);font-size:15px;line-height:1.1}
-.opt .d{font-size:12px;color:var(--ink-2);font-weight:600;line-height:1.25}
-.diffs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.diffs .opt{flex-direction:column;align-items:flex-start;gap:6px}
-.pips{display:flex;gap:8px}
-.pips span{display:flex;gap:2px}
-.pips i{display:block;width:8px;height:8px;border-radius:2px;background:var(--ink)}
-.pips .hole i{border-radius:50%;background:var(--rail)}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.stat{background:#f1f5f9;border-radius:12px;padding:8px 10px;min-width:0}
-.stat b{display:block;font-family:var(--f-display);font-weight:400;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.stat span{font-size:11px;font-weight:700;color:var(--ink-2)}
+/* The lobby (shared/css/gamelobby.css): white plates on the steel board, orange for what's chosen and what to press. */
+:root{--gn-surface:#fff;--gn-ink:var(--ink);--gn-chosen:#fff5ee;--gn-chosen-ink:var(--ink);--gn-star:var(--gold);--gn-star-off:#dbe3ec;--gn-display:var(--f-display);--gn-card-radius:16px;--gn-tile-radius:14px}
+.lobby{display:flex;flex-direction:column;gap:12px}
+.lob-choice{background:#f1f5f9;border:0}
+.lob-choice button>svg{width:30px;height:30px}
+.lob-choice button[aria-checked="true"]{background:#fff;box-shadow:0 0 0 2px var(--accent),0 3px 0 var(--steel-sh)}
+.lob-choice .lob-txt b{font-family:var(--f-display);font-weight:400}
+.lob-tab,.lob-lvl,.lob-card,.lob-pager button{border-width:2px}
+.lob-tab[aria-selected="true"]{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,106,19,.15)}
+.lob-tab b,.lob-play-text h2,.lob-n,.lob-stats b,.lob-levels-head h3{font-weight:400}
+.lob-tab .lob-note{color:var(--ink-2);font-weight:600}
+.lob-play{background:#f1f5f9;border:0}
+.lob-go,.lob-alt{border-radius:14px;font-family:var(--f-display);font-weight:400;font-size:15px}
+.lob-go{box-shadow:0 4px 0 var(--accent-dk)}
+.lob-go:active{transform:translateY(2px);box-shadow:0 2px 0 var(--accent-dk)}
+.lob-alt{border:0;background:#e8eef4;box-shadow:0 4px 0 #c2cfdc}
+.lob-lvl.past{background:#f8fafc}
+.runnote{margin:0;font-size:12px;font-weight:600;color:var(--ink-2)}
+.gnav-bar .lob-wallet{--gn-size:42px;margin-left:auto;margin-right:8px;font-family:var(--f-display);font-weight:400;box-shadow:0 3px 0 var(--steel-sh)}
+.gnav-bar .lob-wallet .coin{width:22px;height:22px}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:14px;padding:13px 16px;font-family:var(--f-display);font-size:15px;cursor:pointer;background:#e8eef4;box-shadow:0 4px 0 #c2cfdc}
 .btn:active{transform:translateY(2px);box-shadow:0 2px 0 #c2cfdc}
 .btn.primary{background:var(--accent);color:#fff;box-shadow:0 4px 0 var(--accent-dk)}
 .btn.primary:active{box-shadow:0 2px 0 var(--accent-dk)}
-.btns{display:flex;flex-direction:column;gap:10px}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .how summary{cursor:pointer;font-weight:800;font-size:13px;color:var(--ink-2)}
 .how ul{margin:8px 0 0;padding-left:18px;font-size:13px;line-height:1.45;color:var(--ink);font-weight:500}
 @media (min-width:880px){

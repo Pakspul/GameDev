@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#2b2f36">
 <title>Camper Crew</title>
-<link rel="stylesheet" href="../../shared/css/gamenav.css">
+<link rel="stylesheet" href="../../shared/css/gamenav.css">
+<link rel="stylesheet" href="../../shared/css/gamelobby.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="state-menu">
@@ -44,12 +45,7 @@
     </div>
     <h1>Camper Crew</h1>
     <p class="lead" data-i18n="lead"></p>
-    <div class="road-pick">
-      <button type="button" class="round" id="prevRoad" data-i18n-attr="aria-label:prevRoad">&lsaquo;</button>
-      <div class="road-name"><strong id="roadName"></strong><span id="roadStars"></span></div>
-      <button type="button" class="round" id="nextRoad" data-i18n-attr="aria-label:nextRoad">&rsaquo;</button>
-    </div>
-    <button type="button" class="primary" id="playBtn" data-i18n="drive"></button>
+    <div class="lobby" id="lobby"></div>
     <details>
       <summary data-i18n="how"></summary>
       <ul class="how">
@@ -81,7 +77,8 @@
 
 <script src="../../shared/js/platform.js"></script>
 <script src="../../shared/js/i18n.js"></script>
-<script src="../../shared/js/gamenav.js"></script>
+<script src="../../shared/js/gamenav.js"></script>
+<script src="../../shared/js/gamelobby.js"></script>
 <script src="strings.js"></script>
 <script src="../../shared/vendor/three/three.min.js"></script>
 <script src="levels.js"></script>

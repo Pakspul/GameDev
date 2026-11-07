@@ -105,18 +105,25 @@ button.bal { min-height: 40px; padding: 6px 12px; border-radius: 99px; border: 1
 .logo { margin: 8px 0 16px; text-align: center; font-size: clamp(2.2rem, 12vw, 3.3rem); line-height: .95; font-weight: 900; letter-spacing: .04em; font-style: italic; }
 .logo span { display: block; background: linear-gradient(90deg, #ff4d6d, #ff9f1c, #ffd60a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 3px 0 #0006); }
 .logo span + span { background: linear-gradient(90deg, #22d3ee, #818cf8, #e879f9); -webkit-background-clip: text; background-clip: text; }
-.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.mode-card {
-  display: flex; flex-direction: column; gap: 3px; text-align: left; min-height: 96px; padding: 12px 13px;
-  border-radius: 16px; border: 1px solid var(--line); background: var(--panel); position: relative; overflow: hidden;
+/* The lobby (shared/css/gamelobby.css): its parts in the arcade's colours, a tab per mode. */
+:root {
+  --gn-surface: var(--panel); --gn-ink: var(--ink); --gn-chosen: var(--accent); --gn-chosen-ink: var(--accent-ink);
+  --gn-star: var(--accent); --gn-star-off: #ffffff2a; --gn-card-radius: 18px; --gn-tile-radius: 14px;
 }
-.mode-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c, #fff); }
-.mode-card strong { font-size: 1.05rem; }
-.mode-card .rule { color: var(--muted); font-size: .8rem; line-height: 1.25; }
-.mode-card .prog { margin-top: auto; font-size: .78rem; font-weight: 800; color: var(--c, #fff); }
-.mode-card.m-classic { --c: #ff4d6d; grid-column: span 2; }
-.mode-card.m-zen { --c: #4ade80; } .mode-card.m-descent { --c: #22d3ee; } .mode-card.m-run { --c: #ff9f1c; }
-.mode-card.m-daily { --c: #ffd60a; } .mode-card.m-puzzle { --c: #818cf8; } .mode-card.m-timeattack { --c: #e879f9; }
+.lobby { display: flex; flex-direction: column; gap: 14px; }
+.lobby .logo { margin: 0 0 4px; }
+.lobby .panel, .lobby .fine { margin: 0; }
+.lobby .lob-go { font-weight: 900; box-shadow: 0 4px 0 #b59700; }
+.lobby .lob-go:active { transform: translateY(2px); box-shadow: 0 2px 0 #b59700; }
+.lobby .lob-daily.done .lob-go { box-shadow: none; }
+.lob-tab { --c: #fff; position: relative; overflow: hidden; }
+.lob-tab::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
+.lob-tab small { color: var(--c); opacity: 1; font-weight: 800; }
+.lob-tab[aria-selected="true"] small { color: inherit; }
+.lob-tabs > :nth-child(1) { --c: #ff4d6d; } .lob-tabs > :nth-child(2) { --c: #4ade80; } .lob-tabs > :nth-child(3) { --c: #22d3ee; }
+.lob-tabs > :nth-child(4) { --c: #ff9f1c; } .lob-tabs > :nth-child(5) { --c: #818cf8; } .lob-tabs > :nth-child(6) { --c: #e879f9; }
+.lob-daily { border-color: #ffd60a55; background: linear-gradient(120deg, #ffd60a1a, var(--panel) 60%); }
+.lob-stars i.on { filter: drop-shadow(0 0 4px #ffd60a88); }
 
 /* Stars */
 .stars { display: inline-flex; gap: 2px; }
@@ -153,11 +160,6 @@ input[type=text] { text-transform: uppercase; letter-spacing: .12em; font-family
 textarea { width: 100%; margin-top: 10px; resize: vertical; font: .78rem ui-monospace, Menlo, Consolas, monospace; }
 
 /* Puzzle grid, Time Attack list */
-.grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.cell { aspect-ratio: 1; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-.cell b { font-size: 1.15rem; }
-.cell .stars { font-size: .7rem; }
-.cell.locked { opacity: .35; }
 .list { display: grid; gap: 8px; }
 .row-btn { display: grid; grid-template-columns: 36px 1fr; grid-template-rows: auto auto; column-gap: 12px; text-align: left; padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); }
 .row-btn .medal { grid-row: span 2; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; background: #ffffff14; color: var(--muted); }
@@ -232,8 +234,3 @@ textarea { width: 100%; margin-top: 10px; resize: vertical; font: .78rem ui-mono
   max-width: min(92vw, 420px); text-align: center; font-weight: 700; font-size: .9rem;
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
-
-@media (min-width: 720px) {
-  .modes { grid-template-columns: repeat(3, 1fr); }
-  .mode-card.m-classic { grid-column: span 3; }
-}

@@ -101,6 +101,14 @@ _No issues yet._
   - The smoke test fails for a game without both buttons, or whose menu doesn't open.
 - **Side effects:** settings that lived on a game's start screen moved into the drawer (Jade's table, sound and dim switches; Outbound's appearance, smart tap and lane trace; Graphite's settings sheet), as did buttons that crowded the top bars (restart, full screen, mute, rules, profile). The pause dialogs of Unscrew, Camper Crew and Wallbreaker became the drawer; Wallbreaker's help, stats and settings moved from its home screen into the drawer, and its balance became the way into the shop.
 
+### H-2: Every game's own menu works differently
+
+- **Status:** done (6 November 2026)
+- **Source:** player feedback, November 2026: after H-1 the way in and out was the same everywhere, but each game's own menu was not. Outbound's was the example to follow: variants, difficulty, then every level with where you are and the stars per level, back top left, ☰ top right, and the shop at the entrance.
+- **What was noticed:** Jade Pavilion picked a level with ‹ ›, Nuts & Bolts with a number box in a pop-up, Camper Crew with ‹ › per road, Unscrew had no levels at all on its menu, and Wallbreaker had a screen per mode with a drop-down for earlier levels. Where the shop was differed per game.
+- **Done:** one layout for a game's own menu ([shared/js/gamelobby.js](../shared/js/gamelobby.js), [shared/css/gamelobby.css](../shared/css/gamelobby.css)), in each game's style: the balance next to ☰ (a tap opens the shop), the daily, the variants, the difficulties as tabs, a card with where you are and Play, and a grid of levels with their stars. Wallbreaker, Jade Pavilion, Nuts & Bolts, Unscrew and Camper Crew use it; Outbound, Graphite and Crystal Reels already worked this way.
+- **Side effects:** Nuts & Bolts opens on its workshop now (before, it dropped you straight into a puzzle). Unscrew shows its grid once you have progress, so a new player still sees the model turning behind the menu. Wallbreaker's Daily is a card on top instead of a mode.
+
 ## Wallbreaker
 
 _No issues yet._ Built on 6 November 2026; the feel gate (a real phone) is still to come, see [WALLBREAKER.md](WALLBREAKER.md#not-verified-here-needs-a-person-and-a-phone).

@@ -120,17 +120,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .overlay[hidden] { display: none; }
 .card { width: min(100%, 460px); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
 .card.narrow { width: min(100%, 340px); text-align: center; }
+/* The lobby (shared/css/gamelobby.css): the same plain panels as the rest of the game. */
+:root {
+  --gn-surface: rgba(255, 255, 255, 0.05); --gn-ink: var(--ink); --gn-chosen: var(--accent); --gn-chosen-ink: var(--accent-ink);
+  --gn-star: var(--accent); --gn-star-off: rgba(255, 255, 255, 0.16); --gn-card-radius: 14px; --gn-tile-radius: 12px;
+}
+.lobby { display: flex; flex-direction: column; gap: 14px; }
+.lob-go { border-radius: 14px; font-weight: 800; }
 .topline { display: flex; justify-content: space-between; align-items: center; }
 .tag { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 2px 8px; }
 h1 { margin: 2px 0 0; font-size: clamp(2rem, 8vw, 2.6rem); line-height: 1; letter-spacing: -.02em; }
 h2 { margin: 0; font-size: 1.6rem; }
 .lead { margin: 0; color: var(--muted); }
-.road-pick { display: flex; align-items: center; gap: 10px; }
-.road-name { flex: 1; text-align: center; display: flex; flex-direction: column; }
-.road-name strong { font-size: 1.25rem; }
-.road-name span { color: var(--accent); letter-spacing: .15em; min-height: 1.2em; }
-.round { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); font-size: 24px; line-height: 1; }
-.round:disabled { opacity: .3; cursor: default; }
 .primary { border: 0; border-radius: 14px; padding: 13px 16px; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 1.05rem; }
 .secondary { border: 1px solid var(--line); border-radius: 14px; padding: 11px 16px; background: rgba(255, 255, 255, 0.06); font-weight: 700; }
 details summary { cursor: pointer; font-weight: 700; color: var(--muted); }

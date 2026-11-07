@@ -6,6 +6,7 @@
 <title>Jade Pavilion Mahjong</title>
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="../../shared/css/gamenav.css">
+<link rel="stylesheet" href="../../shared/css/gamelobby.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -46,15 +47,7 @@
         <h1 class="title">Jade Pavilion</h1>
         <p class="lede" data-i18n-html="menu.lede"></p>
       </div>
-      <div class="diffs" id="diffs" role="radiogroup" data-i18n-attr="aria-label:difficulty"></div>
-      <div class="launch">
-        <div class="stepper"><button id="lvPrev" data-i18n-attr="aria-label:prevLevel">‹</button><div><output id="lvOut"></output><span id="lvStars"></span></div><button id="lvNext" data-i18n-attr="aria-label:nextLevel">›</button></div>
-        <button class="btn primary" id="playBtn" data-autofocus data-i18n="play"></button>
-      </div>
-      <div class="row">
-        <button class="btn grow" id="resumeBtn" hidden data-i18n="resume"></button>
-        <button class="btn grow" id="dailyBtn"><span data-i18n="dailyChallenge"></span><small id="dailyMeta">–</small></button>
-      </div>
+      <div class="lobby" id="lobby"></div>
       <div class="keys" data-i18n-html="keys"></div>
     </div>
   </section>
@@ -89,6 +82,7 @@
 <script src="../../shared/js/platform.js"></script>
 <script src="../../shared/js/i18n.js"></script>
 <script src="../../shared/js/gamenav.js"></script>
+<script src="../../shared/js/gamelobby.js"></script>
 <script src="strings.js"></script>
 <script src="../../shared/vendor/three/three.min.js"></script>
 <script src="levels.js"></script>

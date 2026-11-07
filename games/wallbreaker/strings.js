@@ -33,6 +33,10 @@
     "prog.streak": "{n} days in a row",
     "prog.stars": "★ {n} / {max}",
     "prog.medals": "{n} / {max} medals",
+    "lobby.modes": "Modes",
+    "lobby.dailyPays": "+{n} credits for your first clear",
+    "lobby.checkpoints": "Classic carries your lives from level to level, so a new game starts from level 1 or a checkpoint (every {n}th level).",
+    "lobby.walls": "Walls",
 
     "hud.level": "Level {n}",
     "hud.zen": "Zen · {n}",
@@ -289,6 +293,10 @@
     "prog.streak": "{n} dagen op rij",
     "prog.stars": "★ {n} / {max}",
     "prog.medals": "{n} / {max} medailles",
+    "lobby.modes": "Spelvormen",
+    "lobby.dailyPays": "+{n} credits als je hem vandaag voor het eerst haalt",
+    "lobby.checkpoints": "In Klassiek neem je je levens mee van level naar level. Een nieuw spel begint daarom bij level 1 of bij een checkpoint (elk {n}e level).",
+    "lobby.walls": "Muren",
 
     "hud.level": "Level {n}",
     "hud.zen": "Zen · {n}",

@@ -1170,17 +1170,18 @@
     setTimeout(function () { setState("result"); }, arrived ? 600 : 300);
   }
 
+  // The start screen is the lobby (shared/js/gamelobby.js): one tap to drive on, and every road with its stars.
+  function drive(n) { menuRoad = n; startRoad(n); setState("play"); }
   function refreshMenu() {
-    $("roadName").textContent = _t("road", { n: menuRoad });
-    var b = save.best[menuRoad] || 0;
-    $("roadStars").textContent = b ? "★".repeat(b) + "☆".repeat(3 - b) : "";
-    $("prevRoad").disabled = menuRoad <= 1;
-    $("nextRoad").disabled = menuRoad >= save.unlocked;
+    var stars = Object.keys(save.best).map(function (k) { return save.best[k]; }).filter(Boolean);
+    $("lobby").replaceChildren(
+      GameLobby.play({
+        title: _t("road", { n: menuRoad }), text: save.best[menuRoad] ? _t("roadBest", { s: "★".repeat(save.best[menuRoad]) + "☆".repeat(3 - save.best[menuRoad]) }) : _t("roadNew"),
+        action: { label: _t("drive"), onClick: function () { drive(menuRoad); } },
+        stats: [[stars.length, _t("lobby.cleared")], [stars.reduce(function (a, b) { return a + b; }, 0), _t("lobby.stars")], [stars.filter(function (s) { return s === 3; }).length, _t("lobby.perfect")]],
+      }),
+      GameLobby.levels({ title: _t("roads"), last: save.unlocked, next: menuRoad, stars: function (n) { return save.best[n] || 0; }, onPick: drive }));
   }
-
-  $("prevRoad").onclick = function () { menuRoad = Math.max(1, menuRoad - 1); refreshMenu(); startRoad(menuRoad); renderOnce(); };
-  $("nextRoad").onclick = function () { menuRoad = Math.min(save.unlocked, menuRoad + 1); refreshMenu(); startRoad(menuRoad); renderOnce(); };
-  $("playBtn").onclick = function () { startRoad(menuRoad); setState("play"); };
   $("retryBtn").onclick = function () { startRoad(G.n); setState("play"); };
   $("nextBtn").onclick = function () { menuRoad = G.n + 1; startRoad(G.n + 1); setState("play"); };
   $("resultMenuBtn").onclick = function () { menuRoad = Math.min(save.unlocked, G.n + (save.best[G.n] ? 1 : 0)); refreshMenu(); startRoad(menuRoad); setState("menu"); };
@@ -1193,7 +1194,7 @@
     keys[e.code] = true;
     if (state !== "play") {
       var onButton = document.activeElement && document.activeElement.tagName === "BUTTON";
-      if ((e.code === "Enter" || e.code === "Space") && state === "menu" && !onButton) { e.preventDefault(); $("playBtn").click(); }
+      if ((e.code === "Enter" || e.code === "Space") && state === "menu" && !onButton) { e.preventDefault(); drive(menuRoad); }
       else if ((e.code === "Escape" || e.code === "KeyP") && state === "pause") setState("play");
       return;
     }
@@ -1268,7 +1269,7 @@
         if (b && !prev.b) input.useEdge = true;
         if (start && !prev.start) setState("pause");
       } else if ((a || start) && !prev.a && !prev.start) {
-        if (state === "menu") $("playBtn").click();
+        if (state === "menu") drive(menuRoad);
         else if (state === "pause") setState("play");
         else if (state === "result") ($("nextBtn").hidden ? $("retryBtn") : $("nextBtn")).click();
       }

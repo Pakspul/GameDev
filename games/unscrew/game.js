@@ -415,8 +415,8 @@ const nav=GameNav.create({title:'Unscrew',
     {icon:'help',label:_t('how.title'),html:'<ul>'+[1,2,3,4,5].map(n=>`<li>${_t('how.'+n)}</li>`).join('')+'</ul>'},
     !play&&GameNav.language()]}});
 const navBar=GameNav.bar(nav);document.body.appendChild(navBar);
-function placeNav(){if(state==='play'){const top=$('#hud .top');top.prepend(nav.back);top.append(nav.menu);nav.setBack(showMenu,_t('backToMenu'))}
-  else{navBar.append(nav.back,nav.menu);nav.setBack()}}
+function placeNav(){if(state==='play'){const top=$('#hud .top');top.prepend(nav.back);top.append(nav.menu);if(wallet)wallet.remove();nav.setBack(showMenu,_t('backToMenu'))}
+  else{navBar.append(nav.back);if(wallet)navBar.append(wallet);navBar.append(nav.menu);nav.setBack()}}
 function stuck(){LS.paused=true;sfx.fail();const acts=[];const resume=()=>{LS.paused=false};
   const label=id=>_t('stuck.buy',{name:TOOLS[id].name,price:COIN+toolPrice(id)});
   if(canUse('drill')&&affordable('drill'))acts.push([label('drill'),()=>{resume();useTool('drill')},'primary']);
@@ -446,20 +446,29 @@ function gameOver(){const b=save.best[key()]||{score:0,level:0};const reached=G.
 
 /* --- menu --- */
 function newRun(){Object.assign(G,{mode:save.sel.mode,diff:save.sel.diff,level:1,score:0,hearts:3})}
-function renderMenu(){const sel=save.sel;
-  document.querySelectorAll('#modeSeg .opt').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===sel.mode)));
-  $('#diffs').innerHTML=DIFFS.map(id=>{const c=cfgFor(id,1);
-    return`<button class="opt" data-diff="${id}" aria-pressed="${id===sel.diff}"><span><span class="t">${_t('diff.'+id)}</span><br><span class="d">${_t('menu.diffInfo',{k:c.K,b:c.B,c:c.C,cmax:c.Cmax})}</span></span>
-      <span class="pips" aria-hidden="true"><span>${'<i></i>'.repeat(c.K)}</span><span class="hole">${'<i></i>'.repeat(c.B)}</span></span></button>`}).join('');
-  document.querySelectorAll('#diffs .opt').forEach(b=>b.onclick=()=>{save.sel.diff=b.dataset.diff;persist();renderMenu()});
-  const b=save.best[key(sel.mode,sel.diff)];$('#stBest').textContent=b?fmt(b.score):'—';const sv=Object.values(save.stars[key(sel.mode,sel.diff)]||{});$('#stStars').textContent=sv.length?`${sv.reduce((a,x)=>a+x,0)}/${sv.length*3}`:'—';$('#stLvl').textContent=b&&b.level?b.level:'—';renderCoins();
-  const r=save.runs[key(sel.mode,sel.diff)],cb=$('#contBtn');cb.hidden=!r;
-  if(r)cb.innerHTML=`${_t('menu.continue',{n:r.level})} <span aria-label="${_t('lives',{n:r.hearts})}">${'♥'.repeat(r.hearts)}</span>`;
-  $('#newBtn').className='btn'+(r?'':' primary')}
-document.querySelectorAll('#modeSeg .opt').forEach(b=>b.onclick=()=>{if(save.sel.mode===b.dataset.mode)return;save.sel.mode=b.dataset.mode;persist();renderMenu();buildDemo()});
-$('#contBtn').onclick=()=>{ensureAudio();const r=save.runs[key(save.sel.mode,save.sel.diff)];if(!r)return;Object.assign(G,{mode:save.sel.mode,diff:save.sel.diff,level:r.level,score:r.score,hearts:r.hearts});startLevel()};
-$('#newBtn').onclick=()=>{ensureAudio();newRun();startLevel()};
-$('#shopBtn').onclick=()=>{ensureAudio();openShop(()=>renderMenu())};
+// The menu is the lobby (shared/js/gamelobby.js): 2D or 3D, the difficulty, your run, and every level's stars.
+// Levels come one after the other in a run, so only the run's own level can be played from the grid.
+const MODE_ICON={'2d':'<svg viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="5" width="20" height="9" rx="4.5" fill="#8fd3ff"/><rect x="11" y="10" width="9" height="20" rx="4.5" fill="#ffcf70"/><rect x="15" y="16" width="16" height="9" rx="4.5" transform="rotate(-30 23 20)" fill="#b8a4ff"/><circle cx="8" cy="9.5" r="2.4" fill="#ff3d9a"/><circle cx="15.5" cy="25" r="2.4" fill="#1f7bff"/><circle cx="26" cy="17" r="2.4" fill="#8fd61f"/></svg>','3d':'<svg viewBox="0 0 34 34" aria-hidden="true"><path d="M17 3l12 7v14l-12 7-12-7V10z" fill="#7cc68d"/><path d="M17 17l12-7v14l-12 7z" fill="#4f9e64"/><path d="M17 17L5 10l12-7 12 7z" fill="#b8e3b5"/><circle cx="17" cy="10" r="2.4" fill="#ff3d9a"/><circle cx="23" cy="21" r="2.4" fill="#ffcc1a"/><circle cx="10.5" cy="20" r="2.4" fill="#7b4dff"/></svg>'};
+let wallet=null;
+function renderMenu(){const sel=save.sel,k=key(sel.mode,sel.diff),r=save.runs[k],b=save.best[k],st=save.stars[k]||{};
+  const reached=Math.max(1,b&&b.level||0,r?r.level:0,...Object.keys(st).map(Number)),sv=Object.values(st).filter(Boolean);
+  const fresh=wallet;wallet=GameLobby.wallet({value:fmt(save.coins),icon:COIN,label:_t('menu.shop'),onClick:()=>{ensureAudio();openShop(()=>renderMenu())}});
+  if(fresh)fresh.replaceWith(wallet);placeNav();
+  const go=()=>{ensureAudio();if(!r){newRun();startLevel();return}Object.assign(G,{mode:sel.mode,diff:sel.diff,level:r.level,score:r.score,hearts:r.hearts});startLevel()};
+  $('#lobby').replaceChildren(
+    GameLobby.choice({label:_t('menu.view'),value:sel.mode,options:['2d','3d'].map(m=>({value:m,label:m.toUpperCase(),note:_t('menu.'+m),icon:MODE_ICON[m]})),
+      onChoose:m=>{save.sel.mode=m;persist();renderMenu();buildDemo()}}),
+    GameLobby.tabs({label:_t('menu.difficulty'),value:sel.diff,options:DIFFS.map(id=>{const c=cfgFor(id,1);return{value:id,label:_t('diff.'+id),note:_t('menu.diffInfo',{k:c.K,b:c.B,c:c.C,cmax:c.Cmax})}}),
+      onChoose:id=>{save.sel.diff=id;persist();renderMenu()}}),
+    GameLobby.play({eyebrow:sel.mode.toUpperCase()+' · '+_t('diff.'+sel.diff),title:_t('lobby.level',{n:r?r.level:1}),
+      text:r?_t('menu.runOn',{score:fmt(r.score)})+' · '+'♥'.repeat(r.hearts):_t('menu.runNew'),
+      action:{label:r?_t('menu.continueRun'):_t('menu.newRun'),onClick:go},
+      more:[r&&{label:_t('menu.newRun'),onClick:()=>{ensureAudio();newRun();startLevel()}}],
+      stats:[[b?fmt(b.score):'0',_t('menu.best').toLowerCase()],[b&&b.level||0,_t('menu.highest').toLowerCase()],[sv.reduce((a,x)=>a+x,0),_t('lobby.stars')]]}),
+    // The grid only once there's something on it, so a new player still sees the model turning behind the menu.
+    reached>1?GameLobby.levels({last:reached,next:r?r.level:1,perPage:12,stars:n=>st[n]||0,playable:n=>n===(r?r.level:1),onPick:go}):'',
+    reached>1?Object.assign(document.createElement('p'),{className:'runnote',textContent:_t('menu.runNote')}):'');
+}
 function buildDemo(){const m=save.sel.mode;const lv=buildLevel(m,'normal',m==='2d'?6:1,cfgFor('normal',3),'demo');setCurrent(lv);spawnScrews(lv);orbit.auto=m==='3d'&&!reduceMotion;requestAnimationFrame(()=>fitCamera(true))}
 function showMenu(){state='menu';LS=null;closeModal();placeNav();$('#hud').hidden=true;$('#tools').hidden=true;$('#viewBtn').hidden=true;$('#menu').hidden=false;$('#loading').hidden=true;$('#fx').innerHTML='';renderMenu();buildDemo()}
 

@@ -3,13 +3,13 @@
 // local, so game.js doesn't register this there.
 //
 // Bump VERSION when FILES changes (a file added or removed); edits are picked up from the network.
-const VERSION = "wallbreaker-v2";
+const VERSION = "wallbreaker-v3";
 const FILES = [
   "./", "index.html", "style.css", "strings.js", "game.js", "manifest.webmanifest", "icon.svg",
   "src/audio.js", "src/collide.js", "src/config.js", "src/economy.js", "src/engine.js", "src/levels.js",
   "src/modes.js", "src/puzzle-play.js", "src/puzzles.gen.js", "src/render.js", "src/rng.js", "src/run.js",
   "src/save.js", "src/walls.js",
-  "../../shared/js/platform.js", "../../shared/js/i18n.js", "../../shared/js/gamenav.js", "../../shared/css/gamenav.css",
+  "../../shared/js/platform.js", "../../shared/js/i18n.js", "../../shared/js/gamenav.js", "../../shared/css/gamenav.css", "../../shared/js/gamelobby.js", "../../shared/css/gamelobby.css",
 ];
 
 self.addEventListener("install", (ev) => {

@@ -394,24 +394,24 @@ document.getElementById('app').appendChild(GameNav.bar(nav));
 function navBack(){if($('#menu').hidden)nav.setBack(openMenu,_t('backToMenu'));else nav.setBack();}
 
 /* ---------- Menu ---------- */
-let menuSel=save.lastDiff,menuLevel=save.prog[menuSel]?save.prog[menuSel].unlocked:1;
+// The lobby (shared/js/gamelobby.js): today's deal, the four tables as tabs, one tap to play on, every level.
+let menuSel=save.lastDiff in save.prog?save.lastDiff:'garden';
 const GLYPHC={breeze:'#1c1a17',garden:'#bb2a2a',dragon:'#16704a',emperor:'#1f4c98'};
 function renderMenu(){
-  $('#diffs').innerHTML=['breeze','garden','dragon','emperor'].map(k=>{const d=DIFFS[k],p=save.prog[k],st=totalStars(k);return `<button class="diff" role="radio" aria-checked="${k===menuSel}" data-k="${k}"><span class="mini" style="color:${GLYPHC[k]}">${d.glyph}</span><span class="dtx"><span class="nm">${d.name}</span><span class="ds">${d.desc}</span></span><span class="pg"><b>${_t('lv',{n:p.unlocked})}</b>★ ${st}</span></button>`;}).join('');
-  document.querySelectorAll('.diff').forEach(b=>b.onclick=()=>{menuSel=b.dataset.k;menuLevel=save.prog[menuSel].unlocked;Sfx.click();renderMenu();});
-  const p=save.prog[menuSel];menuLevel=clamp(menuLevel,1,p.unlocked);
-  $('#lvOut').textContent=_t('level',{n:menuLevel});$('#lvPrev').disabled=menuLevel<=1;$('#lvNext').disabled=menuLevel>=p.unlocked;
-  const st=p.stars[menuLevel];$('#lvStars').textContent=st?'★'.repeat(st)+'☆'.repeat(3-st)+_t('best',{n:fmt(p.best[menuLevel]||0)}):_t('notCleared');
-  const inGame=G.loaded&&G.state==='play'&&!G.fresh;
-  $('#resumeBtn').hidden=!inGame;
-  if(inGame)$('#resumeBtn').innerHTML=`<span>${_t('resume')}</span><small>${G.d.name} · ${G.daily?prettyDate(G.dateStr):_t('lv',{n:G.level})} · ${_t('tilesLeft',{n:aliveCount()})}</small>`;
-  const db=save.daily[todayStr()];$('#dailyMeta').textContent=prettyDate(todayStr())+(db?_t('best',{n:fmt(db)}):_t('notPlayed'));
+  const p=save.prog[menuSel],d=DIFFS[menuSel],next=p.unlocked,db=save.daily[todayStr()],inGame=G.loaded&&G.state==='play'&&!G.fresh;
+  const st=Object.values(p.stars).filter(Boolean);
+  $('#lobby').replaceChildren(
+    GameLobby.daily({eyebrow:_t('dailyChallenge'),title:prettyDate(todayStr()),meta:db?_t('dailyBest',{n:fmt(db)}):_t('dailyNew'),done:!!db,label:db?_t('again'):_t('play'),onClick:()=>{Sfx.ensure();startLevel('daily',1);closeOverlays();}}),
+    GameLobby.tabs({label:_t('difficulty'),value:menuSel,options:['breeze','garden','dragon','emperor'].map(k=>({value:k,label:DIFFS[k].name,icon:`<span class="mini" style="color:${GLYPHC[k]}">${DIFFS[k].glyph}</span>`,meta:_t('lv',{n:save.prog[k].unlocked})+' · ★ '+totalStars(k)})),onChoose:k=>{menuSel=k;Sfx.click();renderMenu();}}),
+    GameLobby.play({eyebrow:d.name,title:_t('level',{n:next}),text:d.desc,action:{label:_t('play'),onClick:()=>playFromMenu(menuSel,next)},
+      more:[inGame&&{label:_t('resume'),sub:`${G.d.name} · ${G.daily?prettyDate(G.dateStr):_t('lv',{n:G.level})} · ${_t('tilesLeft',{n:aliveCount()})}`,onClick:()=>{Sfx.ensure();closeOverlays();}}],
+      stats:[[st.length,_t('lobby.cleared')],[st.reduce((a,b)=>a+b,0),_t('lobby.stars')],[st.filter(x=>x===3).length,_t('lobby.perfect')]]}),
+    GameLobby.levels({last:p.unlocked,stars:n=>p.stars[n]||0,onPick:n=>playFromMenu(menuSel,n)}));
+  $('#lobby .lob-play .lob-go').setAttribute('data-autofocus','');
 }
 function openMenu(){renderMenu();openOverlay('menu');}
-$('#lvPrev').onclick=()=>{menuLevel--;renderMenu();};$('#lvNext').onclick=()=>{menuLevel++;renderMenu();};
-$('#playBtn').onclick=()=>{Sfx.ensure();if(G.loaded&&G.fresh&&G.state==='play'&&!G.daily&&G.diffKey===menuSel&&G.level===menuLevel){closeOverlays();showBanner();return;}startLevel(menuSel,menuLevel);closeOverlays();};
-$('#resumeBtn').onclick=()=>{Sfx.ensure();closeOverlays();};
-$('#dailyBtn').onclick=()=>{Sfx.ensure();startLevel('daily',1);closeOverlays();};
+// A level that's already dealt and untouched behind the menu is simply shown; anything else is dealt anew.
+function playFromMenu(k,n){Sfx.ensure();if(G.loaded&&G.fresh&&G.state==='play'&&!G.daily&&G.diffKey===k&&G.level===n){closeOverlays();showBanner();return;}startLevel(k,n);closeOverlays();}
 function applyTheme(k){const th=THEMES[k]||THEMES.jade;save.settings.theme=k in THEMES?k:'jade';persist();scene.background.set(th.bg);scene.fog.color.copy(lin(th.bg));feltMat.color.copy(lin(th.felt)).multiplyScalar(1.35);backMat.color.copy(lin(th.back));poolMat.color.copy(lin(th.pool));Object.entries(th.css).forEach(([a,b])=>document.documentElement.style.setProperty(a,b));}
 function toggleSound(){save.settings.sound=!save.settings.sound;persist();hud();if(save.settings.sound)Sfx.click();}
 
@@ -421,7 +421,7 @@ $('#btnHighlight').onclick=()=>{save.settings.highlight=!save.settings.highlight
 $('#btnView').onclick=recenter;
 $('#winNext').onclick=()=>{startLevel(G.diffKey,G.level+1);closeOverlays();};
 $('#winReplay').onclick=()=>{startLevel(G.diffKey,G.level);closeOverlays();};
-$('#winMenu').onclick=()=>{menuSel=G.daily?menuSel:G.diffKey;menuLevel=G.daily?menuLevel:Math.min(G.level+1,save.prog[G.diffKey].unlocked);openMenu();};
+$('#winMenu').onclick=()=>{if(!G.daily)menuSel=G.diffKey;openMenu();};
 $('#stuckShuffle').onclick=()=>shuffle(true);$('#stuckUndo').onclick=undo;
 $('#stuckRestart').onclick=()=>{startLevel(G.diffKey,G.level);closeOverlays();};
 $('#toRetry').onclick=()=>{startLevel(G.diffKey,G.level);closeOverlays();};$('#toMenu').onclick=openMenu;
