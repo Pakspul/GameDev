@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1a0f1c">
+<title>Coin Dozer</title>
+<meta name="description" content="A coin pusher with real physics. No ads, no purchases, no tracking." data-i18n-attr="content:metaDesc">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="loading">
+<canvas id="cv" aria-label="Coin Dozer"></canvas>
+<div id="glow" aria-hidden="true"></div>
+
+<header id="top">
+  <div class="stat" role="group" data-i18n-attr="aria-label:bank"><i class="ico coin" aria-hidden="true"></i><b id="bank">0</b><small data-i18n="coins"></small></div>
+  <div class="stat" role="group" data-i18n-attr="aria-label:credits"><i class="ico cr" aria-hidden="true"></i><b id="credits">0</b><small data-i18n="credits"></small></div>
+  <div class="stat" id="collStat" role="group" data-i18n-attr="aria-label:collection"><i class="ico gem" aria-hidden="true"></i><b id="collCount">0/12</b></div>
+</header>
+
+<div id="banner" role="status" aria-live="polite"></div>
+<p id="hint" hidden data-i18n="hint"></p>
+<p id="loading" data-i18n="loading"></p>
+<p id="rotate" data-i18n="rotate"></p>
+
+<nav id="controls">
+  <button type="button" id="pauseBtn" class="ctl" data-i18n-attr="aria-label:pause">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="5" y="4" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="13" y="4" width="4" height="14" rx="1.2" fill="currentColor"/></svg>
+  </button>
+  <button type="button" id="collBtn" class="ctl" data-i18n-attr="aria-label:collection">
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l6 5-6 13L6 8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M6 8h12M10 8l2 13 2-13" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+    <span data-i18n="collection.short"></span>
+  </button>
+  <button type="button" id="nudgeBtn" class="ctl">
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h3l2-5 3 10 3-8 2 3h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span data-i18n="nudge"></span> <b id="nudgeCount">3</b>
+  </button>
+  <button type="button" id="autoBtn" class="ctl" aria-pressed="false">
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l6-7zM13 5v14l6-7z" fill="currentColor"/></svg>
+    <span data-i18n="auto"></span>
+  </button>
+</nav>
+
+<div id="overlay" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<noscript>Coin Dozer needs JavaScript.</noscript>
+
+<script src="../../shared/js/platform.js"></script>
+<script src="../../shared/js/i18n.js"></script>
+<script src="strings.js"></script>
+<script src="../../shared/vendor/three/three.min.js"></script>
+<script type="module" src="game.js"></script>
+</body>
+</html>

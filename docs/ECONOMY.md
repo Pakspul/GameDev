@@ -132,6 +132,10 @@ All three already follow rule 3 in spirit (help shows in your result). If one of
 
 Wallbreaker (credits) follows its own plan rather than this document: fixed prices for boosts, Workshop upgrades and cosmetics, and pay per level from `10 + 2 × √level`. It has no help to buy and no tiers, so "levels of the tier" doesn't fit. Its numbers live in `games/wallbreaker/src/config.js` and are tested by `tests/wallbreaker/rules.test.mjs`; the reasons, and the two places it differs from the rules above (boosts are bought ahead; a 3-star replay pays 50%), are in [WALLBREAKER.md](WALLBREAKER.md#where-wallbreaker-differs-from-docseconomymd). Rule 9 holds as everywhere: credits can never be bought.
 
+## Coin Dozer: its own economy
+
+Coin Dozer has two currencies, both earned only by playing: **coins** (the bank you play with; an empty bank with nothing falling gets 10 coins at once, always) and **credits** (from prizes and one-time milestones, spent on four Workshop upgrades and three machine themes, at fixed prices). It has no help to buy and no tiers, so like Wallbreaker it keeps its numbers in `games/coin-dozer/src/config.js`, tested by `tests/coin-dozer/rules.test.mjs`. Upgrade costs (40–240) and theme prices (150–500) are starting values from the spec. Rule 9 holds: neither coins nor credits can be bought. See [COIN-DOZER.md](COIN-DOZER.md).
+
 ## Adding a currency to a game, or a new item
 
 1. Create `games/<name>/economy.js` with `Economy.register("<name>", { rewards, anchor, items })`, and load it in `index.html` after `../../shared/js/economy.js` and before `game.js`.

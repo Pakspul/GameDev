@@ -15,9 +15,10 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Graphite** | Pencil-and-paper logic puzzles: Sudoku, Takuzu, Star Battle and Calcudoku, endlessly generated, each with exactly one solution |
 | **Crystal Reels** | Two slot machines with play money only: free spins, Hold & Spin, a pick bonus, jackpots, the same odds for everyone. See [docs/SLOTS.md](docs/SLOTS.md) |
 | **Wallbreaker** | A brick breaker with seven modes (Classic, Zen, Descent, Run, Daily, Puzzle, Time Attack), endless seeded levels, bosses, and risky capsules you catch or dodge. See [docs/WALLBREAKER.md](docs/WALLBREAKER.md) |
+| **Coin Dozer** | A coin pusher with real physics: drop coins, the pusher shoves the pile, win what spills over. Gems and figures to collect in four machine themes. See [docs/COIN-DOZER.md](docs/COIN-DOZER.md) |
 | **Camper Crew** *(prototype, dev only)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
 
-Jade Pavilion, Nuts & Bolts, Outbound, Unscrew and Camper Crew are built with [three.js](https://threejs.org); Graphite and Wallbreaker are plain 2D canvas, and Crystal Reels is plain DOM and SVG with synthesised sound (no libraries, no assets). They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
+Jade Pavilion, Nuts & Bolts, Outbound, Unscrew, Coin Dozer and Camper Crew are built with [three.js](https://threejs.org) (Coin Dozer adds the [Rapier](https://rapier.rs) physics engine); Graphite and Wallbreaker are plain 2D canvas, and Crystal Reels is plain DOM and SVG with synthesised sound (no libraries, no assets). They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
 
 ## Quick start
 
@@ -27,7 +28,7 @@ You need [Node.js](https://nodejs.org) 22 or newer.
 npm run dev        # play at http://localhost:8080 — and on your phone via the printed Wi-Fi address
 npm install        # once, for the tests
 npx playwright install chromium   # once
-npm test           # puzzle generators, slot maths and rules, Wallbreaker's rules, build, open every game in a headless phone browser, play the slots and Wallbreaker end to end
+npm test           # puzzle generators, slot maths and rules, Wallbreaker's rules, build, open every game in a headless phone browser, play the slots, Wallbreaker and Coin Dozer end to end
 npm run build      # assemble dist/ (what goes into the app)
 ```
 
@@ -41,7 +42,7 @@ Experimental games (listed in `EXPERIMENTAL` in [scripts/build.mjs](scripts/buil
 index.html          the hub (start screen) linking every game
 games/<name>/       one folder per game, with its own style, fonts and code
 shared/             what all games share: three.js, the platform layer, icons
-scripts/            dev server, build, font downloader, slot simulator and validator, Wallbreaker's puzzle solver and pacing sim
+scripts/            dev server, build, font downloader, slot simulator and validator, Wallbreaker's puzzle solver and pacing sim, Coin Dozer's physics sim
 tests/              smoke test + puzzle generator test
 docs/               guides
 ```
@@ -54,6 +55,7 @@ docs/               guides
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the code is organised and how to improve it safely
 - [docs/SLOTS.md](docs/SLOTS.md): Crystal Reels: how it is built, the maths simulator, fairness rules, requirement map
 - [docs/WALLBREAKER.md](docs/WALLBREAKER.md): Wallbreaker: the plan, how it is built, and where each acceptance criterion is tested
+- [docs/COIN-DOZER.md](docs/COIN-DOZER.md): Coin Dozer: the spec, how it is built, where it differs from the spec, and where each acceptance criterion is tested
 - [docs/ECONOMY.md](docs/ECONOMY.md): how coins, washers and points work in every game: prices in levels of effort, stars for playing without help
 - [TODO.md](TODO.md): what to do next, as a checklist
 - [HISTORY.md](HISTORY.md): what was done, per day
@@ -66,4 +68,4 @@ docs/               guides
 
 ## Credits
 
-three.js (MIT), fonts from Google Fonts under the SIL Open Font License; the licence files sit next to the files in `shared/vendor/` and `games/*/fonts/`.
+three.js (MIT), Rapier (Apache-2.0), fonts from Google Fonts under the SIL Open Font License; the licence files sit next to the files in `shared/vendor/` and `games/*/fonts/`.

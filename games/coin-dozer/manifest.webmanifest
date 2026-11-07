@@ -1,0 +1,14 @@
+{
+  "name": "Coin Dozer",
+  "short_name": "Coin Dozer",
+  "description": "A coin pusher with real physics. No ads, no purchases, no tracking.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a0f1c",
+  "theme_color": "#1a0f1c",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

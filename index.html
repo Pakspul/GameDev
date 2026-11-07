@@ -82,6 +82,8 @@ header p{margin:0;color:var(--muted);max-width:34em}
   --c-art:radial-gradient(120% 90% at 88% 0%,rgba(255,95,210,.35),transparent 60%),radial-gradient(90% 70% at 0% 100%,rgba(127,227,255,.22),transparent 60%)}
 .g-wall{--c-bg:#0b1020;--c-ink:#f1f5ff;--c-accent:#ffd60a;--c-accent-ink:#1d1600;--c-font:italic 900 2.1rem/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--c-track:.02em;
   --c-art:linear-gradient(90deg,#ff4d6d 0 16%,transparent 16% 17%,#ff9f1c 17% 33%,transparent 33% 34%,#ffd60a 34% 50%,transparent 50% 51%,#4ade80 51% 67%,transparent 67% 68%,#22d3ee 68% 84%,transparent 84% 85%,#818cf8 85%) 0 0/100% 6px no-repeat,radial-gradient(110% 80% at 90% 0%,rgba(122,162,255,.3),transparent 60%)}
+.g-coin{--c-bg:#1a0f1c;--c-ink:#fff6e8;--c-accent:#ffcf4d;--c-accent-ink:#1a1200;--c-font:900 2.1rem/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--c-track:-.02em;
+  --c-art:radial-gradient(circle at 82% 22%,#f4f6fa 0 13px,#9aa1ad 14px 16px,transparent 17px),radial-gradient(circle at 92% 40%,#ffd447 0 13px,#c48a12 14px 16px,transparent 17px),radial-gradient(circle at 74% 46%,#e7eaf0 0 13px,#9aa1ad 14px 16px,transparent 17px),radial-gradient(120% 90% at 90% 0%,rgba(255,207,77,.25),transparent 60%)}
 .g-camp{--c-bg:#2b2f36;--c-ink:#f4f5f7;--c-accent:#ffb347;--c-accent-ink:#2b1a00;--c-font:800 2.1rem/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--c-track:-.03em;
   --c-art:repeating-linear-gradient(90deg,transparent 0 26px,rgba(255,255,255,.07) 26px 40px) 0 72%/100% 4px no-repeat,radial-gradient(120% 90% at 90% 0%,rgba(255,179,71,.28),transparent 60%)}
 details{margin-top:30px;border-top:1px solid var(--line);padding-top:18px}
@@ -183,6 +185,12 @@ dialog form button{font:inherit;font-weight:700;color:var(--bg);background:var(-
       <h2>Wallbreaker</h2>
       <p data-i18n="wall.blurb"></p>
     </a>
+    <a class="card g-coin" href="games/coin-dozer/index.html">
+      <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
+      <div class="meta"><span>3D</span><span data-i18n="tag.arcade"></span><span data-i18n="tag.physics"></span></div>
+      <h2>Coin Dozer</h2>
+      <p data-i18n="coin.blurb"></p>
+    </a>
     <a class="card g-camp" href="games/camper-crew/index.html">
       <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
       <div class="meta"><span>3D</span><span data-i18n="tag.action"></span><span data-i18n="tag.prototype"></span></div>
@@ -268,6 +276,7 @@ I18n.add({
     "tag.slots": "Slots",
     "tag.playMoney": "Play money",
     "tag.arcade": "Arcade",
+    "tag.physics": "Physics",
     "jade.blurb": "Clear the lantern-lit table by matching pairs of free tiles.",
     "nuts.blurb": "Screw the nuts from bolt to bolt until every colour has a bolt of its own.",
     "out.blurb": "Every arrow leaves the way it points. Find the order that clears the board.",
@@ -275,6 +284,7 @@ I18n.add({
     "graph.blurb": "Sudoku, Takuzu, Star Battle and Calcudoku: endless pencil puzzles, each with one solution.",
     "slots.blurb": "Two slot machines with play money only: free spins, Hold & Spin, a pick bonus and jackpots, and the same odds for everyone.",
     "wall.blurb": "Break the wall: seven modes, endless levels, a boss every tenth, and risky capsules you can catch or dodge.",
+    "coin.blurb": "Drop coins, let the pusher shove the pile, and win whatever spills over the edge. Real physics, prizes to collect, never a coin for sale.",
     "camp.blurb": "You're the only crew on a self-driving camper. Steer, refuel, cook and patch your way to camp before sunset.",
     "hub.whyQ": "Why are there no ads?",
     "hub.why1": "Most \"free\" mobile games are built to sell your attention: an ad after every level, timers you can skip for money, and tracking you never agreed to. These games are made the other way round. They are free because they are free: no ads, no data collection, no paid shortcuts, and no internet connection needed.",
@@ -314,12 +324,14 @@ I18n.add({
     "tag.slots": "Gokkasten",
     "tag.playMoney": "Speelgeld",
     "tag.arcade": "Arcade",
+    "tag.physics": "Natuurkunde",
     "jade.blurb": "Maak de tafel bij lantaarnlicht leeg door paren vrije stenen te combineren.",
     "nuts.blurb": "Draai de moeren van bout naar bout tot elke kleur een eigen bout heeft.",
     "out.blurb": "Elke pijl vertrekt de kant op die hij wijst. Vind de volgorde die het bord leegmaakt.",
     "uns.blurb": "Haal het schroef voor schroef uit elkaar en gooi elke schroef in de doos van zijn kleur.",
     "graph.blurb": "Sudoku, Takuzu, Star Battle en Calcudoku: eindeloze potloodpuzzels, elk met één oplossing.",
     "slots.blurb": "Twee gokkasten met alleen speelgeld: gratis spins, Hold & Spin, een kiesbonus en jackpots, en voor iedereen dezelfde kansen.",
+    "coin.blurb": "Gooi munten, laat de schuif de stapel duwen en win alles wat over de rand valt. Echte natuurkunde, prijzen om te verzamelen, nooit een munt te koop.",
     "wall.blurb": "Breek de muur: zeven spelsoorten, eindeloze levels, elk tiende level een baas, en riskante capsules die je vangt of ontwijkt.",
     "camp.blurb": "Je bent de enige bemanning van een zelfrijdende camper. Stuur, tank, kook en repareer je een weg naar de camping voor zonsondergang.",
     "hub.whyQ": "Waarom zijn er geen advertenties?",
@@ -361,6 +373,11 @@ I18n.apply();
 // "version" in package.json to match.
 (function () {
   var CHANGES = [
+    {
+      version: "0.3", date: "2026-11-07",
+      en: ["New game: Coin Dozer, a coin pusher with real physics: drop coins, watch the pusher shove the pile, and win what spills over. Gems and figures to collect in four machine themes, coin showers, fever and jackpots, a Workshop for credits you earn by playing."],
+      nl: ["Nieuw spel: Coin Dozer, een muntenschuiver met echte natuurkunde: gooi munten, kijk hoe de schuif de stapel duwt en win wat eraf valt. Edelstenen en figuren om te verzamelen in vier machinethema's, muntenregens, koorts en jackpots, en een werkplaats voor credits die je met spelen verdient."],
+    },
     {
       version: "0.2", date: "2026-11-06",
       en: ["New game: Wallbreaker, a brick breaker with seven modes (Classic, Zen, Descent, Run, Daily, Puzzle and Time Attack), endless levels, bosses, risky capsules and a shop for credits you earn by playing."],

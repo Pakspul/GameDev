@@ -36,3 +36,15 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/slots-sim.mjs --verify
+
+  # Coin Dozer's long stability run: 10,000 pusher cycles of the real physics with a seeded player,
+  # no exceptions, NaN positions or coins outside the board (about half an hour; acceptance criterion 28).
+  coin-dozer-sim:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: node scripts/coin-dozer-sim.mjs --cycles 10000 --check
