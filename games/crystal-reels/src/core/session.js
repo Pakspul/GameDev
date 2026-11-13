@@ -89,6 +89,40 @@ export class Session {
     return p.outcome.totalWin;
   }
 
+  /**
+   * A free-spin voucher: a short free-spins run at a fixed bet, started by the player when the machine is idle.
+   * It is queued like a feature a spin would have triggered, so it is planned in full, saved, resumed and paid
+   * the same way. The coins it wins are the only thing it adds; it costs nothing and changes no odds.
+   */
+  queueVoucher({ spins, bet }) {
+    if (!this.isIdle()) throw new Error("A voucher can only be used when idle");
+    if (!this.cfg.betLevels.includes(bet)) throw new Error("Unknown bet level " + bet);
+    this._log({ t: "voucher", spins, bet });
+    this.state.queue.push({ type: "freeSpins", source: "voucher", bet, spins, multiplier: 1, scatterCount: 0, poolsSnap: { ...this.state.pools } });
+  }
+
+  /**
+   * Double or collect (opt-in, see the settings): a fair 50/50 on a small base-game win. The player picks a
+   * side (0 or 1); a hit doubles the pending win, a miss loses it. The coin is flipped with its own generator
+   * derived from the session's state, so the spins that follow are unaffected and a replay gives the same flip.
+   */
+  canGamble() {
+    const p = this.state.pending;
+    return !!p && p.outcome.totalWin > 0 && p.outcome.features.length === 0 && !p.outcome.capped;
+  }
+
+  gamble(pick) {
+    if (!this.canGamble()) throw new Error("Nothing to double");
+    if (pick !== 0 && pick !== 1) throw new Error("Pick 0 or 1");
+    this._log({ t: "gamble", pick });
+    const p = this.state.pending;
+    p.gambles = (p.gambles || 0) + 1;
+    const flip = new Rng("gamble:" + this.rng.state().join(",") + ":" + p.gambles).int(2);
+    const won = flip === pick;
+    p.outcome.totalWin = won ? p.outcome.totalWin * 2 : 0;
+    return { won, flip, total: p.outcome.totalWin };
+  }
+
   /** Start the next queued feature. Free spins with a choice stop at phase "choice". */
   nextFeature() {
     if (this.state.feature) return this.state.feature;
@@ -100,7 +134,7 @@ export class Session {
     let feature;
     if (entry.type === "freeSpins") {
       const fs = prep.features.freeSpins;
-      if (fs.choice && entry.source !== "meter") {
+      if (fs.choice && entry.source !== "meter" && entry.source !== "voucher") {
         const options = fs.choice.map((o) => ({ id: o.id, spins: choiceSpins(prep, o, entry.scatterCount), multiplier: o.multiplier }));
         feature = { type: "freeSpins", phase: "choice", bet: entry.bet, source: entry.source, scatterCount: entry.scatterCount, options, entry, cursor: 0 };
       } else {
@@ -174,6 +208,8 @@ export class Session {
       if (i.t === "bet") s.setBet(i.v);
       else if (i.t === "spin") s.spin(i.bet);
       else if (i.t === "settle") s.settle();
+      else if (i.t === "voucher") s.queueVoucher({ spins: i.spins, bet: i.bet });
+      else if (i.t === "gamble") s.gamble(i.pick);
       else if (i.t === "feature") s.nextFeature();
       else if (i.t === "choose") s.chooseOption(i.id);
       else if (i.t === "pick") s.pickTile(i.tile);

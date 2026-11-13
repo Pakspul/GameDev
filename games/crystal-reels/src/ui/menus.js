@@ -8,6 +8,8 @@ import { jackpotAmounts } from "../engine/jackpot.js";
 import { unitValue } from "../engine/evaluate.js";
 import { prepare } from "../engine/config.js";
 import { choiceSpins } from "../engine/features.js";
+import { xpMeter, rankName } from "./xp.js";
+import { gemsRow, framePicker } from "./quests.js";
 
 // ---- rules and paytable -------------------------------------------------------------------------------
 /** Everything on this screen is built from the machine's config, so it always matches the math (MATH-06). */
@@ -137,6 +139,7 @@ export function showSettings(app) {
     slider("musicVolume", t("set.music")), slider("sfxVolume", t("set.sfx")),
     toggle("muted", t("set.mute")), toggle("haptics", t("set.haptics")), toggle("turbo", t("set.turbo"), t("set.turbo.note")),
     toggle("reducedMotion", t("set.motion"), t("set.motion.note")),
+    toggle("gamble", t("set.gamble"), t("set.gamble.note")),
     h("label", { class: "field" }, h("span", { text: t("language") }), lang),
     h("label", { class: "field" }, h("span", {}, h("b", { text: t("set.reminder") }), h("small", { text: t("set.reminder.note") })), remind),
     toggle("bonusReminder", t("set.bonusReminder"), t("set.bonusReminder.note"), async (input) => {
@@ -181,23 +184,26 @@ export function showExport(app) {
 export function showProfile(app) {
   const t = app.t, p = app.profile, g = app.game;
   const day = P.localDay();
-  const xp = P.xpProgress(g, p.xp);
   const row = (a, b) => h("div", { class: "stat" }, h("span", { text: a }), h("b", { text: b }));
   const stats = [
-    row(t("stats.level"), String(xp.level)), row(t("stats.spins"), fmt(app, p.totals.spins)),
+    row(t("stats.xp"), fmt(app, Math.floor(P.totalXp(p)))), row(t("stats.spins"), fmt(app, p.totals.spins)),
     row(t("stats.wagered"), fmt(app, p.totals.wagered)), row(t("stats.won"), fmt(app, p.totals.won)),
     row(t("stats.return"), p.totals.wagered ? (P.actualReturn(p) * 100).toFixed(1) + "%" : "-"),
   ];
   const perMachine = Object.values(app.machines).map((cfg) => {
     const st = (p.machines[cfg.id] || {}).stats || { spins: 0, biggestWin: 0, features: 0, jackpots: 0 };
-    return h("section", { class: "rule" }, h("h3", { text: cfg.name }), row(t("stats.spins"), fmt(app, st.spins)), row(t("stats.biggest"), fmt(app, st.biggestWin)), row(t("stats.features"), fmt(app, st.features)), row(t("stats.jackpots"), fmt(app, st.jackpots)));
+    const prog = P.xpProgress(g, P.machineXp(p, cfg.id)), rank = P.rankFor(g, prog.level);
+    const meter = xpMeter(app, cfg.id, { text: false });
+    return h("section", { class: "rule" }, h("h3", { text: cfg.name }), meter.el,
+      row(t("stats.level"), `${prog.level} · ${rankName(app, rank)}`), row(t("stats.machineXp"), fmt(app, Math.floor(P.machineXp(p, cfg.id)))),
+      row(t("stats.nextLevel"), t("stats.xpToGo", { n: fmt(app, Math.ceil(prog.to - P.machineXp(p, cfg.id))) })), gemsRow(app, cfg.id), row(t("stats.spins"), fmt(app, st.spins)), row(t("stats.biggest"), fmt(app, st.biggestWin)), row(t("stats.features"), fmt(app, st.features)), row(t("stats.jackpots"), fmt(app, st.jackpots)));
   });
   const missions = P.activeMissions(p, g, day).map((m) => h("div", { class: "mission" }, h("span", { text: t("mission." + m.id) }), h("div", { class: "bar" }, h("i", { style: { width: Math.round((m.progress / m.target) * 100) + "%" } })), h("small", { text: `${m.progress}/${m.target} · +${fmt(app, m.reward)}` })));
   const ach = g.achievements.map((a) => {
     const when = p.achievements[a.id];
     return h("div", { class: "ach" + (when ? " got" : "") }, icon(when ? "trophy" : "lock", 20), h("span", {}, h("b", { text: t("ach." + a.id) }), h("small", { text: when ? new Date(when).toLocaleDateString(app.locale) : t("ach.locked") })));
   });
-  const body = h("div", { class: "profile" }, h("h3", { text: t("stats.title") }), h("div", { class: "stats" }, stats), perMachine, h("h3", { text: t("missions") }), missions, h("h3", { text: t("achievements") }), h("div", { class: "achs" }, ach));
+  const body = h("div", { class: "profile" }, h("h3", { text: t("stats.title") }), h("div", { class: "stats" }, stats), perMachine, h("h3", { text: t("frames.title") }), framePicker(app, () => { if (app.screen) app.screen.applyFrame(); }), h("h3", { text: t("missions") }), missions, h("h3", { text: t("achievements") }), h("div", { class: "achs" }, ach));
   openModal(app, { title: t("profile"), body, wide: true });
 }
 

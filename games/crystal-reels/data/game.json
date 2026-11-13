@@ -5,7 +5,8 @@
   "rewardPerLevel": 0.25,
   "maxBetShare": 0.02,
   "riskyBetShare": 0.05,
-  "sessionLossWarn": 0.5
+  "sessionLossWarn": 0.5,
+  "rewardLevelCap": 30
  },
  "xp": {
   "perCoinBet": 0.05,
@@ -41,6 +42,7 @@
    17310,
    18380
   ],
+  "beyondStep": 30,
   "rewards": {
    "2": {
     "coins": 1000
@@ -129,18 +131,57 @@
    "30": {
     "coins": 8000
    }
+  },
+  "ranks": {
+   "repeatEvery": 10,
+   "list": [
+    {
+     "level": 1,
+     "id": "rookie"
+    },
+    {
+     "level": 5,
+     "id": "apprentice"
+    },
+    {
+     "level": 10,
+     "id": "challenger"
+    },
+    {
+     "level": 15,
+     "id": "veteran"
+    },
+    {
+     "level": 20,
+     "id": "expert"
+    },
+    {
+     "level": 25,
+     "id": "master"
+    },
+    {
+     "level": 30,
+     "id": "champion"
+    },
+    {
+     "level": 40,
+     "id": "legend"
+    }
+   ]
   }
  },
  "machines": [
   {
    "id": "crystal-fortune",
-   "file": "machines/crystal-fortune.json",
-   "unlockLevel": 1
+   "file": "machines/crystal-fortune.json"
   },
   {
    "id": "neon-tumble",
    "file": "machines/neon-tumble.json",
-   "unlockLevel": 4
+   "unlock": {
+    "machine": "crystal-fortune",
+    "level": 4
+   }
   }
  ],
  "refill": {
@@ -304,5 +345,318 @@
   "mega": 5500,
   "epic": 8000,
   "jackpot": 6000
+ },
+ "challenges": {
+  "offers": 3,
+  "pool": [
+   {
+    "id": "wins4",
+    "metric": "wins",
+    "target": 4,
+    "spins": 10,
+    "reward": {
+     "coins": 800
+    }
+   },
+   {
+    "id": "winsX2",
+    "metric": "winsX2",
+    "target": 2,
+    "spins": 12,
+    "reward": {
+     "coins": 1000
+    }
+   },
+   {
+    "id": "bigwin",
+    "metric": "bigWin",
+    "target": 1,
+    "spins": 30,
+    "reward": {
+     "voucher": 1
+    }
+   },
+   {
+    "id": "wilds5",
+    "metric": "wilds",
+    "target": 5,
+    "spins": 12,
+    "reward": {
+     "coins": 700
+    }
+   },
+   {
+    "id": "scatters4",
+    "metric": "scatters",
+    "target": 4,
+    "spins": 20,
+    "reward": {
+     "coins": 900
+    }
+   },
+   {
+    "id": "lanterns",
+    "metric": "collects",
+    "target": 5,
+    "spins": 15,
+    "reward": {
+     "coins": 800
+    },
+    "machines": [
+     "crystal-fortune"
+    ]
+   },
+   {
+    "id": "cascades",
+    "metric": "cascades",
+    "target": 5,
+    "spins": 10,
+    "reward": {
+     "coins": 900
+    },
+    "machines": [
+     "neon-tumble"
+    ]
+   },
+   {
+    "id": "expand",
+    "metric": "expanded",
+    "target": 2,
+    "spins": 12,
+    "reward": {
+     "coins": 900
+    },
+    "machines": [
+     "neon-tumble"
+    ]
+   },
+   {
+    "id": "highbet",
+    "metric": "highBet",
+    "target": 8,
+    "spins": 10,
+    "minStep": 2,
+    "reward": {
+     "coins": 1200
+    }
+   },
+   {
+    "id": "variety",
+    "metric": "variety",
+    "target": 3,
+    "spins": 8,
+    "reward": {
+     "coins": 1000
+    }
+   }
+  ]
+ },
+ "chains": [
+  {
+   "id": "explorer",
+   "steps": [
+    {
+     "metric": "spins",
+     "target": 150,
+     "reward": 800
+    },
+    {
+     "metric": "wins",
+     "target": 50,
+     "reward": 1200
+    },
+    {
+     "metric": "bigWins",
+     "target": 2,
+     "reward": 2000
+    }
+   ],
+   "final": {
+    "coins": 4000,
+    "chest": true
+   }
+  },
+  {
+   "id": "wildhunt",
+   "steps": [
+    {
+     "metric": "spins",
+     "target": 100,
+     "reward": 700
+    },
+    {
+     "metric": "wilds",
+     "target": 25,
+     "reward": 1200
+    },
+    {
+     "metric": "features",
+     "target": 2,
+     "reward": 2500
+    }
+   ],
+   "final": {
+    "coins": 4000,
+    "chest": true
+   }
+  },
+  {
+   "id": "collector",
+   "steps": [
+    {
+     "metric": "spins",
+     "target": 200,
+     "reward": 900
+    },
+    {
+     "metric": "scatters",
+     "target": 12,
+     "reward": 1500
+    },
+    {
+     "metric": "collects",
+     "target": 20,
+     "reward": 2000
+    }
+   ],
+   "final": {
+    "coins": 4500,
+    "chest": true
+   }
+  }
+ ],
+ "gems": {
+  "reward": {
+   "coins": 3000,
+   "chest": true
+  },
+  "list": [
+   {
+    "id": "ruby",
+    "metric": "winMultiple",
+    "target": 20
+   },
+   {
+    "id": "sapphire",
+    "metric": "feature",
+    "target": 1
+   },
+   {
+    "id": "emerald",
+    "metric": "wildsOneSpin",
+    "target": 3
+   },
+   {
+    "id": "topaz",
+    "metric": "spins",
+    "target": 200
+   },
+   {
+    "id": "amethyst",
+    "metric": "level",
+    "target": 10
+   },
+   {
+    "id": "diamond",
+    "metric": "winMultiple",
+    "target": 100
+   }
+  ]
+ },
+ "chests": {
+  "everyLevels": 5,
+  "boxes": 3,
+  "prizes": [
+   {
+    "type": "coins",
+    "base": 1500,
+    "weight": 55
+   },
+   {
+    "type": "voucher",
+    "count": 1,
+    "weight": 30
+   },
+   {
+    "type": "frame",
+    "weight": 15
+   }
+  ]
+ },
+ "voucher": {
+  "spins": 5,
+  "betStep": 2
+ },
+ "wheel": {
+  "slices": [
+   {
+    "coins": 300,
+    "weight": 20
+   },
+   {
+    "coins": 600,
+    "weight": 14
+   },
+   {
+    "voucher": 1,
+    "weight": 8
+   },
+   {
+    "coins": 300,
+    "weight": 20
+   },
+   {
+    "coins": 1000,
+    "weight": 10
+   },
+   {
+    "coins": 500,
+    "weight": 16
+   },
+   {
+    "coins": 2500,
+    "weight": 3
+   },
+   {
+    "coins": 400,
+    "weight": 18
+   }
+  ]
+ },
+ "frames": [
+  {
+   "id": "emerald",
+   "color": "#2fe39b",
+   "glow": "#2fe39b88"
+  },
+  {
+   "id": "ruby",
+   "color": "#ff4d6d",
+   "glow": "#ff4d6d88"
+  },
+  {
+   "id": "gold",
+   "color": "#ffd35a",
+   "glow": "#ffd35a88"
+  },
+  {
+   "id": "aurora",
+   "color": "#a78bfa",
+   "glow": "#5eead488"
+  },
+  {
+   "id": "ember",
+   "color": "#ff9d3d",
+   "glow": "#ff5a1f88"
+  },
+  {
+   "id": "ghost",
+   "color": "#e8f0ff",
+   "glow": "#ffffff66"
+  }
+ ],
+ "gamble": {
+  "maxRounds": 2,
+  "maxBalanceShare": 0.1
  }
 }

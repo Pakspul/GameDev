@@ -4,6 +4,7 @@ import { h } from "./src/ui/dom.js";
 import { AudioEngine } from "./src/ui/audio.js";
 import { Fx, Haptics, prefersReducedMotion } from "./src/ui/fx.js";
 import { Skipper, openModal, toast, levelUp, fmt } from "./src/ui/overlays.js";
+import { prizeText, showChest, showWheel } from "./src/ui/quests.js";
 import { Lobby } from "./src/ui/lobby.js";
 import { MachineScreen } from "./src/ui/machine-screen.js";
 import { showInfo, showSettings, showProfile, showRefill, showReminder } from "./src/ui/menus.js";
@@ -86,6 +87,9 @@ async function boot() {
       const sm = app.screen && app.screen.sm;
       return [
         sm && { icon: "info", label: _t("info"), disabled: !sm.accepts("info"), onSelect: () => { if (sm.accepts("info")) app.showInfo(app.screen); } },
+        sm && { icon: "levels", label: _t("menu.challenges"), disabled: !sm.accepts("quest"), note: profile.challenge && profile.challenge.machine === app.screen.cfg.id ? `${profile.challenge.progress}/${profile.challenge.target}` : undefined, onSelect: () => { if (sm.accepts("quest")) app.screen.openQuests(); } },
+        { icon: "shop", label: _t("menu.chests"), disabled: !profile.chests.length || (sm && !sm.accepts("quest")), note: String(profile.chests.length), onSelect: () => (app.screen ? app.screen.openChests() : showChest(app, { onChange: () => app.lobby && app.lobby.renderPrizes() })) },
+        { icon: "dots", label: _t("menu.wheel"), disabled: !profile.wheel.spins || (sm && !sm.accepts("quest")), note: String(profile.wheel.spins), onSelect: () => (app.screen ? app.screen.openWheel() : showWheel(app, { onChange: () => app.lobby && app.lobby.renderPrizes() })) },
         { icon: "trophy", label: _t("profile"), onSelect: () => app.showProfile() },
         { icon: "gear", label: _t("settings"), disabled: sm && !sm.accepts("menu"), onSelect: () => { if (!sm || sm.accepts("menu")) app.showSettings(); } },
         { icon: "sound", label: _t("sound"), checked: !profile.settings.muted, onToggle: (on) => { profile.settings.muted = !on; app.audio.applySettings(); app.persist(); if (app.screen) app.screen.updateControls(); } },
@@ -97,7 +101,18 @@ async function boot() {
   app.handleEvents = (events) => {
     for (const e of events) {
       if (e.type === "levelUp") levelUp(app, e);
-      else if (e.type === "mission") { app.audio.sfx("level"); toast(app, _t("toast.mission", { name: _t("mission." + e.id), n: fmt(app, e.reward) }), "level"); }
+      else if (e.type === "mission") { app.audio.sfx("level"); toast(app, _t("toast.mission", { name: _t("mission." + e.id), n: fmt(app, e.reward) }) + (e.wheel ? " " + _t("toast.wheel") : ""), "level", e.wheel ? 4400 : 3200); }
+      else if (e.type === "challenge") {
+        if (e.ok) { app.audio.sfx("level"); app.fx.burst(window.innerWidth / 2, 160, 50, 1); toast(app, _t("toast.challenge", { prize: prizeText(app, e.prize) }), "level", 4200); }
+        else toast(app, _t("toast.challengeFail"), "info", 3600);
+      }
+      else if (e.type === "chainStep") { app.audio.sfx("level"); toast(app, _t("toast.chainStep", { n: e.step, total: e.steps, coins: fmt(app, e.coins) }), "level", 4000); }
+      else if (e.type === "chainDone") { app.audio.sfx("level"); app.fx.burst(window.innerWidth / 2, 160, 70, 1.3); toast(app, _t("toast.chainDone", { coins: fmt(app, e.coins) }), "level", 5000); }
+      else if (e.type === "gem") {
+        const owned = (profile.machines[e.machine].gems || []).length;
+        app.audio.sfx("level"); toast(app, _t("toast.gem", { gem: _t("gem." + e.id), machine: machines[e.machine].name, n: owned, total: game.gems.list.length }), "level", 4000);
+      }
+      else if (e.type === "gemSet") { app.audio.sfx("level"); app.fx.burst(window.innerWidth / 2, 160, 70, 1.3); toast(app, _t("toast.gemSet", { machine: machines[e.machine].name, coins: fmt(app, e.coins) }), "level", 5200); }
       else if (e.type === "achievement") { app.audio.sfx("level"); toast(app, _t("toast.achievement", { name: _t("ach." + e.id) }), "level"); }
     }
     if (events.length && app.screen) app.screen.refresh();

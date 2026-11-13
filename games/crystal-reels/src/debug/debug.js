@@ -62,7 +62,7 @@ function open(app) {
     row("Meter", b("almost full", () => { const m = screen.session.state.meter; m.count = screen.cfg.meter.target - 1; m.betSum = m.count * screen.bet; screen.refresh(); app.persist(); }));
   }
   row("Balance", b("+100k", () => { p.balance += 100000; if (screen) screen.refresh(); app.persist(); }), b("0", () => { p.balance = 0; if (screen) screen.refresh(); app.persist(); }), b("30", () => { p.balance = 30; if (screen) screen.refresh(); app.persist(); }));
-  row("Level", b("+5", () => { p.xp = app.game.xp.thresholds[Math.min(app.game.xp.thresholds.length - 1, P.playerLevel(app.game, p) + 4)]; if (screen) screen.refresh(); app.persist(); }));
+  if (screen) row("Level (this machine)", b("+5", () => { const e = P.machineEntry(p, screen.cfg.id); e.xp = P.xpForLevel(app.game, P.machineLevel(app.game, p, screen.cfg.id) + 5); p.xp = P.totalXp(p); screen.refresh(); app.persist(); }));
   row("Speed", ...[1, 3, 10].map((x) => b("×" + x, () => { timing.speed = x; })));
   openModal(app, { title: "Debug (development build)", body, buttons: [{ label: "Close", primary: true }] });
 }

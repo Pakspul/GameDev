@@ -7,7 +7,7 @@ Two machines ship, so every engine feature is reachable in play:
 | | **Crystal Fortune** | **Neon Tumble** |
 |---|---|---|
 | Layout | 5×3, 20 paylines | 5×3, 243 ways |
-| Unlocks | level 1 | level 4 |
+| Unlocks | level 1 | Crystal Fortune level 4 |
 | Wilds | standard (reels 2–4), multiplier wilds in free spins | expanding wild (reels 2–4) |
 | Features | free spins (sticky wilds), Hold & Spin | free spins with a choice of 3 options, pick bonus |
 | Extras | Mini/Minor fixed + Major/Grand progressive jackpots, collection meter → free spins | cascading reels (×1 ×2 ×3 ×5), collection meter → pick bonus, jackpots inside the pick bonus |
@@ -63,6 +63,27 @@ A machine is one JSON file. The validator (`npm run slots:validate`, also run by
 
 Tuning knobs that move the RTP in small steps: paytable multipliers, free-spin awards, Hold & Spin `landChance` and coin weights, the pick prize weights, the meter `target`, jackpot contributions. The strips set frequencies of triggers.
 
+## Quests: things to do besides pressing Spin
+
+Everything below is play money and cosmetics, defined in `data/game.json`, with the rules in `src/core/quests.js` and the screens in `src/ui/quests.js`. None of it reaches the engine, so the odds never change (FAIR-03), and nothing punishes a player who ignores it: a challenge that runs out, a chain that is not finished and a chest that is never opened all cost nothing.
+
+| What | How it works |
+|---|---|
+| **Live challenges** | A strip above the reels. The player picks one of three offers ("win on 4 spins within 10", "land 5 wilds", …), plays it by hand and gets coins or a free-spins voucher. One at a time, per machine, dropped for free. Machines get their own kinds (lantern meter on Crystal Fortune, cascades and expanding wilds on Neon Tumble). |
+| **Bet quests** | At least one offer asks the player to use the bet buttons ("8 spins at bet 100 or more", "play 3 different bets"). It is only offered when that bet is a small share of the balance (`riskyBetShare`), so it never nudges anyone into a bet that would be flagged as large. |
+| **Autoplay and challenges** | Starting autoplay while a challenge runs asks whether to play the challenge by hand first. |
+| **Level chests** | Every 5th level of a machine (`chests.everyLevels`) leaves a chest. Three boxes, pick one: coins, a free-spins voucher or a reel frame. Chests wait until opened; the weekly chain and a complete gem set give one too. This is what endless levels earn beyond the rank. |
+| **Lucky wheel** | One spin of the wheel for every daily mission that is finished. |
+| **Free-spins vouchers** | 5 free spins (`voucher.spins`) at the third bet step of the machine, started from the strip when idle. It is queued as an ordinary free-spins feature, so it is planned in full, saved, resumed and paid like one. Worth about 800 coins on Crystal Fortune and 1,800 on Neon Tumble. A voucher round stays out of the return, missions, chain and challenges, since it cost nothing. |
+| **Reel frames** | Six cosmetic reel-frame colours, found in chests and equipped in the profile. |
+| **Gems** | Six per machine, each from one accomplishment (a 20× win, a bonus feature, 3 wilds in a spin, 200 spins, level 10, a 100× win). The full set pays coins and a chest, once. Shown in the profile. |
+| **Weekly chain** | Three linked goals that unlock one after the other, each paying coins, with coins and a chest at the end. The chain is one of three, picked by the ISO week (`chains` in game.json), and starts fresh every week. |
+| **Double or collect** | Off by default (Settings). After a plain base-game win of 1× to 10× the bet, while the win is under 10% of the balance, never during autoplay: a fair 50/50 (red or black) that doubles the win or loses it, at most twice in a row. The coin is flipped with a generator derived from the session state, so it never changes the spins that follow and a replay gives the same flip (`Session.gamble`). |
+
+### Left out on purpose
+
+An "active-play bonus" (paying more when the player taps Spin than when autoplay runs) was proposed and not built: a payout that depends on how the player plays is adaptive odds, which FAIR-03 forbids, and it would punish the players who prefer autoplay. Autoplay is nudged towards hands-on play by the challenge prompt instead.
+
 ## The simulator (TOOL-01, TOOL-02)
 
 ```bash
@@ -101,7 +122,9 @@ The three free-spins options of Neon Tumble are worth 41.6× the bet each (FS-04
 
 * **The refill has no waiting time.** ECO-04 allows "immediately or after a short cooldown (default 10 min)". The project mission rules out timers that stop you playing, so `data/game.json` sets `refill.cooldownMinutes` to 0. Set it to 10 to get the specification default; the screen and tests support both.
 * **The target RTP is 97.5%, not the specification's 96%** (ECO-08). A player who had lost steadily at 96% asked for a kinder game; the paytable's 3-of-a-kind pays of the lowest symbols were raised (Crystal Fortune: Ten and Jack 10 → 11; Neon Tumble: Circle 3 → 4, Triangle 3 → 4, Square 5 → 6, Hex 7 → 8, Ring 9 → 10) and `targets.rtp` set to 0.975 in both configs. The hit frequency and volatility class are unchanged. The profile's "return" is cash only, so it reads a little below the target while the progressive jackpots have not been won.
-* **Rewards grow with the level** (ECO-07). The bets a player can place grow over 100-fold with the level, so flat rewards stopped mattering. A level-up reward, a mission reward, the timed bonus and the refill are the base amount in `data/game.json` times `1 + economy.rewardPerLevel × (level − 1)` (0.25 per level: ×8.25 at level 30), rounded to tens (`rewardScale`, `scaledReward` in `core/profile.js`).
+* **Every machine has its own level, and levels never end** (PROG-01). XP is earned on the machine the bet was placed on (`profile.machines[id].xp`); `profile.xp` is only the running total shown in the profile. Bet sizes unlock with that machine's own level (`betUnlockLevels`), and a machine opens when another reaches a level (`unlock: {machine, level}` in `data/game.json`: Neon Tumble needs Crystal Fortune level 4). `xp.thresholds` holds the hand-tuned XP for levels 1–30; beyond that each level costs `xp.beyondStep` (30) XP more than the one before, in closed form (`xpForLevel`, `levelForXp` in `core/profile.js`), so there is no top level. A save from before this change keeps what it had: a machine that was played starts with the player's old total XP (nothing is locked again), a machine never played starts at 0.
+* **Past level 30 a level earns a rank, not coins** (PROG-01). Coin rewards are listed for levels 2–30 only. Every level shows in the badge; ranks (`xp.ranks`: Rookie, Apprentice, Challenger, Veteran, Expert, Master, Champion, Legend) change the title and badge colour, and after Legend a Roman numeral is added every `ranks.repeatEvery` levels (Legend II, III, …). The profile shows XP, level, rank and XP to the next level per machine.
+* **Rewards grow with the level** (ECO-07), up to `economy.rewardLevelCap` (30). A level-up reward is the base amount in `data/game.json` times `1 + economy.rewardPerLevel × (level − 1)` (0.25 per level: ×8.25 at level 30), rounded to tens (`rewardScale`, `scaledReward`). A mission reward, the timed bonus and the refill follow the highest machine level. Past the cap the scale stops growing, so infinite levels do not inflate the economy.
 * **Max bet is capped** (ECO-08). It picks the highest unlocked bet that is at most `economy.maxBetShare` (2%) of the balance, not the highest the balance can pay, and a toast says so when the cap held back a higher bet. The + button still reaches every unlocked bet.
 * **Loss warnings** (ECO-09). A bet above `economy.riskyBetShare` (5%) of the balance turns orange and says what share of the coins it is. Once per session, when the net loss passes `economy.sessionLossWarn` (50%) of the starting balance, a message appears and autoplay stops.
 * **Autoplay can be unlimited** (REEL-05): ∞ next to 10 / 25 / 50 / 100 (`autoplay.infinite`), with an optional stop when a chosen share of the coins is lost (`autoplay.lossLimits`). Unlimited autoplay still stops for a feature, when the coins run out, and when the session reminder is due.

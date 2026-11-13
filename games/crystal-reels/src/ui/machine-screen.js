@@ -6,13 +6,16 @@
 import { h, sleep, nextFrame, icon, symbolSvg, timing, clamp } from "./dom.js";
 import { installArt } from "./art.js";
 import { Reels } from "./reels.js";
-import { countUp, celebrateWin, celebrateJackpot, announce, summary, openModal, toast, fmt, tierName } from "./overlays.js";
+import { countUp, celebrateWin, celebrateJackpot, announce, summary, openModal, ask, toast, fmt, tierName } from "./overlays.js";
 import { prepare } from "../engine/config.js";
 import { anticipationPlan } from "../engine/anticipation.js";
 import { Session } from "../core/session.js";
 import { SpinStateMachine } from "../core/state-machine.js";
 import { jackpotAmounts } from "../engine/jackpot.js";
 import * as P from "../core/profile.js";
+import { xpMeter } from "./xp.js";
+import * as Q from "../core/quests.js";
+import { questStrip, showChallenges, showChest, showWheel, offerGamble } from "./quests.js";
 
 const TIERS = ["below", "win", "big", "mega", "epic"];
 const HUD_STRIP = 46; // the room above the reels that the feature HUD (spins left, total, pause) uses; see .stage in style.css
@@ -23,6 +26,9 @@ export class MachineScreen {
     const entry = P.machineEntry(app.profile, cfg.id);
     if (!entry.state) entry.state = Session.newState(cfg);
     this.session = new Session(cfg, { wallet: app.profile, state: entry.state });
+    // a saved bet that this machine's level does not allow (yet) drops to the highest one it does
+    const allowed = P.unlockedBets(cfg, P.machineLevel(app.game, app.profile, cfg.id));
+    if (!allowed.includes(entry.state.bet)) entry.state.bet = allowed.filter((b) => b <= entry.state.bet).pop() || allowed[0];
     this.sm = new SpinStateMachine();
     this.auto = { active: false, left: 0, stopMult: 0 };
     this.turbo = !!app.profile.settings.turbo;
@@ -64,13 +70,12 @@ export class MachineScreen {
     const th = cfg.theme;
     this.el = h("section", { class: "machine", style: { "--accent": th.accent, "--accent2": th.accent2, "--bg-top": th.bgTop, "--bg-bottom": th.bgBottom, "--reel-bg": th.reel, "--frame": th.frame, "--glow": th.glow } });
     this.balanceEl = h("span", { class: "balance-value", text: "0" });
-    this.levelEl = h("span", { class: "level-badge", text: "1" });
-    this.xpFill = h("i");
+    this.xpMeter = xpMeter(this.app, cfg.id, { text: false });
     // back and the menu drawer are the arcade-wide ones (shared/js/gamenav.js, set up in game.js)
     this.backBtn = this.app.nav.back;
     const top = h("header", { class: "topbar" }, this.backBtn,
       h("div", { class: "topbar-mid" }, h("div", { class: "machine-name", text: cfg.name }),
-        h("div", { class: "xp-row" }, this.levelEl, h("div", { class: "xp-bar", role: "progressbar", "aria-label": t("xp") }, this.xpFill))),
+        this.xpMeter.el),
       h("div", { class: "balance", "aria-live": "polite" }, symbolSvg("coin", "coin-icon"), this.balanceEl),
       this.app.nav.menu);
 
@@ -105,7 +110,9 @@ export class MachineScreen {
       h("div", { class: "pill-row" }, this.maxBtn, this.turboBtn, this.autoBtn),
       this.spinBtn);
 
-    this.el.append(top, jp, this.stage, this.meterEl, this.winField, controls);
+    this.strip = questStrip(this.app, this);
+    this.el.append(top, jp, this.strip.el, this.stage, this.meterEl, this.winField, controls);
+    this.applyFrame();
   }
 
   observe() {
@@ -143,9 +150,8 @@ export class MachineScreen {
   // ---- header, jackpots, bet ----------------------------------------------------------------------------
   refresh() {
     const { app, cfg } = this;
-    const xp = P.xpProgress(app.game, app.profile.xp);
-    this.levelEl.textContent = xp.level;
-    this.xpFill.style.width = Math.round(xp.fraction * 100) + "%";
+    this.xpMeter.update();
+    this.strip.update(this.sm.accepts("quest"));
     this.setBalance(app.profile.balance);
     this.betValue.textContent = fmt(app, this.bet);
     this.refreshBetNote();
@@ -184,7 +190,7 @@ export class MachineScreen {
     this.betValue.classList.toggle("risky", risky);
   }
 
-  allowedBets() { return P.unlockedBets(this.cfg, P.playerLevel(this.app.game, this.app.profile)); }
+  allowedBets() { return P.unlockedBets(this.cfg, P.machineLevel(this.app.game, this.app.profile, this.cfg.id)); }
 
   stepBet(dir) {
     if (!this.sm.accepts("bet")) return;
@@ -233,9 +239,42 @@ export class MachineScreen {
     this.autoBtn.querySelector(".auto-label").textContent = this.auto.active ? this.t("autoLeft", { n: this.auto.left === Infinity ? "∞" : this.auto.left }) : this.t("auto");
     this.autoBtn.classList.toggle("on", this.auto.active);
     this.el.dataset.state = sm.state;
+    this.strip.update(sm.accepts("quest"));
   }
 
   go(state) { this.sm.to(state); this.updateControls(); }
+
+  // ---- quests: challenges, vouchers, chests, the wheel ----------------------------------------------------------
+  /** The reel frame the player picked in the profile (a cosmetic found in chests). */
+  applyFrame() {
+    const f = Q.frameStyle(this.app.profile, this.app.game), th = this.cfg.theme;
+    this.el.style.setProperty("--frame", f ? f.color : th.frame);
+    this.el.style.setProperty("--glow", f ? f.glow : th.glow);
+  }
+
+  openQuests() {
+    if (!this.sm.accepts("quest")) return;
+    showChallenges(this.app, this.cfg, { onChange: (started) => { if (started) this.stopAuto(true); this.refresh(); } });
+  }
+
+  openChests() { if (this.sm.accepts("quest")) showChest(this.app, { onChange: () => { this.applyFrame(); this.refresh(); } }); }
+  openWheel() { if (this.sm.accepts("quest")) showWheel(this.app, { onChange: () => { this.setBalance(this.app.profile.balance); this.refresh(); } }); }
+
+  /** Play a free-spins voucher: a short free-spins run at a fixed bet, for nothing. */
+  async useVoucher() {
+    const { app, cfg, session } = this;
+    if (!this.sm.accepts("quest") || app.profile.vouchers < 1) return;
+    const v = app.game.voucher, bet = cfg.betLevels[Math.min(v.betStep, cfg.betLevels.length - 1)];
+    this.stopAuto(true);
+    app.profile.vouchers--;
+    session.queueVoucher({ spins: v.spins, bet });
+    app.persist();
+    this.cycleToken++;
+    this.round = { bet, win: 0, features: 0, jackpots: [], freeSpinFeatures: 0, voucher: true };
+    this.setWin(0, bet);
+    this.winField.querySelector(".win-note").textContent = "";
+    await this.finishRound();
+  }
 
   // ---- input -------------------------------------------------------------------------------------------------
   spinPress() {
@@ -344,13 +383,26 @@ export class MachineScreen {
         this.winField.querySelector(".win-note").textContent = app.t("winVsBet", { bet: fmt(app, bet) });
       }
     }
+    let paid = total;
+    if (paid > 0 && !resumed && this.gambleOffered(outcome, tier)) {
+      paid = await offerGamble(app, session, { maxRounds: app.game.gamble.maxRounds, onValue: (v) => this.setWin(v, bet) });
+      this.setWin(paid, bet);
+      if (!paid) this.winField.classList.remove("has");
+    }
     session.settle();
     app.persist();
-    this.round.win += total;
+    this.round.win += paid;
     if (outcome.features.length) this.round.features += 0; // counted when each feature starts
     await this.growBalance(app.profile.balance);
     this.refresh();
-    this.lastWin = outcome;
+    this.lastWin = paid > 0 ? outcome : null;
+  }
+
+  /** Double or collect is opt-in, only for small base-game wins, never during autoplay or when it would be a large share of the balance. */
+  gambleOffered(outcome, tier) {
+    const { app } = this, g = app.game.gamble;
+    return !!app.profile.settings.gamble && !this.auto.active && tier === "win" && this.session.canGamble()
+      && outcome.totalWin <= app.profile.balance * g.maxBalanceShare;
   }
 
   async finishRound() {
@@ -412,9 +464,16 @@ export class MachineScreen {
     app.showRefill(st, () => { this.refresh(); this.updateControls(); });
   }
 
-  chooseAuto() {
+  async chooseAuto() {
     if (!this.sm.accepts("autoplay")) return;
     const { app } = this;
+    // a challenge needs spins the player presses: offer to play it by hand first
+    const c = app.profile.challenge;
+    if (c && c.machine === this.cfg.id) {
+      const i = await ask(app, { title: this.t("auto.challengeTitle"), body: h("p", { text: this.t("auto.challengeText") }), buttons: [{ label: this.t("auto.byHand"), primary: true }, { label: this.t("auto.anyway") }], dismissible: true });
+      if (i !== 1) return;
+      if (!this.sm.accepts("autoplay")) return;
+    }
     const cfgA = app.game.autoplay;
     let stopMult = 0, lossPct = this.lastLossPct ?? 0;
     const sel = h("select", { class: "select", "aria-label": this.t("stopOnWin") }, cfgA.bigWinMultiples.map((m) => h("option", { value: m, text: m ? this.t("stopOnWinX", { x: m }) : this.t("stopOnWinOff") })));
@@ -567,7 +626,8 @@ export class MachineScreen {
       app.persist();
     } else if (!resumed || f.cursor === 0) {
       const spins = f.plan.spinsAwarded;
-      await announce(app, { title: f.source === "meter" ? this.t("meter.reward") : this.t("fs.triggered"), big: this.t("fs.award", { n: spins }), subtitle: f.source === "meter" ? this.t("fs.atBet", { bet: fmt(app, f.bet) }) : f.plan.option ? "" : "" });
+      const fixedBet = f.source === "meter" || f.source === "voucher";
+      await announce(app, { title: f.source === "meter" ? this.t("meter.reward") : f.source === "voucher" ? this.t("voucher.title") : this.t("fs.triggered"), big: this.t("fs.award", { n: spins }), subtitle: fixedBet ? this.t("fs.atBet", { bet: fmt(app, f.bet) }) : "" });
     }
     const plan = f.plan;
     this.el.classList.add("free");

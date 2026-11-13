@@ -8,7 +8,7 @@
 export const STATES = ["idle", "spinning", "stopping", "evaluating", "presenting", "feature"];
 
 export const ACCEPTS = {
-  idle: ["spin", "bet", "autoplay", "turbo", "nav", "menu", "info", "mute"],
+  idle: ["spin", "bet", "autoplay", "turbo", "nav", "menu", "info", "mute", "quest"],
   spinning: ["slam", "spin", "stopAuto", "turbo", "mute"],
   stopping: ["slam", "spin", "stopAuto", "mute"],
   evaluating: ["stopAuto", "mute"],
@@ -17,7 +17,7 @@ export const ACCEPTS = {
 };
 
 const NEXT = {
-  idle: ["spinning"],
+  idle: ["spinning", "feature"], // a free-spin voucher starts a feature without a spin
   spinning: ["stopping"],
   stopping: ["evaluating"],
   evaluating: ["presenting"],
