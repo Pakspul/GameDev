@@ -5,7 +5,8 @@
   "rewardPerLevel": 0.25,
   "maxBetShare": 0.02,
   "riskyBetShare": 0.05,
-  "sessionLossWarn": 0.5
+  "sessionLossWarn": 0.5,
+  "rewardLevelCap": 30
  },
  "xp": {
   "perCoinBet": 0.05,
@@ -41,6 +42,7 @@
    17310,
    18380
   ],
+  "beyondStep": 30,
   "rewards": {
    "2": {
     "coins": 1000
@@ -129,18 +131,57 @@
    "30": {
     "coins": 8000
    }
+  },
+  "ranks": {
+   "repeatEvery": 10,
+   "list": [
+    {
+     "level": 1,
+     "id": "rookie"
+    },
+    {
+     "level": 5,
+     "id": "apprentice"
+    },
+    {
+     "level": 10,
+     "id": "challenger"
+    },
+    {
+     "level": 15,
+     "id": "veteran"
+    },
+    {
+     "level": 20,
+     "id": "expert"
+    },
+    {
+     "level": 25,
+     "id": "master"
+    },
+    {
+     "level": 30,
+     "id": "champion"
+    },
+    {
+     "level": 40,
+     "id": "legend"
+    }
+   ]
   }
  },
  "machines": [
   {
    "id": "crystal-fortune",
-   "file": "machines/crystal-fortune.json",
-   "unlockLevel": 1
+   "file": "machines/crystal-fortune.json"
   },
   {
    "id": "neon-tumble",
    "file": "machines/neon-tumble.json",
-   "unlockLevel": 4
+   "unlock": {
+    "machine": "crystal-fortune",
+    "level": 4
+   }
   }
  ],
  "refill": {

@@ -5,6 +5,7 @@ import { formatDuration } from "../core/format.js";
 import * as P from "../core/profile.js";
 import { installArt } from "./art.js";
 import { initialPools, jackpotAmount } from "../engine/jackpot.js";
+import { xpMeter } from "./xp.js";
 
 export class Lobby {
   constructor(app) { this.app = app; this.alive = true; }
@@ -13,14 +14,11 @@ export class Lobby {
     const { app } = this, t = app.t, p = app.profile, g = app.game;
     installArt(Object.values(app.machines).flatMap((c) => Object.values(c.symbols).map((s) => s.art)));
     app.audio.music("lobby");
-    const xp = P.xpProgress(g, p.xp);
     this.balance = h("b", { text: fmt(app, p.balance) });
-    this.levelEl = h("span", { class: "level-badge", text: String(xp.level) });
-    this.xpFill = h("i", { style: { width: Math.round(xp.fraction * 100) + "%" } });
     app.nav.setBack();
     app.nav.back.disabled = false;
     const top = h("header", { class: "topbar lobby-top" }, app.nav.back,
-      h("div", { class: "topbar-mid" }, h("div", { class: "machine-name", text: t("title") }), h("div", { class: "xp-row" }, this.levelEl, h("div", { class: "xp-bar", role: "progressbar", "aria-label": t("xp") }, this.xpFill))),
+      h("div", { class: "topbar-mid" }, h("div", { class: "machine-name", text: t("title") }), h("div", { class: "xp-total", text: t("xp.total", { n: fmt(app, Math.floor(P.totalXp(p))) }) })),
       h("div", { class: "balance" }, symbolSvg("coin", "coin-icon"), this.balance),
       app.nav.menu);
 
@@ -81,17 +79,19 @@ export class Lobby {
         onclick: () => (unlocked ? app.openMachine(m.id) : this.showLocked(m, cfg)) },
         h("div", { class: "tile-art" }, ...[...new Set(Object.values(cfg.symbols).map((s) => s.art))].slice(0, 5).map((a) => symbolSvg(a, "tile-sym"))),
         h("div", { class: "tile-name", text: cfg.name }),
+        unlocked ? xpMeter(app, m.id).el : null,
         h("div", { class: "tile-info" }, cfg.jackpots ? h("span", {}, t("jp.grand") + " ", h("b", { text: fmt(app, grand) })) : null, h("small", { text: t(cfg.mode === "ways" ? "tile.ways" : "tile.lines", { n: cfg.mode === "ways" ? Math.pow(cfg.grid.rows, cfg.grid.reels) : cfg.paylines.length }) })),
         p.last === m.id && unlocked ? h("span", { class: "badge", text: t("tile.last") }) : null,
-        unlocked ? null : h("div", { class: "lock" }, icon("lock", 28), h("b", { text: t("tile.level", { n: m.unlockLevel }) })));
+        unlocked ? null : h("div", { class: "lock" }, icon("lock", 28), h("b", { text: t("tile.unlock", { n: m.unlock.level, machine: app.machines[m.unlock.machine].name }) })));
       this.tiles.append(tile);
     }
   }
 
   showLocked(m, cfg) {
     const { app } = this, t = app.t;
-    const need = m.unlockLevel, xp = P.xpProgress(app.game, app.profile.xp);
-    const next = app.game.xp.thresholds[need - 1] - app.profile.xp;
-    openModal(app, { title: cfg.name, body: h("div", {}, h("p", { text: t("locked.text", { n: need }) }), h("p", { class: "fine", text: t("locked.xp", { xp: fmt(app, Math.max(0, Math.ceil(next))), level: xp.level }) })), buttons: [{ label: t("ok"), primary: true }] });
+    const need = m.unlock.level, from = m.unlock.machine, fromName = app.machines[from].name;
+    const have = P.machineLevel(app.game, app.profile, from);
+    const next = P.xpForLevel(app.game, need) - P.machineXp(app.profile, from);
+    openModal(app, { title: cfg.name, body: h("div", {}, h("p", { text: t("locked.text", { n: need, machine: fromName }) }), h("p", { class: "fine", text: t("locked.xp", { xp: fmt(app, Math.max(0, Math.ceil(next))), level: have, machine: fromName }) })), buttons: [{ label: t("ok"), primary: true }] });
   }
 }

@@ -56,7 +56,19 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 .topbar-mid{flex:1;min-width:0}
 .machine-name{font-weight:900;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .xp-row{display:flex;align-items:center;gap:6px;margin-top:2px}
-.level-badge{display:grid;place-items:center;min-width:24px;height:24px;border-radius:50%;background:var(--gold);color:#2a1700;font-weight:900;font-size:.8rem}
+.level-badge{display:grid;place-items:center;min-width:24px;height:24px;padding:0 5px;border-radius:99px;background:var(--gold);color:#2a1700;font-weight:900;font-size:.8rem;flex:none;--badge:var(--gold)}
+/* the badge changes with the rank: bronze, silver, gold, then gems, and a glow for the Legends */
+.level-badge.rank-0{background:#b9825a;color:#2b1608}
+.level-badge.rank-1{background:#c4cbd6;color:#1d2430}
+.level-badge.rank-2{background:var(--gold);color:#2a1700}
+.level-badge.rank-3{background:#5ee0c4;color:#052b25}
+.level-badge.rank-4{background:#6fb4ff;color:#06203d}
+.level-badge.rank-5{background:#c28bff;color:#240b44}
+.level-badge.rank-6{background:#ff7ab6;color:#40051f;box-shadow:0 0 8px #ff7ab6aa}
+.level-badge.rank-7{background:linear-gradient(135deg,#fff2a8,#ffb347 50%,#ff6fd8);color:#2a0f00;box-shadow:0 0 10px #ffd86bcc}
+.xp-text{color:var(--muted);font-size:.65rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tile .xp-row{margin:8px 0 4px}
+.xp-total{color:var(--muted);font-size:.75rem;margin-top:2px}
 .xp-bar{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden;max-width:160px}
 .xp-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s}
 .balance{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;background:rgba(0,0,0,.35);border:1px solid var(--line);font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap}

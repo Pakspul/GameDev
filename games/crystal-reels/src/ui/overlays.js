@@ -1,6 +1,7 @@
 // Overlays: modals, toasts, the win celebration with its tiers (WIN-01..03), the jackpot
 // sequence (JP-02) and feature announcements. Everything takes the `app` object for sound,
 // effects, translation and number formatting.
+import { rankName } from "./xp.js";
 import { h, tween, sleep, ease, icon, timing } from "./dom.js";
 import { formatCoins } from "../core/format.js";
 import { tierOf } from "../engine/tiers.js";
@@ -188,9 +189,11 @@ export async function summary(app, { title, total, bet, cfg, lines = [], turbo }
 export function tierName(cfg, multiple) { return tierOf(cfg, multiple); }
 
 /** A short level-up celebration (PROG-01). */
-export function levelUp(app, { level, coins }) {
+export function levelUp(app, { machine, level, coins, rank }) {
   app.audio.sfx("level");
-  app.fx.burst(window.innerWidth / 2, 120, 60, 1);
-  const el = toast(app, app.t("levelUp", { level, coins: fmt(app, coins) }), "level", 3800);
-  return el;
+  app.fx.burst(window.innerWidth / 2, 120, 60, rank ? 1.4 : 1);
+  const name = app.machines[machine] ? app.machines[machine].name : "";
+  let text = coins ? app.t("levelUp", { machine: name, level, coins: fmt(app, coins) }) : app.t("levelUp.plain", { machine: name, level });
+  if (rank) text += " " + app.t("levelUp.rank", { rank: rankName(app, rank) });
+  return toast(app, text, "level", rank ? 5200 : 3800);
 }

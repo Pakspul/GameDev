@@ -13,6 +13,7 @@ import { Session } from "../core/session.js";
 import { SpinStateMachine } from "../core/state-machine.js";
 import { jackpotAmounts } from "../engine/jackpot.js";
 import * as P from "../core/profile.js";
+import { xpMeter } from "./xp.js";
 
 const TIERS = ["below", "win", "big", "mega", "epic"];
 const HUD_STRIP = 46; // the room above the reels that the feature HUD (spins left, total, pause) uses; see .stage in style.css
@@ -23,6 +24,9 @@ export class MachineScreen {
     const entry = P.machineEntry(app.profile, cfg.id);
     if (!entry.state) entry.state = Session.newState(cfg);
     this.session = new Session(cfg, { wallet: app.profile, state: entry.state });
+    // a saved bet that this machine's level does not allow (yet) drops to the highest one it does
+    const allowed = P.unlockedBets(cfg, P.machineLevel(app.game, app.profile, cfg.id));
+    if (!allowed.includes(entry.state.bet)) entry.state.bet = allowed.filter((b) => b <= entry.state.bet).pop() || allowed[0];
     this.sm = new SpinStateMachine();
     this.auto = { active: false, left: 0, stopMult: 0 };
     this.turbo = !!app.profile.settings.turbo;
@@ -64,13 +68,12 @@ export class MachineScreen {
     const th = cfg.theme;
     this.el = h("section", { class: "machine", style: { "--accent": th.accent, "--accent2": th.accent2, "--bg-top": th.bgTop, "--bg-bottom": th.bgBottom, "--reel-bg": th.reel, "--frame": th.frame, "--glow": th.glow } });
     this.balanceEl = h("span", { class: "balance-value", text: "0" });
-    this.levelEl = h("span", { class: "level-badge", text: "1" });
-    this.xpFill = h("i");
+    this.xpMeter = xpMeter(this.app, cfg.id, { text: false });
     // back and the menu drawer are the arcade-wide ones (shared/js/gamenav.js, set up in game.js)
     this.backBtn = this.app.nav.back;
     const top = h("header", { class: "topbar" }, this.backBtn,
       h("div", { class: "topbar-mid" }, h("div", { class: "machine-name", text: cfg.name }),
-        h("div", { class: "xp-row" }, this.levelEl, h("div", { class: "xp-bar", role: "progressbar", "aria-label": t("xp") }, this.xpFill))),
+        this.xpMeter.el),
       h("div", { class: "balance", "aria-live": "polite" }, symbolSvg("coin", "coin-icon"), this.balanceEl),
       this.app.nav.menu);
 
@@ -143,9 +146,7 @@ export class MachineScreen {
   // ---- header, jackpots, bet ----------------------------------------------------------------------------
   refresh() {
     const { app, cfg } = this;
-    const xp = P.xpProgress(app.game, app.profile.xp);
-    this.levelEl.textContent = xp.level;
-    this.xpFill.style.width = Math.round(xp.fraction * 100) + "%";
+    this.xpMeter.update();
     this.setBalance(app.profile.balance);
     this.betValue.textContent = fmt(app, this.bet);
     this.refreshBetNote();
@@ -184,7 +185,7 @@ export class MachineScreen {
     this.betValue.classList.toggle("risky", risky);
   }
 
-  allowedBets() { return P.unlockedBets(this.cfg, P.playerLevel(this.app.game, this.app.profile)); }
+  allowedBets() { return P.unlockedBets(this.cfg, P.machineLevel(this.app.game, this.app.profile, this.cfg.id)); }
 
   stepBet(dir) {
     if (!this.sm.accepts("bet")) return;

@@ -40,6 +40,7 @@ test("NFR-10: every key the code asks for exists (all strings are externalised)"
     "ach.": game.achievements.map((a) => a.id), "mission.": game.missions.pool.map((m) => m.id),
     "jp.": ["mini", "minor", "major", "grand"], "info.tab.": ["pay", "lines", "features", "jackpots"],
     "info.combine.": ["multiply", "add"], "info.per.": ["spin", "win"], "info.meter.": ["freeSpins", "pick"],
+    "rank.": game.xp.ranks.list.map((r) => r.id),
     "fs.opt.": MACHINE_IDS.flatMap((id) => (loadMachine(id).features.freeSpins.choice || []).map((o) => o.id)),
   };
   for (const prefix of dynamic) {

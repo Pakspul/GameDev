@@ -149,34 +149,133 @@ test("PERS-04: resetting progress removes the saves", () => {
 });
 
 // ---- levels and XP (PROG-01) -----------------------------------------------------------------------------
-test("PROG-01: each spin awards XP proportional to the bet; level-ups grant their rewards", () => {
+const CF = "crystal-fortune", NT = "neon-tumble";
+const setXp = (p, id, xp) => { P.machineEntry(p, id).xp = xp; p.xp = P.totalXp(p); };
+const setLevel = (p, id, level) => setXp(p, id, P.xpForLevel(game, level));
+
+test("PROG-01: each spin awards XP to its own machine, proportional to the bet; level-ups grant their rewards", () => {
   const p = P.newProfile(game, 1);
-  assert.equal(P.playerLevel(game, p), 1);
-  const ups = P.grantXp(p, game, 40);
-  assert.equal(p.xp, 40 * game.xp.perCoinBet);
+  assert.equal(P.machineLevel(game, p, CF), 1);
+  const ups = P.grantXp(p, game, CF, 40);
+  assert.equal(P.machineXp(p, CF), 40 * game.xp.perCoinBet);
   assert.deepEqual(ups, []);
   const p2 = P.newProfile(game, 1);
-  P.grantXp(p2, game, 100); P.grantXp(p2, game, 200);
-  assert.equal(p2.xp, 15); // proportional
+  P.grantXp(p2, game, CF, 100); P.grantXp(p2, game, CF, 200);
+  assert.equal(P.machineXp(p2, CF), 15); // proportional
   const before = p.balance;
-  p.xp = game.xp.thresholds[1] - 1;
-  const up = P.grantXp(p, game, 40);
+  setXp(p, CF, game.xp.thresholds[1] - 1);
+  const up = P.grantXp(p, game, CF, 40);
   assert.equal(up.length, 1);
   assert.equal(up[0].level, 2);
+  assert.equal(up[0].machine, CF);
   assert.equal(p.balance, before + P.scaledReward(game, p, game.xp.rewards["2"].coins, 2)); // ECO-07: scaled by the level reached
-  assert.ok(P.xpProgress(game, p.xp).fraction >= 0);
+  assert.ok(P.xpProgress(game, P.machineXp(p, CF)).fraction >= 0);
   assert.ok(game.xp.thresholds.every((t, i, a) => i === 0 || t > a[i - 1]), "thresholds ascend");
 });
 
-test("PROG-01/ECO-02: higher bet levels and machines unlock with the player level", () => {
-  const cfg = loadMachine("crystal-fortune");
+test("PROG-01: every machine has its own level; XP on one machine never moves another", () => {
+  const p = P.newProfile(game, 1);
+  setLevel(p, CF, 12);
+  assert.equal(P.machineLevel(game, p, CF), 12);
+  assert.equal(P.machineLevel(game, p, NT), 1, "Neon Tumble is still level 1");
+  P.grantXp(p, game, NT, 100);
+  assert.equal(P.machineXp(p, NT), 100 * game.xp.perCoinBet);
+  assert.equal(P.machineLevel(game, p, CF), 12);
+  assert.equal(p.xp, P.totalXp(p), "the profile total is the sum over the machines");
+  assert.equal(p.xp, P.xpForLevel(game, 12) + 100 * game.xp.perCoinBet);
+  assert.equal(P.bestLevel(game, p), 12);
+  // bet sizes follow the machine's own level
+  const cf = loadMachine(CF), nt = loadMachine(NT);
+  assert.equal(P.unlockedBets(cf, P.machineLevel(game, p, CF)).length, cf.betUnlockLevels.filter((l) => l <= 12).length);
+  assert.deepEqual(P.unlockedBets(nt, P.machineLevel(game, p, NT)), nt.betLevels.filter((_, i) => nt.betUnlockLevels[i] <= 1));
+});
+
+test("PROG-01: levels never end, the curve keeps rising and the formula agrees with itself", () => {
+  const n = game.xp.thresholds.length;
+  // the table and the formula meet without a seam
+  for (let l = 1; l <= n; l++) assert.equal(P.xpForLevel(game, l), game.xp.thresholds[l - 1], "table level " + l);
+  let prev = P.xpForLevel(game, n), prevCost = prev - P.xpForLevel(game, n - 1);
+  for (let l = n + 1; l <= 3000; l++) {
+    const at = P.xpForLevel(game, l), cost = at - prev;
+    assert.ok(cost > prevCost, `level ${l} costs more than the one before`);
+    assert.equal(P.levelForXp(game, at), l, `exactly at the start of level ${l}`);
+    assert.equal(P.levelForXp(game, at - 1), l - 1, `one XP short of level ${l}`);
+    prev = at; prevCost = cost;
+  }
+  // very large XP still gives a sane level and progress inside [0, 1)
+  for (const xp of [1e8, 1e9, 1e12]) {
+    const pr = P.xpProgress(game, xp);
+    assert.ok(pr.level > 1000 && pr.fraction >= 0 && pr.fraction < 1 && Number.isFinite(pr.level), `xp ${xp}`);
+  }
+  // a big jump pays every level on the way, once
+  const p = P.newProfile(game, 1);
+  const ups = P.grantXp(p, game, CF, 2000000);
+  assert.equal(ups.length, P.machineLevel(game, p, CF) - 1);
+  assert.deepEqual(ups.map((u) => u.level), Array.from({ length: ups.length }, (_, i) => i + 2));
+});
+
+test("PROG-01: past the listed levels a level earns a rank instead of coins, and coin rewards stop growing", () => {
+  const last = Math.max(...Object.keys(game.xp.rewards).map(Number));
+  assert.ok(last >= 30 && P.rankFor(game, 1).id === game.xp.ranks.list[0].id);
+  const p = P.newProfile(game, 1);
+  setXp(p, CF, P.xpForLevel(game, last + 1) - 1);
+  const before = p.balance;
+  const [up] = P.grantXp(p, game, CF, 100);
+  assert.equal(up.level, last + 1);
+  assert.equal(up.coins, 0, "no coin reward beyond the table");
+  assert.equal(p.balance, before);
+  assert.equal(P.rewardScale(game, 500), P.rewardScale(game, game.economy.rewardLevelCap), "the scale stops at the cap");
+  // ranks: names change on the listed levels, then repeat with a numeral
+  const list = game.xp.ranks.list, tail = list[list.length - 1], every = game.xp.ranks.repeatEvery;
+  for (let i = 0; i < list.length; i++) {
+    assert.equal(P.rankFor(game, list[i].level).id, list[i].id);
+    assert.equal(P.rankFor(game, list[i].level).index, i);
+    if (list[i].level > 1) assert.equal(P.rankFor(game, list[i].level - 1).index, i - 1);
+  }
+  assert.equal(P.rankFor(game, tail.level + every - 1).tier, 0);
+  assert.equal(P.rankFor(game, tail.level + every).tier, 1);
+  assert.equal(P.rankFor(game, tail.level + 7 * every).tier, 7);
+  assert.equal(P.rankFor(game, tail.level + 7 * every).id, tail.id);
+  assert.equal(P.toRoman(8), "VIII"); assert.equal(P.toRoman(49), "XLIX"); assert.equal(P.toRoman(0), "0");
+  // the level-up that starts a rank says so; the others do not
+  const ups = P.grantXp(P.newProfile(game, 1), game, CF, 1e6);
+  for (const u of ups) assert.equal(!!u.rank, P.rankFor(game, u.level).startsAt === u.level, "level " + u.level);
+  assert.ok(ups.some((u) => u.rank && u.rank.tier >= 1), "repeat ranks are announced too");
+});
+
+test("PROG-01/ECO-02: higher bet levels unlock with the machine's level, and a machine opens at a level of another", () => {
+  const cfg = loadMachine(CF);
   assert.deepEqual(P.unlockedBets(cfg, 1), [20, 40, 100]);
   assert.equal(P.unlockedBets(cfg, 99).length, cfg.betLevels.length);
   const p = P.newProfile(game, 1);
-  assert.equal(P.machineUnlocked(game, p, "crystal-fortune"), true);
-  assert.equal(P.machineUnlocked(game, p, "neon-tumble"), false);
-  p.xp = game.xp.thresholds[game.machines[1].unlockLevel - 1];
-  assert.equal(P.machineUnlocked(game, p, "neon-tumble"), true);
+  const nt = game.machines.find((m) => m.id === NT);
+  assert.equal(P.machineUnlocked(game, p, CF), true);
+  assert.equal(P.machineUnlocked(game, p, NT), false);
+  setLevel(p, NT, 30);
+  assert.equal(P.machineUnlocked(game, p, NT), false, "levels on Neon Tumble itself do not open it");
+  setLevel(p, nt.unlock.machine, nt.unlock.level - 1);
+  assert.equal(P.machineUnlocked(game, p, NT), false);
+  setLevel(p, nt.unlock.machine, nt.unlock.level);
+  assert.equal(P.machineUnlocked(game, p, NT), true);
+});
+
+test("PROG-01: a save from before per-machine levels keeps what the player had earned", () => {
+  const old = P.newProfile(game, 1);
+  old.xp = game.xp.thresholds[11];                        // level 12 in the old, shared pool
+  old.machines = { [CF]: { state: { bet: 1000 }, stats: { spins: 900, wagered: 20000, won: 0, biggestWin: 0, features: 0, jackpots: 0 } },
+                   [NT]: { state: null, stats: { spins: 0, wagered: 0, won: 0, biggestWin: 0, features: 0, jackpots: 0 } } };
+  for (const m of Object.values(old.machines)) delete m.xp;
+  const p = P.normaliseProfile(JSON.parse(JSON.stringify(old)), game);
+  assert.equal(P.machineLevel(game, p, CF), 12, "a machine that was played keeps the level");
+  assert.equal(P.machineLevel(game, p, NT), 1, "a machine never played starts over");
+  assert.equal(P.machineUnlocked(game, p, NT), true, "and nothing that was open is closed");
+  assert.equal(p.xp, P.totalXp(p));
+  // loading it again changes nothing
+  const again = P.normaliseProfile(JSON.parse(JSON.stringify(p)), game);
+  assert.equal(P.machineXp(again, CF), P.machineXp(p, CF));
+  // a player who bet a lot on a machine keeps at least what those bets were worth
+  old.machines[CF].stats.wagered = 4000000; old.machines[CF].xp = undefined; delete old.machines[CF].xp;
+  assert.equal(P.machineXp(P.normaliseProfile(JSON.parse(JSON.stringify(old)), game), CF), 4000000 * game.xp.perCoinBet);
 });
 
 // ---- missions (PROG-04) ----------------------------------------------------------------------------------
@@ -309,8 +408,8 @@ test("ECO-07: rewards grow with the level so they keep pace with the bets", () =
   assert.ok(P.rewardScale(game, 30) > P.rewardScale(game, 10) && P.rewardScale(game, 10) > P.rewardScale(game, 2));
   const p = P.newProfile(game, 1);
   assert.equal(P.timedBonusStatus(p, game, 5).amount, game.timedBonus.amount, "level 1 pays the base amount");
-  p.xp = game.xp.thresholds[29]; // level 30
-  assert.equal(P.playerLevel(game, p), 30);
+  setLevel(p, CF, 30);
+  assert.equal(P.bestLevel(game, p), 30);
   assert.equal(P.timedBonusStatus(p, game, 5).amount, P.scaledReward(game, p, game.timedBonus.amount));
   assert.ok(P.timedBonusStatus(p, game, 5).amount > 5 * game.timedBonus.amount);
   const before = p.balance;
@@ -323,9 +422,9 @@ test("ECO-07: rewards grow with the level so they keep pace with the bets", () =
 
 test("ECO-07: a level-up pays the reward of the level it reached, scaled", () => {
   const p = P.newProfile(game, 1);
-  p.xp = game.xp.thresholds[9] - 1; // one XP short of level 10
+  setXp(p, CF, game.xp.thresholds[9] - 1); // one XP short of level 10
   const before = p.balance;
-  const ups = P.grantXp(p, game, 40);
+  const ups = P.grantXp(p, game, CF, 40);
   assert.equal(ups[0].level, 10);
   assert.equal(ups[0].coins, P.scaledReward(game, p, game.xp.rewards["10"].coins, 10));
   assert.equal(p.balance, before + ups[0].coins);
@@ -336,7 +435,7 @@ test("ECO-08: Max bet stays within a small share of the balance, and is never ab
   const share = game.economy.maxBetShare;
   assert.ok(share > 0 && share <= 0.05);
   const p = P.newProfile(game, 1);
-  p.xp = game.xp.thresholds[29]; // level 30: every bet unlocked
+  setLevel(p, CF, 30); // level 30: every bet unlocked
   for (const balance of [30, 500, 5000, 29980, 400000, 5000000]) {
     p.balance = balance;
     const r = P.maxBetFor(game, cfg, p);
@@ -370,7 +469,9 @@ test("PERS-06: the profile can be exported as JSON with a summary and without un
   const out = P.exportProfile(p, game, Date.UTC(2026, 10, 13));
   assert.equal(out.summary.returnPercent, 89.6);
   assert.equal(out.summary.net, -104);
-  assert.equal(out.summary.level, 1);
+  assert.deepEqual(out.summary.levels, { "crystal-fortune": 1, "neon-tumble": 1 });
+  assert.equal(out.summary.xp, 0);
+  assert.equal(out.profile.machines["crystal-fortune"].level, 1);
   assert.equal(out.exportedAt, "2026-11-13T00:00:00.000Z");
   assert.deepEqual(Object.keys(out.profile.machines["crystal-fortune"].state), ["bet", "pools", "meter"]);
   assert.doesNotThrow(() => JSON.parse(JSON.stringify(out)));

@@ -52,7 +52,8 @@ async function start(page, { machine = 0, level = null, balance = null } = {}) {
   await page.goto(base + "?debug=1");
   await page.waitForSelector(".modal .btn.primary");
   await page.click(".modal .btn.primary");
-  if (level) await app(page, (xp) => { const a = window.slotsApp; a.profile.xp = xp; a.openLobby(); }, level);
+  // `level` is XP, given to every machine (each machine has its own level)
+  if (level) await app(page, (xp) => { const a = window.slotsApp; for (const id of Object.keys(a.machines)) { const m = a.profile.machines[id] || (a.profile.machines[id] = { state: null, stats: { spins: 0, biggestWin: 0, features: 0, jackpots: 0, wagered: 0, won: 0 } }); m.xp = xp; } a.profile.xp = xp * Object.keys(a.machines).length; a.openLobby(); }, level);
   await page.waitForSelector(".tile");
   await page.click(`.tile >> nth=${machine}`);
   await page.waitForSelector(".machine .spin-btn");
@@ -273,7 +274,7 @@ await playOut(page);
 await app(page, () => window.slotsApp.showSettings());
 await page.click(".settings .field .pill-btn");
 await page.waitForSelector(".export-box");
-const exp = await app(page, () => { try { const j = JSON.parse(document.querySelector(".export-box").value); return { level: j.summary.level, has: !!j.profile && !!j.exportedAt && "returnPercent" in j.summary }; } catch (e) { return null; } });
+const exp = await app(page, () => { try { const j = JSON.parse(document.querySelector(".export-box").value); return { level: Object.values(j.summary.levels)[0], has: !!j.profile && !!j.exportedAt && "returnPercent" in j.summary }; } catch (e) { return null; } });
 check(exp && exp.level >= 1 && exp.has, "the exported profile is valid JSON with a summary");
 await page.screenshot({ path: join(OUT, "slots-export.png") });
 check(!!(await page.$(".export-actions .btn.primary")), "there is a Copy button");

@@ -22,6 +22,7 @@ Template: copy this to the top for a new day
 ## 2026-11-13
 
 **Done**
+- Crystal Reels: **levels are per machine and never end**. XP, level and bet unlocks belong to each machine; Neon Tumble opens at Crystal Fortune level 4. Past level 30 a level earns a **rank** (title and badge colour: Rookie … Legend, then Legend II, III, …) instead of coins, and coin rewards stop growing at level 30. The lobby tiles and the profile show each machine's level, rank and XP. Old saves keep what they had (played machines start at the old total).
 - Crystal Reels, after a player who made 400k at the start and then lost steadily to level 30 (a 89.6% return): the payout was fine (96% RTP at every bet), but the bets grow over 100-fold with the level while rewards stayed flat, and Max bet picked the highest bet the balance could pay. Now **rewards grow with the level** (×8.25 at level 30), **Max bet stays within 2% of the balance**, a **large bet is flagged** and a **session loss of 50%** gives a warning, and the **RTP target is 97.5%** (small pays raised on both machines; 10 million spins: 97.3% and 97.5%).
 - **Autoplay can be unlimited (∞)**, with an optional loss limit, and the session reminder still interrupts it.
 - **Settings → Export profile** shows the profile as JSON with a Copy button.
