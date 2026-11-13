@@ -91,6 +91,7 @@ export class Sound {
   release() { this.voice({ freq: 1800, dur: 0.05, wave: "square", gain: 0.03, click: 0.6 }); }
   /** A coin lands on the pile; `pitch` is a seeded value in [0, 1) for a little variety. */
   land(pitch, loud = 1) { this.voice({ freq: 2300 + pitch * 700, dur: 0.09, wave: "sine", gain: 0.05 * loud, partial: 2.76, click: 0.8 }); }
+  pin(pitch, loud = 1) { this.voice({ freq: 3200 + pitch * 900, dur: 0.05, wave: "sine", gain: 0.03 * loud, partial: 2.4, click: 0.5 }); }
   thud() { this.voice({ freq: 180, dur: 0.12, wave: "sine", gain: 0.12, slideTo: 90, click: 0.3 }); }
   tray(gold) { gold ? this.voice({ freq: 1250, dur: 0.22, wave: "sine", gain: 0.12, partial: 2.4, click: 0.5 }) : this.voice({ freq: 1900, dur: 0.14, wave: "sine", gain: 0.08, partial: 2.76, click: 0.6 }); }
   /** Rising clinks in a cascade: step n climbs, capped. */

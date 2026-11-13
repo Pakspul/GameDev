@@ -43,6 +43,34 @@ export const CONFIG = deepFreeze({
     maxCoins: 250,            // active coins; beyond this the oldest settled coin farthest from the edge fades out
   },
 
+  // The machines a player can choose (docs/COIN-DOZER.md, "Machines"). They share the shelf, the
+  // pusher and every rule; only the way a coin gets onto the board differs:
+  //   pins      three slots at the top of a wall of pins: the coin bounces down and lands somewhere
+  //   classic   you aim along the width and the coin drops where you aimed
+  machines: ["pins", "classic"],
+  defaultMachine: "pins",
+
+  // The pin wall (the "pins" machine): a coin falls on its edge in a thin plane just in front of the
+  // back wall, held in that plane, and bounces off the pins until it drops out of the bottom onto the
+  // pusher. The pins are spaced so a coin always fits between two of them (no coin can wedge).
+  pinWall: {
+    slots: [-2.1, 0, 2.1],    // x of the three coin slots at the top
+    z: -4.84,                 // the plane the coins fall in (the back wall's face is at -depth/2)
+    top: 7.0,                 // a coin enters here...
+    bottom: 1.75,             // ...and leaves the wall when its centre passes this height
+    rowTop: 6.2, rowGap: 1.0, // the first row of pins, and the distance between rows
+    rows: [[-2.1, 0, 2.1], [-1.4, 0, 1.4], [-2.1, -0.7, 0.7, 2.1], [-1.4, 0, 1.4], [-2.1, -0.7, 0.7, 2.1]],
+    pinRadius: 0.06,
+    bumpers: [1, 3, 4],         // rows with a half-round bumper on each side wall, so coins don't slide down the walls
+    bumperRadius: 0.22,
+    restitution: 0.45,        // pins are bouncier than the shelf (the higher of the two values counts)
+    gravityScale: 0.75,       // coins fall a little slower in the wall, so you can watch them bounce
+    jitter: [0.06, 0.2],      // a coin enters this far left or right of the slot's centre, seeded, never dead centre
+    exitSpeed: 1.2,           // a small push toward the player as a coin leaves, so it tips onto the pile
+    stuckSeconds: 0.6,        // a coin that hardly moves this long in the wall gets a sideways kick
+    stuckKick: 2.2,
+  },
+
   coin: {
     thickness: 0.12,          // of the diameter
     jackpotDiameter: 1.9, jackpotThickness: 0.2, jackpotDensity: 1.4,

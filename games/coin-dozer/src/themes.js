@@ -1,4 +1,6 @@
 // Machine themes: colours, the sound palette and the collection set (4 gems + 8 figures).
+// neon: the two colours of the back panel's neon tubes (they also tint the reflections); motif: what
+// the tubes draw (art.js neonPanel); panel: the back board's gradient, top to bottom.
 // Themes change how the machine looks and sounds and which figures it drops, never the physics:
 // every figure shares one collider (config.prizes.figure), whatever it looks like.
 //
@@ -17,25 +19,29 @@ export const THEME_IDS = ["classic", "space", "candy", "ocean"];
 export const THEMES = {
   classic: {
     bg: 0x1a0f1c, cabinet: 0x7a1f2b, trim: 0xd9b45a, shelf: 0x7d828f, pusher: 0xb8862e, pusherFace: 0x8a2230,
-    back: 0x2a1420, bulbs: 0xffd166, glow: "#ffcf4d", css: { bg: "#1a0f1c", panel: "#2a1621", accent: "#ffcf4d", ink: "#fff6e8" },
+    back: 0x2a1420, bulbs: 0xffd166,
+    neon: [0xff2d75, 0x2de2ff], motif: "chevrons", panel: ["#12081a", "#2a0b20"], glow: "#ffcf4d", css: { bg: "#1a0f1c", panel: "#2a1621", accent: "#ffcf4d", ink: "#fff6e8" },
     gems: { red: 0xe0233c, blue: 0x2b6fff, green: 0x17b26a, yellow: 0xffc21a },
     sound: { wave: "triangle", root: 523.25, scale: [0, 4, 7, 12, 16, 19, 24, 28] },
   },
   space: {
     bg: 0x050817, cabinet: 0x1b2a5c, trim: 0x8fe9ff, shelf: 0x2f3754, pusher: 0x9fb0d4, pusherFace: 0x24305e,
-    back: 0x0b1030, bulbs: 0x7cf7ff, glow: "#7cf7ff", css: { bg: "#050817", panel: "#121a3a", accent: "#7cf7ff", ink: "#eef6ff" },
+    back: 0x0b1030, bulbs: 0x7cf7ff,
+    neon: [0x7cf7ff, 0xb56cff], motif: "planets", panel: ["#040818", "#0d1440"], glow: "#7cf7ff", css: { bg: "#050817", panel: "#121a3a", accent: "#7cf7ff", ink: "#eef6ff" },
     gems: { red: 0xff4d6d, blue: 0x6f8bff, green: 0x5cffb0, yellow: 0xffe066 },
     sound: { wave: "sine", root: 440, scale: [0, 3, 7, 10, 12, 15, 19, 22] },
   },
   candy: {
     bg: 0x2a0f2e, cabinet: 0xff6fb1, trim: 0xfff07a, shelf: 0xd9a9c4, pusher: 0x86d3ff, pusherFace: 0xff9ad0,
-    back: 0x5a1f5e, bulbs: 0xfff07a, glow: "#ff9ad5", css: { bg: "#2a0f2e", panel: "#3d1742", accent: "#ff9ad5", ink: "#fff3fa" },
+    back: 0x5a1f5e, bulbs: 0xfff07a,
+    neon: [0xff5fcf, 0xfff07a], motif: "hearts", panel: ["#22082a", "#46104e"], glow: "#ff9ad5", css: { bg: "#2a0f2e", panel: "#3d1742", accent: "#ff9ad5", ink: "#fff3fa" },
     gems: { red: 0xff3d7f, blue: 0x5bb6ff, green: 0x6ee67a, yellow: 0xffd84d },
     sound: { wave: "square", root: 659.25, scale: [0, 2, 4, 7, 9, 12, 14, 16] },
   },
   ocean: {
     bg: 0x03202d, cabinet: 0x0e5d74, trim: 0x6ff0d0, shelf: 0x8fb3b0, pusher: 0xe9c387, pusherFace: 0x0b4a5c,
-    back: 0x062f40, bulbs: 0x6ff0d0, glow: "#57e3ff", css: { bg: "#03202d", panel: "#0a3445", accent: "#57e3ff", ink: "#eafcff" },
+    back: 0x062f40, bulbs: 0x6ff0d0,
+    neon: [0x3ff0d0, 0x57a8ff], motif: "waves", panel: ["#021620", "#073446"], glow: "#57e3ff", css: { bg: "#03202d", panel: "#0a3445", accent: "#57e3ff", ink: "#eafcff" },
     gems: { red: 0xff6b5a, blue: 0x3fa9ff, green: 0x3fe0b0, yellow: 0xffcf5a },
     sound: { wave: "sine", root: 392, scale: [0, 2, 5, 7, 9, 12, 14, 17] },
   },

@@ -22,12 +22,12 @@ export class Machine {
    * progress: the persistent progress object (economy.js freshProgress), mutated in place.
    * onEvent(type, data): what happened, for sound, haptics, pictures and saving.
    */
-  constructor({ cfg = CONFIG, progress = Eco.freshProgress(cfg), onEvent = () => {}, date = today } = {}) {
+  constructor({ cfg = CONFIG, progress = Eco.freshProgress(cfg), onEvent = () => {}, date = today, type = "classic" } = {}) {
     this.cfg = cfg;
     this.progress = progress;
     this.emit = onEvent;
     this.date = date;
-    this.board = new Board({ cfg, onEvent: (t, d) => this.boardEvent(t, d) });
+    this.board = new Board({ cfg, type, onEvent: (t, d) => this.boardEvent(t, d) });
     this.dt = this.board.dt;
     this.quiet = false;      // true while a new board settles: nothing is paid or reported
     this.reset(freshSeed());
@@ -44,6 +44,7 @@ export class Machine {
     this.auto = false;
     this.autoT = 0;
     this.lastDrop = -1e9;
+    this.slots = [];                     // pin wall: coins waiting in a slot for the one before them to clear it, [kind, x, player]
     this.nudges = Eco.maxNudges(this.progress, cfg);
     this.nudgeT = 0;                     // seconds toward the next recharge
     this.fever = 0;                      // seconds of fever left
@@ -61,6 +62,17 @@ export class Machine {
     this.cascade = 0;                    // coins over the front edge in this advance
     this.cascades = [];                  // sizes per completed advance (for the simulation)
     this.antiStallLog = [];              // [cycle, step] for tests
+  }
+
+  /** Which machine this is: "pins" or "classic" (config.machines). */
+  get type() { return this.board.type; }
+
+  /** Switch to the other machine's cabinet: an empty board of that type (restore or newBoard fills it). */
+  setType(type) {
+    if (type === this.board.type) return;
+    this.board.free();
+    this.board = new Board({ cfg: this.cfg, type, onEvent: (t, d) => this.boardEvent(t, d) });
+    this.aim = this.clampAim(this.aim);
   }
 
   // ---- A new board ----------------------------------------------------------------------------------------
@@ -112,8 +124,9 @@ export class Machine {
   }
 
   // ---- Player input ---------------------------------------------------------------------------------------
-  /** Clamp an aim position to the shelf. */
+  /** Clamp an aim position to the shelf; on the pin wall, the nearest of the three slots. */
   clampAim(x) {
+    if (this.board.type === "pins") return this.cfg.pinWall.slots.reduce((a, b) => (Math.abs(b - x) < Math.abs(a - x) ? b : a));
     const lim = this.cfg.board.width / 2 - this.cfg.board.aimMargin;
     return Math.max(-lim, Math.min(lim, x));
   }
@@ -129,8 +142,16 @@ export class Machine {
     this.bank -= 1;
     this.progress.stats.dropped++;
     const kind = this.rng.chance(Eco.goldChance(this.progress, this.cfg)) ? "gold" : "coin";
-    const jx = this.clampAim(this.aim + this.rng.range(-B.dropJitter, B.dropJitter));
-    this.spawnCoin(kind, jx, B.dropHeight, B.dropZ, { player: true });
+    let jx;
+    if (this.board.type === "pins") {
+      const PW = this.cfg.pinWall;
+      jx = this.aim + (this.rng.chance(0.5) ? 1 : -1) * this.rng.range(PW.jitter[0], PW.jitter[1]);
+      this.slots.push([kind, jx, 1]);
+      this.feedSlots();
+    } else {
+      jx = this.clampAim(this.aim + this.rng.range(-B.dropJitter, B.dropJitter));
+      this.spawnCoin(kind, jx, B.dropHeight, B.dropZ, { player: true });
+    }
     if (this.wide > 0 && --this.wide === 0) { this.board.setGuttersClosed(false); this.emit("eventEnd", { type: "wide" }); }
     this.emit("drop", { kind, x: jx });
     if (this.auto && this.bank < 1) { this.auto = false; this.emit("autoOff", {}); }  // auto-drop stops when the bank runs empty
@@ -155,17 +176,31 @@ export class Machine {
 
   /** Coins dropped by the player that haven't landed yet (the lifeline waits for them). */
   inFlight() {
-    let n = 0;
+    let n = this.slots.length;
     for (const it of this.board.items.values()) if (it.player && it.falling) n++;
     return n;
   }
 
   // ---- Spawning -------------------------------------------------------------------------------------------
+  /** Let waiting coins into the pin wall, each once the coin before it has fallen clear of its slot. */
+  feedSlots() {
+    const PW = this.cfg.pinWall;
+    for (let i = 0; i < this.slots.length; i++) {
+      const [kind, x, player] = this.slots[i];
+      let clear = true;
+      for (const it of this.board.inWall) if (Math.hypot(it.x - x, it.y - PW.top) < 1.1) { clear = false; break; }
+      if (!clear) continue;
+      this.slots.splice(i--, 1);
+      this.spawnCoin(kind, x, PW.top, PW.z, { player: !!player, wall: true });
+    }
+  }
+
   spawnCoin(kind, x, y, z, extra = {}) {
     this.makeRoom();
     const r = this.rng, tilt = r.range(-0.12, 0.12), yaw = r.range(0, Math.PI);
-    const q = [Math.sin(tilt / 2) * Math.cos(yaw), 0, Math.sin(tilt / 2) * Math.sin(yaw), Math.cos(tilt / 2)];
-    const it = this.board.add(kind, { x, y, z, q, v: [0, -1.5, 0], falling: true });
+    // On its edge in the pin wall (the coin's axis along z), otherwise lying nearly flat.
+    const q = extra.wall ? [Math.SQRT1_2, 0, 0, Math.SQRT1_2] : [Math.sin(tilt / 2) * Math.cos(yaw), 0, Math.sin(tilt / 2) * Math.sin(yaw), Math.cos(tilt / 2)];
+    const it = this.board.add(kind, { x, y, z, q, v: [0, -1.5, 0], falling: true, wall: !!extra.wall });
     if (extra.player) it.player = true;
     return it;
   }
@@ -266,6 +301,7 @@ export class Machine {
       this.spawnPrize("lucky");
     }
     if (cfg.hazard.enabled && this.rng.chance(cfg.hazard.bombChance * dt / cfg.drop.autoInterval)) this.spawnPrize("bomb");
+    if (this.slots.length) this.feedSlots();
 
     this.board.step();
 
@@ -290,7 +326,8 @@ export class Machine {
       if (R.type === "jackpot") {
         this.spawnCoin("jackpot", this.rng.range(-0.8, 0.8), B.dropHeight + 1, B.dropZ + 0.4);
       } else {
-        const x = this.rng.range(-B.width / 2 + 0.5, B.width / 2 - 0.5), z = this.rng.range(-B.depth / 2 + 0.5, 1.5);
+        const back = this.board.type === "pins" ? this.cfg.pinWall.z + 1 : -B.depth / 2 + 0.5;   // in front of the pin wall's glass
+        const x = this.rng.range(-B.width / 2 + 0.5, B.width / 2 - 0.5), z = this.rng.range(back, 1.5);
         this.spawnCoin(this.rng.chance(Eco.goldChance(this.progress, this.cfg)) ? "gold" : "coin", x, B.dropHeight + this.rng.range(0, 1.5), z);
       }
     }
@@ -335,7 +372,7 @@ export class Machine {
     if (this.quiet) return;
     if (type === "won") this.won(d.item);
     else if (type === "lost") this.emit("lost", { item: d.item });
-    else if (type === "land") this.emit("land", d);
+    else if (type === "land" || type === "pin" || type === "leaveWall") this.emit(type, d);
     else if (type === "advance") this.advance();
     else if (type === "retract") this.emit("retract", {});
   }
@@ -403,7 +440,10 @@ export class Machine {
       this.antiStallLog.push([this.board.cycles, 1]);
     } else if (this.stallStage === 1 && this.stall >= A.cycles + A.coinsAfter) {
       const B = this.cfg.board;
-      for (let i = 0; i < A.freeCoins; i++) this.spawnCoin("coin", this.rng.range(-B.width / 2 + 0.8, B.width / 2 - 0.8), B.dropHeight + i * 0.4, B.dropZ);
+      for (let i = 0; i < A.freeCoins; i++) {
+        if (this.board.type === "pins") this.slots.push(["coin", this.rng.pick(this.cfg.pinWall.slots) + this.rng.range(-0.2, 0.2), 0]);   // through the wall, like any coin
+        else this.spawnCoin("coin", this.rng.range(-B.width / 2 + 0.8, B.width / 2 - 0.8), B.dropHeight + i * 0.4, B.dropZ);
+      }
       this.antiStallLog.push([this.board.cycles, 2]);
       this.stall = 0; this.stallStage = 0;
     }
@@ -427,7 +467,7 @@ export class Machine {
   snapshot() {
     const r3 = (v) => Math.round(v * 1000) / 1000;
     return {
-      seed: this.seed, rng: this.rng.s, bank: this.bank, time: r3(this.time), aim: r3(this.aim), auto: this.auto,
+      seed: this.seed, rng: this.rng.s, bank: this.bank, time: r3(this.time), aim: r3(this.aim), auto: this.auto, slots: this.slots.map(([k, x, p]) => [k, r3(x), p]),
       nudges: this.nudges, nudgeT: r3(this.nudgeT), fever: r3(this.fever), gemTimes: this.gemTimes.map(r3),
       rain: this.rain, queue: this.queue.slice(), lastShowerEnd: r3(Math.max(-1e6, this.lastShowerEnd)), wide: this.wide, luckyAt: r3(this.luckyAt),
       figureT: r3(this.figureT), stall: this.stall, stallStage: this.stallStage,
@@ -439,12 +479,14 @@ export class Machine {
   restore(s) {
     if (!s || typeof s !== "object" || !s.board || !Array.isArray(s.board.items)) throw new Error("bad snapshot");
     const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
+    this.setType(s.board.type === "pins" ? "pins" : "classic");
     this.reset(num(s.seed));
     this.rng.s = num(s.rng) >>> 0;
     this.bank = Math.max(0, Math.floor(num(s.bank, this.bank)));
     this.time = num(s.time);
     this.lastDrop = this.time - 1;
     this.aim = this.clampAim(num(s.aim));
+    this.slots = this.type === "pins" && Array.isArray(s.slots) ? s.slots.filter((e) => Array.isArray(e) && isCoin(e[0]) && Number.isFinite(e[1])).slice(0, 20) : [];
     this.auto = !!s.auto;
     this.nudges = Math.min(this.maxNudges, Math.max(0, Math.floor(num(s.nudges, this.maxNudges))));
     this.nudgeT = num(s.nudgeT);

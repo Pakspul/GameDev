@@ -9,11 +9,12 @@ import { initPhysics, isCoin } from "./src/board.js";
 import { Machine } from "./src/machine.js";
 import * as Eco from "./src/economy.js";
 import { makeStorage, loadSave, writeSave, freshSave } from "./src/save.js";
-import { Renderer, thumbnail } from "./src/render.js";
+import { Renderer, thumbnail, cachedThumbnail } from "./src/render.js";
 import { Sound } from "./src/audio.js";
 import { THEMES, THEME_IDS } from "./src/themes.js";
 import { GEM_COLOURS } from "./src/shapes.js";
 import { Rng, freshSeed } from "./src/rng.js";
+import { coinIcon } from "./src/art.js";
 
 const _t = I18n.t;
 const $ = (s) => document.querySelector(s);
@@ -42,7 +43,7 @@ let running = false, rafId = 0, lastTs = 0, acc = 0;
 let paused = false, screen = null, returnTo = null;
 let aiming = false, ghostFade = 1;
 let shownBank = 0, saveT = 0, slowT = 0, fastT = 0;
-let started = false, storageWarned = false;
+let started = false, storageWarned = false, pinT = 0;
 const listeners = [];
 const DT = 1 / CONFIG.physics.hz;
 
@@ -95,11 +96,33 @@ function nextBanner() {
   setTimeout(() => { el.className = b.kind; setTimeout(nextBanner, 220); }, b.kind === "small" ? 1100 : 1900);
 }
 
+// Pictures of collection items are drawn on demand (render.js thumbnail), which takes a moment the first
+// time. A screen opens at once and its pictures fill in one at a time after it.
+const thumbJobs = [];
+let thumbBusy = false;
+function thumbImg(theme, index, cls = "") {
+  const img = h("img", { alt: "", class: cls });
+  const url = cachedThumbnail(theme, index);
+  if (url) img.src = url;
+  else {
+    thumbJobs.push([img, theme, index]);
+    if (!thumbBusy) { thumbBusy = true; setTimeout(drawThumbs, 30); }
+  }
+  return img;
+}
+function drawThumbs() {
+  const job = thumbJobs.shift();
+  if (!job) { thumbBusy = false; return; }
+  const [img, theme, index] = job;
+  if (img.isConnected) img.src = thumbnail(theme, index);   // skip pictures on a screen that has closed
+  setTimeout(drawThumbs, 0);
+}
+
 /** A prize flies from where it fell to the collection counter. */
 function flyToCollection(item, theme, index) {
   const from = R.toScreen(item.x, Math.max(item.y, 0), item.z);
   const target = $("#collStat").getBoundingClientRect();
-  const img = h("img", { class: "fly", src: thumbnail(theme, index), alt: "" });
+  const img = thumbImg(theme, index, "fly");
   img.style.left = from.x - 28 + "px";
   img.style.top = from.y - 28 + "px";
   document.body.append(img);
@@ -118,6 +141,13 @@ function onMachine(type, d) {
       ghostFade = 0;
       if (!save.hintSeen) { save.hintSeen = true; $("#hint").hidden = true; }
       break;
+    case "pin": {
+      // Coins rattle down the pins; one clink per 40 ms at most, however many coins are falling.
+      if (machine.time - pinT < 0.04 || d.speed < 0.6) break;
+      pinT = machine.time;
+      sound.pin(fxRng.float(), Math.min(1, d.speed / 6));
+      break;
+    }
     case "land": {
       const it = d.item;
       if (isCoin(it.kind)) {
@@ -184,6 +214,46 @@ function onMachine(type, d) {
     case "bomb": banner(_t("banner.bomb", { n: d.coins }), "small"); break;
     case "newBoard": shownBank = machine.bank; break;
   }
+}
+
+// ---- Machines: the pin wall and the classic drop ------------------------------------------------------------
+/**
+ * Switch machines. The board you leave is parked in the save as it is, and the other machine's
+ * board comes back as you left it (or a fresh one the first time). Your bank comes along: the
+ * coins are yours, not the machine's.
+ */
+function switchMachine(type) {
+  if (type === machine.type || !CONFIG.machines.includes(type)) return;
+  const bank = machine.bank;
+  save.parked[machine.type] = machine.snapshot();
+  const parked = save.parked[type];
+  delete save.parked[type];
+  let restored = false;
+  if (parked) { try { machine.restore(parked); restored = true; } catch (e) { restored = false; } }
+  if (!restored) { machine.setType(type); machine.newBoard(freshSeed()); }
+  machine.bank = bank;
+  machine.setAuto(false);
+  shownBank = bank;
+  save.machine = type;
+  R.setMachine(type);
+  showHint();
+  persistNow();
+  hudCache = "";
+  toast(_t("machine.switched", { name: _t("machine." + type), n: fmt(bank) }));
+  if (paused) draw(0);
+}
+
+/** The machine choice, two cards side by side (the pause card shows it). */
+function machinePicker(onChoose) {
+  return h("div", { class: "machines", role: "radiogroup", "aria-label": _t("machine") }, ...CONFIG.machines.map((id) =>
+    h("button", { type: "button", role: "radio", class: "machine " + id, "aria-checked": String(machine.type === id), onclick: () => { if (machine.type !== id) { switchMachine(id); onChoose(); } } },
+      h("i", { class: "pic", "aria-hidden": "true" }), h("b", null, _t("machine." + id)), h("small", null, _t("machine." + id + ".desc")))));
+}
+
+function showHint() {
+  const el = $("#hint");
+  el.textContent = _t(machine.type === "pins" ? "hint.pins" : "hint");
+  el.hidden = !!save.hintSeen;
 }
 
 // ---- Layout and the loop --------------------------------------------------------------------------------------
@@ -275,27 +345,24 @@ function updateControls() {
   $("#autoBtn").classList.toggle("on", machine.auto);
 }
 
-// ---- Input: drag to aim on the lower half, release to drop ----------------------------------------------------
+// ---- Input: a press anywhere on the board drops a coin there at once; dragging moves the aim ------------------
+// The coin drops on the press, not the release, so a tap or a click answers straight away. On the pin wall
+// the press picks the nearest slot. A mouse moves the aim without a press too, so the see-through coin shows
+// where the next one goes.
 function onPointerDown(e) {
   sound.unlock();
   if (paused || screen) return;
-  if (e.clientY < window.innerHeight / 2) return;
   aiming = e.pointerId;
   try { e.target.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
-  machine.setAim(R.aimFromScreen(e.clientX));
   e.preventDefault();
-}
-function onPointerMove(e) {
-  if (aiming !== e.pointerId || paused) return;
-  machine.setAim(R.aimFromScreen(e.clientX));
-}
-function onPointerUp(e) {
-  if (aiming !== e.pointerId) return;
-  aiming = false;
-  if (paused || screen) return;
   machine.setAim(R.aimFromScreen(e.clientX));
   if (!machine.drop()) { if (machine.bank < 1) sound.denied(); }
 }
+function onPointerMove(e) {
+  if (paused || screen) return;
+  if (aiming === e.pointerId || (e.pointerType === "mouse" && aiming === false)) machine.setAim(R.aimFromScreen(e.clientX));
+}
+function onPointerUp(e) { if (aiming === e.pointerId) aiming = false; }
 function onPointerCancel(e) { if (aiming === e.pointerId) aiming = false; }
 
 // ---- Pause and screens ----------------------------------------------------------------------------------------
@@ -336,6 +403,8 @@ function showPause() {
   screen = "pause";
   overlay([
     h("h2", null, _t("paused")),
+    h("h3", null, _t("machine")),
+    machinePicker(showPause),
     h("div", { class: "stack" },
       h("button", { class: "primary", type: "button", onclick: resumeGame }, _t("resume")),
       h("button", { type: "button", onclick: () => { returnTo = showPause; showWorkshop(); } }, _t("workshop")),
@@ -398,7 +467,7 @@ function showWorkshop() {
   const themes = THEME_IDS.map((id) => {
     const T = THEMES[id], owned = !!P.themes[id], sel = P.theme === id, cost = Eco.themeCost(id);
     const preview = h("div", { class: "preview", style: `background:linear-gradient(135deg, ${T.css.panel}, ${T.css.bg}); border-color:${T.css.accent}` },
-      ...[4, 5, 6].map((i) => h("img", { src: thumbnail(id, i), alt: "", class: owned ? "" : "locked" })));
+      ...[4, 5, 6].map((i) => thumbImg(id, i, owned ? "" : "locked")));
     let action;
     if (sel) action = h("span", { class: "maxed" }, _t("selected"));
     else if (owned) action = h("button", { class: "buy", type: "button", onclick: () => { Eco.selectTheme(P, id); applyTheme(); persistNow(); showWorkshop(); } }, _t("select"));
@@ -438,7 +507,7 @@ function showCollection(themeId) {
     const has = i in set;
     return h("button", { type: "button", class: "slot" + (has ? " has" : ""), "aria-label": has ? itemName(collTheme, i) : _t("coll.unknown"),
       onclick: () => { detail.textContent = has ? _t("coll.won", { name: itemName(collTheme, i), date: fmtDate(set[i]) }) : _t("coll.notyet"); } },
-      h("img", { src: thumbnail(collTheme, i), alt: "" }));
+      thumbImg(collTheme, i));
   }));
   overlay([
     h("div", { class: "head" }, back(leaveScreen), h("h2", null, _t("collection")), h("span", { class: "bal" }, `${Eco.collectionCount(P, collTheme)}/12`)),
@@ -476,6 +545,8 @@ function showSettings() {
       save.settings = keepSettings;
       save.hintSeen = true;
       machine.progress = save.progress;
+      machine.setType(save.machine);
+      R.setMachine(save.machine);
       machine.newBoard(freshSeed());
       applyTheme();
       persistNow();
@@ -522,6 +593,30 @@ function applyTheme() {
   hudCache = "";
 }
 
+// ---- Back (top left) and the menu drawer (top right), shared/js/gamenav.js --------------------------------
+// Back leaves for the arcade (the game opens straight into play, so there's no menu screen to go back
+// to). The drawer pauses the board while it's open, like the pause card, and holds the same things.
+let nav = null;
+function makeNav() {
+  nav = GameNav.create({
+    title: () => _t("paused"),
+    onOpen() { pauseGame(); },
+    // Closing plays on, unless the chosen item opened a screen (it runs right after onClose).
+    onClose() { queueMicrotask(() => { if (paused && !screen) resumeGame(); }); },
+    items: () => [
+      { icon: "play", label: _t("resume"), onSelect() {} },
+      { icon: "view", label: _t("machine"), value: machine.type, options: CONFIG.machines.map((id) => ({ value: id, label: _t("machine." + id) })), onChoose(v) { switchMachine(v); nav.refresh(); } },
+      { icon: "shop", label: _t("workshop"), onSelect() { returnTo = null; showWorkshop(); } },
+      { icon: "trophy", label: _t("collection"), onSelect() { returnTo = null; showCollection(save.progress.theme); } },
+      { icon: "gear", label: _t("settings"), onSelect() { returnTo = null; showSettings(); } },
+      GameNav.language(),
+    ],
+  });
+  nav.setBack(exitToArcade, _t("exit"));
+  $("#top").prepend(nav.back);
+  $("#top").append(nav.menu);
+}
+
 // ---- Start-up -------------------------------------------------------------------------------------------------
 function on(el, ev, fn, opts) { el.addEventListener(ev, fn, opts); listeners.push([el, ev, fn, opts]); }
 
@@ -531,19 +626,22 @@ async function init() {
   storage = makeStorage();
   save = loadSave(storage);
   R = new Renderer($("#cv"));
+  document.documentElement.style.setProperty("--coin-face", `url(${coinIcon("coin")})`);
   sound = new Sound();
   applyTheme();
   applySettings();
   await initPhysics();
-  machine = new Machine({ progress: save.progress, onEvent: (t, d) => onMachine(t, d) });
+  machine = new Machine({ progress: save.progress, type: save.machine, onEvent: (t, d) => onMachine(t, d) });
   let restored = false;
   if (save.board) {
     try { machine.restore(save.board); restored = true; } catch (e) { restored = false; }
   }
-  if (!restored) { machine.newBoard(freshSeed()); machine.setAuto(save.settings.autoDefault); }
+  if (!restored) { machine.setType(save.machine); machine.newBoard(freshSeed()); machine.setAuto(save.settings.autoDefault); }
+  save.machine = machine.type;
+  R.setMachine(machine.type);
   fxRng = new Rng(machine.seed ^ 0x5f3759df);
   shownBank = machine.bank;
-  $("#hint").hidden = !!save.hintSeen;
+  showHint();
   document.body.classList.remove("loading");
   if (storage.volatile) { storageWarned = true; setTimeout(() => toast(_t("storage.off"), 4200), 600); }
 
@@ -553,7 +651,7 @@ async function init() {
   on(cv, "pointerup", onPointerUp);
   on(cv, "pointercancel", onPointerCancel);
   on(document, "dblclick", (e) => e.preventDefault());
-  on(document, "touchmove", (e) => { if (!e.target.closest("#overlay")) e.preventDefault(); }, { passive: false });
+  on(document, "touchmove", (e) => { if (!e.target.closest("#overlay, .gnav-drawer")) e.preventDefault(); }, { passive: false });
   on(document, "gesturestart", (e) => e.preventDefault());
   on($("#pauseBtn"), "click", () => { sound.unlock(); showPause(); });
   on($("#collBtn"), "click", () => { sound.unlock(); returnTo = null; showCollection(save.progress.theme); });
@@ -579,6 +677,7 @@ async function init() {
     const mq = matchMedia("(prefers-reduced-motion: reduce)");
     if (mq.addEventListener) on(mq, "change", applySettings);
   }
+  makeNav();
   resize();
   updateControls();
   startLoop();

@@ -70,7 +70,12 @@ Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each
 
 - [ ] **Feel gate:** watch and play it on a real mid-range phone. Does the push feel heavy enough, do stacks tip and cascade, are the gutters fair? Tune `physics` and `board` in `games/coin-dozer/src/config.js`, then check `npm run coin-dozer:sim` (cascade rate today: about 1 in 4, target 1 in 6)
 - [ ] Measure on that phone: 60 fps with 250 coins, above 30 fps in a coin shower, load within 3 s, memory under 150 MB
-- [ ] Listen to the synthesised sounds and tune or replace them
+- [ ] Listen to the synthesised sounds and tune or replace them (new: the clink of coins on the pin wall's pins)
+- [ ] Look at the new look on the phone: are the coins readable at that size, is the pin wall worth the screen height it takes, and does it hold 60 fps?
+- [ ] The test "AC4 + AC7: a squeezed pile…" fails now and then (about 2 runs in 3 here, also before the new look): its machine has a random seed, and sometimes anti-stall's free coin lands in the jammed pile and is pressed under the pusher. Decide: fix the physics or seed the test
+- [ ] The end-to-end test fails 5 checks (Workshop, collection, settings, reload, offline), also before the new view: in the headless browser's software GPU the board draws far slower than the frame rate, so anything that reads pixels back (a thumbnail, a screenshot) waits seconds for the queue, past the test's 8 s click timeout. Decide: pause the board's drawing in the test, lower the test's resolution, or raise its timeouts
+- [ ] The test "AC11: a lucky coin starts a coin shower" also fails now and then (seen 1 run in 4), like AC4 + AC7 above
+- [ ] Look at the new view on the phone: is the perspective right, are the gutters and the payout edge clear, is the pin wall still readable at the top?
 - [ ] Decide: final name (Coin Dozer?), and whether the hazard modifier (bomb tokens, built but off) becomes a setting
 
 ## Android app, priority 1 (see [docs/RELEASE.md](docs/RELEASE.md), chapter 1)

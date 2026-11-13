@@ -3,12 +3,12 @@
 // local, so game.js doesn't register this there.
 //
 // Bump VERSION when FILES changes (a file added or removed); edits are picked up from the network.
-const VERSION = "coin-dozer-v1";
+const VERSION = "coin-dozer-v2";
 const FILES = [
   "./", "index.html", "style.css", "strings.js", "game.js", "manifest.webmanifest", "icon.svg",
-  "src/audio.js", "src/board.js", "src/config.js", "src/economy.js", "src/machine.js", "src/render.js",
+  "src/art.js", "src/audio.js", "src/board.js", "src/config.js", "src/economy.js", "src/machine.js", "src/render.js",
   "src/rng.js", "src/save.js", "src/shapes.js", "src/themes.js",
-  "../../shared/js/platform.js", "../../shared/js/i18n.js",
+  "../../shared/js/platform.js", "../../shared/js/i18n.js", "../../shared/js/gamenav.js", "../../shared/css/gamenav.css",
   "../../shared/vendor/three/three.min.js", "../../shared/vendor/rapier/rapier.js",
 ];
 

@@ -2,8 +2,10 @@
 //
 // Saved: progress (credits, Workshop levels, themes, collections, milestones, stats), settings,
 // and a compact snapshot of the board (bank, coins and prizes with their positions and sleeping
-// state, timers). A save from another version is migrated; if its board can't be used, the game
-// starts a fresh board and keeps credits and collections. A corrupt save never crashes the game.
+// state, timers), which machine is in use (pins or classic), and the parked board of the other
+// machine, so switching back finds it as it was. A save from another version is migrated; if its
+// board can't be used, the game starts a fresh board and keeps credits and collections. A corrupt
+// save never crashes the game.
 import { CONFIG } from "./config.js";
 import { freshProgress, UPGRADES, THEMES } from "./economy.js";
 
@@ -15,7 +17,7 @@ export function freshSettings() {
 }
 
 export function freshSave(cfg = CONFIG) {
-  return { v: SAVE_VERSION, config: cfg.version, progress: freshProgress(cfg), settings: freshSettings(), board: null, hintSeen: false, storageNotice: false };
+  return { v: SAVE_VERSION, config: cfg.version, progress: freshProgress(cfg), settings: freshSettings(), machine: cfg.defaultMachine, board: null, parked: {}, hintSeen: false, storageNotice: false };
 }
 
 const isObj = (o) => !!o && typeof o === "object" && !Array.isArray(o);
@@ -60,13 +62,19 @@ export function migrate(data, cfg = CONFIG) {
     config: cfg.version,
     progress: cleanProgress(d.progress, cfg),
     settings: { ...base.settings },
+    machine: cfg.machines.includes(d.machine) ? d.machine : isObj(d.board) ? "classic" : cfg.defaultMachine,   // saves from before the pin wall played the classic machine
     board: null,
+    parked: {},
     hintSeen: !!d.hintSeen,
     storageNotice: !!d.storageNotice,
   };
   if (isObj(d.settings)) for (const k in out.settings) if (typeof d.settings[k] === "boolean") out.settings[k] = d.settings[k];
   // The board only survives when it was written by the same version with the same shelf.
-  if (d.v === SAVE_VERSION && d.config === cfg.version && isObj(d.board) && isObj(d.board.board) && Array.isArray(d.board.board.items)) out.board = d.board;
+  const usable = (b) => isObj(b) && isObj(b.board) && Array.isArray(b.board.items);
+  if (d.v === SAVE_VERSION && d.config === cfg.version) {
+    if (usable(d.board)) out.board = d.board;
+    if (isObj(d.parked)) for (const m of cfg.machines) if (m !== out.machine && usable(d.parked[m])) out.parked[m] = d.parked[m];
+  }
   return out;
 }
 
