@@ -534,6 +534,7 @@ class Board {
     if (ctx.roundRect) ctx.roundRect(this.ox - m, this.oy - m, W * s + 2 * m, H * s + 2 * m, r);
     else ctx.rect(this.ox - m, this.oy - m, W * s + 2 * m, H * s + 2 * m);
     ctx.fill();
+    this.drawGrid(ctx, s, W, H);
     const lw = Math.max(1.15, Math.min(6, s * 0.135));
     const animIds = new Set(this.anims.map((a) => a.id));
     for (let id = 0; id < this.alive.length; id++) {
@@ -570,6 +571,22 @@ class Board {
       else keep.push(a);
     }
     this.anims = keep;
+  }
+  // Faint dotted guide lines through every row and column (arrows run along the cell centres),
+  // so on a big board you can follow which line an arrow sits on. Skipped when cells are too small to read.
+  drawGrid(ctx, s, W, H) {
+    if (s < 8) return;
+    const x0 = this.ox, y0 = this.oy, x1 = x0 + W * s, y1 = y0 + H * s;
+    const dot = Math.max(1, Math.min(2.2, s * 0.07));
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.55, 0.2 + s * 0.012);
+    ctx.strokeStyle = Skin.edge(); ctx.lineWidth = dot; ctx.lineCap = "round";
+    ctx.setLineDash([0, s / 2]);
+    ctx.beginPath();
+    for (let i = 0; i < H; i++) { const y = y0 + (i + 0.5) * s; if (y < -s || y > this.ch + s) continue; ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+    for (let i = 0; i < W; i++) { const x = x0 + (i + 0.5) * s; if (x < -s || x > this.cw + s) continue; ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+    ctx.stroke();
+    ctx.restore();
   }
   drawLane(id, lw) {
     const ctx = this.ctx, s = this.scale, W = this.lv.W, H = this.lv.H, sn = this.lv.snakes[id];

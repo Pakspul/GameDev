@@ -181,9 +181,16 @@ details.rules ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); di
 .toast { position: absolute; left: 50%; top: 8px; transform: translate(-50%, -6px); background: var(--ink); color: var(--bg); padding: 7px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 500; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .gfoot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 8px 14px; }
-.zoomfloat { position: absolute; right: max(10px, env(safe-area-inset-right, 0px)); bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
-.zoomfloat button { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); }
+/* Zoom controls live in the status row, never over the board. Pinch / wheel does the zooming; on
+   narrow screens only the "fit board" button is shown so it can't crowd the hearts. */
+.status { position: relative; padding-left: max(56px, env(safe-area-inset-left, 0px)); padding-right: max(56px, env(safe-area-inset-right, 0px)); }
+.zoomfloat { position: absolute; right: max(10px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); display: flex; gap: 6px; }
+.zoomfloat button { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); }
 .zoomfloat svg { width: 18px; height: 18px; }
+.zoomfloat #zoomIn, .zoomfloat #zoomOut { display: none; }
+@media (pointer: fine) and (min-width: 600px) {
+  .zoomfloat #zoomIn, .zoomfloat #zoomOut { display: grid; }
+}
 .items { display: flex; gap: 8px; }
 .item { position: relative; width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); }
 .item svg { width: 22px; height: 22px; }
