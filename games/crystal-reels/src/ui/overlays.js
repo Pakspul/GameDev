@@ -189,11 +189,12 @@ export async function summary(app, { title, total, bet, cfg, lines = [], turbo }
 export function tierName(cfg, multiple) { return tierOf(cfg, multiple); }
 
 /** A short level-up celebration (PROG-01). */
-export function levelUp(app, { machine, level, coins, rank }) {
+export function levelUp(app, { machine, level, coins, rank, chest }) {
   app.audio.sfx("level");
   app.fx.burst(window.innerWidth / 2, 120, 60, rank ? 1.4 : 1);
   const name = app.machines[machine] ? app.machines[machine].name : "";
   let text = coins ? app.t("levelUp", { machine: name, level, coins: fmt(app, coins) }) : app.t("levelUp.plain", { machine: name, level });
   if (rank) text += " " + app.t("levelUp.rank", { rank: rankName(app, rank) });
-  return toast(app, text, "level", rank ? 5200 : 3800);
+  if (chest) text += " " + app.t("levelUp.chest");
+  return toast(app, text, "level", rank || chest ? 5200 : 3800);
 }

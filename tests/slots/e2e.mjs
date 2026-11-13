@@ -180,6 +180,105 @@ await feature(0, "holdSpin", "holdspin");
 await feature(1, "freeSpins", "choice-fs");
 await feature(1, "pick", "pick");
 
+// ---- 3b. quests: challenges, vouchers, chests, the wheel, double or collect, the weekly chain -----------------------------
+console.log("Quests");
+{
+  const q = await newPage();
+  await start(q, { balance: 500000 });
+  await app(q, () => { window.slotsApp.screen.turbo = true; window.slotsDebug.setSpeed(8); });
+  check(!!(await q.$(".quest-strip .q-main")), "the machine shows the quest strip");
+  await q.click(".q-main");
+  await q.waitForSelector(".quest-card");
+  check((await q.$$(".quest-card")).length === 3, "three challenges are offered");
+  await q.screenshot({ path: join(OUT, "slots-challenges.png") });
+  await q.click(".quest-card .btn.primary >> nth=0");
+  await q.waitForSelector(".q-main.active");
+  check(await q.evaluate(() => !!window.slotsApp.profile.challenge), "a started challenge is stored in the profile");
+  await q.screenshot({ path: join(OUT, "slots-challenge-active.png") });
+  // autoplay while a challenge runs asks first
+  await q.click(".pill-row .pill-btn >> nth=2");
+  await q.waitForSelector(".modal .btn");
+  check((await q.textContent(".modal")).includes("challenge"), "autoplay offers to play the running challenge by hand");
+  await q.click(".modal .btn.primary"); // By hand
+  await q.waitForTimeout(400);
+  await q.click(".spin-btn"); await playOut(q, 20000);
+  check(await q.evaluate(() => { const c = window.slotsApp.profile.challenge; return !c || c.left < c.spins; }), "a spin counts toward the challenge");
+  // a free-spins voucher
+  await app(q, () => { const a = window.slotsApp; a.profile.vouchers = 1; a.screen.refresh(); });
+  await q.waitForSelector(".q-voucher:not([hidden])");
+  await q.screenshot({ path: join(OUT, "slots-strip.png") });
+  const b0 = await app(q, () => window.slotsApp.profile.balance);
+  await q.evaluate(() => { window.__free = false; new MutationObserver(() => { if (document.querySelector(".machine.free")) window.__free = true; }).observe(document.body, { subtree: true, attributes: true, childList: true }); });
+  await q.click(".q-voucher");
+  const tv = Date.now();
+  while (Date.now() - tv < 90000) { if (await playOut(q, 1500)) break; }
+  check(await q.evaluate(() => window.__free), "a voucher plays a free-spins run");
+  check(await app(q, () => window.slotsApp.profile.vouchers === 0 && window.slotsApp.screen.session.isIdle()), "the voucher is used up and the machine is idle again");
+  check(await app(q, (b) => window.slotsApp.profile.balance >= b, b0), "a voucher never costs coins");
+  // a chest
+  await app(q, () => { const a = window.slotsApp; a.profile.chests.push({ source: "level", machine: "crystal-fortune", level: 5 }); a.screen.refresh(); });
+  await q.waitForSelector(".q-chest:not([hidden])");
+  await q.click(".q-chest");
+  await q.waitForSelector(".chest-box");
+  check((await q.$$(".chest-box")).length === 3, "a chest has three boxes");
+  await q.screenshot({ path: join(OUT, "slots-chest.png") });
+  await q.click(".chest-box >> nth=1");
+  await q.waitForSelector(".chest-box.chosen");
+  check((await q.textContent(".chest-out")).length > 5, "the chosen box shows its prize");
+  check(await app(q, () => window.slotsApp.profile.chests.length === 0), "the chest is used up");
+  await q.screenshot({ path: join(OUT, "slots-chest-open.png") });
+  await q.click(".modal .btn.primary"); await q.waitForTimeout(300);
+  // the wheel
+  await app(q, () => { const a = window.slotsApp; a.profile.wheel.spins = 1; a.screen.refresh(); });
+  await q.waitForSelector(".q-wheel:not([hidden])");
+  await q.click(".q-wheel");
+  await q.waitForSelector(".wheel-svg");
+  await q.screenshot({ path: join(OUT, "slots-wheel.png") });
+  await q.click(".wheel .btn.primary");
+  await q.waitForFunction(() => window.slotsApp.profile.wheel.spins === 0);
+  await q.waitForTimeout(4400);
+  check((await q.textContent(".wheel .chest-out")).length > 5, "the wheel shows what it gave");
+  await q.click(".modal .icon-btn"); await q.waitForTimeout(300);
+  // double or collect: off by default, then offered after a small win
+  check(await app(q, () => window.slotsApp.profile.settings.gamble === false), "double or collect is off by default");
+  await app(q, () => { const a = window.slotsApp; a.profile.settings.gamble = true; a.screen.turbo = false; window.slotsDebug.setSpeed(8); });
+  let offered = false; const tg = Date.now();
+  while (!offered && Date.now() - tg < 120000) {
+    if ((await state(q)) === "idle") await q.click(".spin-btn").catch(() => {});
+    for (let k = 0; k < 24 && !offered; k++) { if (await q.$(".gamble")) offered = true; else await q.waitForTimeout(150); }
+    if (!offered) await playOut(q, 4000);
+  }
+  check(offered, "double or collect is offered after a small win");
+  if (offered) {
+    await q.screenshot({ path: join(OUT, "slots-gamble.png") });
+    await q.click(".gamble .btn.primary");
+    await playOut(q, 20000);
+    check(await app(q, () => window.slotsApp.screen.session.isIdle()), "collecting goes back to Idle");
+  }
+  check(q.problems.length === 0, "no console errors" + q.problems.join(" | "));
+  await q.context().close();
+
+  // the lobby: weekly chain, wheel and chest cards, and the profile with gems and frames
+  const l = await newPage();
+  await l.goto(base + "?debug=1");
+  await l.waitForSelector(".modal .btn.primary"); await l.click(".modal .btn.primary");
+  await l.waitForSelector(".chain");
+  check((await l.$$(".chain-step")).length === 3, "the lobby shows this week's chain with three steps");
+  check((await l.$$(".bonus-card.prize")).length === 2, "the lobby has a wheel card and a chest card");
+  await app(l, () => { const a = window.slotsApp; a.profile.wheel.spins = 2; a.profile.cosmetics.frames.push("ruby"); a.openLobby(); });
+  await l.waitForSelector(".bonus-card.prize.ready");
+  await l.screenshot({ path: join(OUT, "slots-lobby-quests.png") });
+  await app(l, () => window.slotsApp.showProfile());
+  await l.waitForSelector(".profile");
+  check((await l.$$(".gem")).length === 12, "the profile lists six gems per machine");
+  check((await l.$$(".frame-opt")).length === 2, "the profile lists the frames the player owns, plus the standard one");
+  await l.click(".frame-opt >> nth=1");
+  check(await app(l, () => window.slotsApp.profile.cosmetics.frame === "ruby"), "a frame can be equipped");
+  await l.screenshot({ path: join(OUT, "slots-profile-quests.png") });
+  check(l.problems.length === 0, "no console errors" + l.problems.join(" | "));
+  await l.context().close();
+}
+
 // ---- 4. resume after the app was closed (PERS-02) -------------------------------------------------------------------------------
 console.log("Resume after an interruption");
 page = await newPage();

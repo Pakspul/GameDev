@@ -3,10 +3,11 @@
 import { SAVE_VERSION } from "./save.js";
 import { Rng } from "../engine/rng.js";
 import { tierOf, tierAtLeast } from "../engine/tiers.js";
+import * as Q from "./quests.js"; // quests.js reads levels and rewards from here, this file calls it from the spin bookkeeping: only functions, so the cycle is harmless
 
 export const DEFAULT_SETTINGS = {
   musicVolume: 0.6, sfxVolume: 0.8, muted: false, haptics: true, turbo: false,
-  reducedMotion: false, reminderMinutes: 60, bonusReminder: false,
+  reducedMotion: false, reminderMinutes: 60, bonusReminder: false, gamble: false,
 };
 
 export function newProfile(game, now = Date.now()) {
@@ -20,6 +21,7 @@ export function newProfile(game, now = Date.now()) {
     achievements: {},
     totals: { wagered: 0, won: 0, spins: 0 },
     acknowledged: false,
+    ...Q.questDefaults(),
   };
 }
 
@@ -32,6 +34,7 @@ export function normaliseProfile(p, game) {
   out.missions = { ...base.missions, ...(p.missions || {}) };
   out.refill = { ...base.refill, ...(p.refill || {}) };
   out.timedBonus = { ...base.timedBonus, ...(p.timedBonus || {}) };
+  Q.normaliseQuests(out, p);
   out.machines = { ...(p.machines || {}) };
   migrateMachineXp(out, game, p.xp || 0);
   return out;
@@ -53,7 +56,7 @@ function migrateMachineXp(profile, game, oldTotal) {
 }
 
 export function machineEntry(profile, id) {
-  if (!profile.machines[id]) profile.machines[id] = { state: null, xp: 0, stats: { spins: 0, biggestWin: 0, features: 0, jackpots: 0, wagered: 0, won: 0 } };
+  if (!profile.machines[id]) profile.machines[id] = { state: null, xp: 0, gems: [], stats: { spins: 0, biggestWin: 0, features: 0, jackpots: 0, wagered: 0, won: 0 } };
   return profile.machines[id];
 }
 
@@ -161,7 +164,9 @@ export function grantXp(profile, game, machineId, bet) {
     const coins = scaledReward(game, profile, (game.xp.rewards[String(l)] || {}).coins || 0, l);
     profile.balance += coins;
     const rank = rankFor(game, l);
-    levelUps.push({ machine: machineId, level: l, coins, rank: rank.startsAt === l ? { id: rank.id, tier: rank.tier } : null });
+    const chest = !!game.chests && l % game.chests.everyLevels === 0;
+    if (chest) Q.addChest(profile, "level", { machine: machineId, level: l });
+    levelUps.push({ machine: machineId, level: l, coins, chest, rank: rank.startsAt === l ? { id: rank.id, tier: rank.tier } : null });
   }
   return levelUps;
 }
@@ -289,15 +294,27 @@ export function recordSpin(profile, game, machineId, cfg, outcome, now = Date.no
     if (cfg.symbols[id].kind === "wild") wilds++;
     if (cfg.symbols[id].kind === "collect") collects++;
   }
-  const done = [
-    ...trackMetric(profile, game, "spins", 1, day),
-    ...trackMetric(profile, game, "wilds", wilds, day),
-    ...trackMetric(profile, game, "collects", collects, day),
-    ...trackMetric(profile, game, "scatters", outcome.scatterCount || 0, day),
-  ];
-  for (const m of done) events.push({ type: "mission", ...m });
+  const scatters = outcome.scatterCount || 0;
+  trackAll(profile, game, "spins", 1, day, now, events);
+  trackAll(profile, game, "wilds", wilds, day, now, events);
+  trackAll(profile, game, "collects", collects, day, now, events);
+  trackAll(profile, game, "scatters", scatters, day, now, events);
+  Q.challengeSpin(profile, {
+    machine: machineId, bet: outcome.bet, betStep: cfg.betLevels.indexOf(outcome.bet), wilds, collects, scatters,
+    cascades: (outcome.steps || []).filter((st) => st.removed).length, expanded: (outcome.expanded || []).length,
+  });
+  Q.checkGems(game, profile, machineId, { wilds }, events);
   checkAchievements(profile, game, { win: 0, features: 0 }, now, events);
   return events;
+}
+
+/** Missions, then the weekly chain: one metric, counted for both. A finished mission also earns a wheel spin. */
+function trackAll(profile, game, metric, amount, day, now, events) {
+  for (const m of trackMetric(profile, game, metric, amount, day)) {
+    profile.wheel.spins++;
+    events.push({ type: "mission", ...m, wheel: true });
+  }
+  Q.trackChain(profile, game, metric, amount, now, events);
 }
 
 /**
@@ -307,18 +324,23 @@ export function recordSpin(profile, game, machineId, cfg, outcome, now = Date.no
 export function recordRound(profile, game, machineId, cfg, round, now = Date.now()) {
   const events = [];
   const stats = machineEntry(profile, machineId).stats;
+  if (round.voucher) {
+    // a free-spins voucher cost nothing, so it stays out of the return, the missions and the challenges: only the record counts
+    if (round.win > stats.biggestWin) stats.biggestWin = round.win;
+    return events;
+  }
   stats.won += round.win; profile.totals.won += round.win;
   if (round.win > stats.biggestWin) stats.biggestWin = round.win;
   stats.features += round.features;
   stats.jackpots += (round.jackpots || []).length;
   const day = localDay(now);
   const tier = tierOf(cfg, round.win / round.bet);
-  const done = [];
-  if (round.win > 0) done.push(...trackMetric(profile, game, "wins", 1, day));
-  if (tierAtLeast(tier, "big")) done.push(...trackMetric(profile, game, "bigWins", 1, day));
-  done.push(...trackMetric(profile, game, "freeSpins", round.freeSpinFeatures || 0, day));
-  done.push(...trackMetric(profile, game, "features", round.features, day));
-  for (const m of done) events.push({ type: "mission", ...m });
+  if (round.win > 0) trackAll(profile, game, "wins", 1, day, now, events);
+  if (tierAtLeast(tier, "big")) trackAll(profile, game, "bigWins", 1, day, now, events);
+  trackAll(profile, game, "freeSpins", round.freeSpinFeatures || 0, day, now, events);
+  trackAll(profile, game, "features", round.features, day, now, events);
+  Q.challengeRound(game, profile, { machine: machineId, win: round.win, bet: round.bet, tier }, events);
+  Q.checkGems(game, profile, machineId, { win: round.win, bet: round.bet, features: round.features }, events);
   checkAchievements(profile, game, { win: round.win, tier, features: round.features, jackpots: round.jackpots }, now, events);
   return events;
 }

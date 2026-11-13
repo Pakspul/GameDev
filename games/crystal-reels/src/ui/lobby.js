@@ -6,6 +6,7 @@ import * as P from "../core/profile.js";
 import { installArt } from "./art.js";
 import { initialPools, jackpotAmount } from "../engine/jackpot.js";
 import { xpMeter } from "./xp.js";
+import { chainCard, prizeCards } from "./quests.js";
 
 export class Lobby {
   constructor(app) { this.app = app; this.alive = true; }
@@ -24,11 +25,13 @@ export class Lobby {
 
     this.bonusBtn = h("button", { type: "button", class: "bonus-card", onclick: () => this.collect() });
     this.missionsEl = h("section", { class: "missions", "aria-label": t("missions") });
+    this.prizesEl = h("div", { class: "prize-cards" });
+    this.chainEl = h("div", { class: "chain-wrap" });
     this.tiles = h("div", { class: "tiles" });
-    const scroll = h("main", { class: "lobby-scroll" }, h("p", { class: "lobby-note", text: t("lobby.note") }), this.bonusBtn, this.missionsEl, h("h2", { class: "section-title", text: t("machines") }), this.tiles);
+    const scroll = h("main", { class: "lobby-scroll" }, h("p", { class: "lobby-note", text: t("lobby.note") }), this.bonusBtn, this.prizesEl, this.missionsEl, this.chainEl, h("h2", { class: "section-title", text: t("machines") }), this.tiles);
     this.el = h("section", { class: "lobby" }, top, scroll);
     app.root.replaceChildren(this.el);
-    this.renderTiles(); this.renderMissions(); this.renderBonus();
+    this.renderTiles(); this.renderMissions(); this.renderBonus(); this.renderPrizes(); this.renderChain();
     this.timer = setInterval(() => { if (!document.body.contains(this.el)) return clearInterval(this.timer); this.renderBonus(); }, 1000);
   }
 
@@ -43,6 +46,13 @@ export class Lobby {
     this.bonusBtn.replaceChildren(icon("gift", 26), h("span", {}, h("b", { text: st.ready ? t("bonus.ready", { n: fmt(app, st.amount) }) : t("bonus.title") }),
       h("small", { text: st.ready ? t("bonus.tap") : t("bonus.next", { time: formatDuration(st.nextAt - Date.now()) }) })));
   }
+
+  /** Wheel spins and chests waiting for the player (cards that glow while there is something to open). */
+  renderPrizes() {
+    this.prizesEl.replaceChildren(...prizeCards(this.app, () => { this.balance.textContent = fmt(this.app, this.app.profile.balance); this.renderPrizes(); }));
+  }
+
+  renderChain() { this.chainEl.replaceChildren(chainCard(this.app)); }
 
   collect() {
     const { app } = this;

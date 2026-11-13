@@ -102,7 +102,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 .lock{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;background:rgba(5,3,20,.7)}
 
 /* ---- machine screen -------------------------------------------------------------------------------------- */
-.machine{position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto auto auto;overflow:hidden;background:radial-gradient(130% 60% at 50% 0%,var(--bg-top),var(--bg-bottom) 75%)}
+.machine{position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr) auto auto auto;overflow:hidden;background:radial-gradient(130% 60% at 50% 0%,var(--bg-top),var(--bg-bottom) 75%)}
 .jackpots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:0 calc(var(--safe-r) + 10px) 6px calc(var(--safe-l) + 10px)}
 .jp{padding:5px 4px 6px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.45));border:1px solid var(--line);text-align:center;min-width:0}
 .jp span{display:block;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -338,3 +338,82 @@ body.reduced-motion .celebrate-rays{display:none}
   .jackpots{display:none}
   .spin-btn{width:72px;height:72px}
 }
+
+
+/* ---- quests: the strip on the machine, challenge cards, chests, wheel, weekly chain, gems, frames, gamble ---------------- */
+.quest-strip{display:flex;gap:6px;align-items:stretch;padding:0 calc(var(--safe-r) + 10px) 6px calc(var(--safe-l) + 10px)}
+.q-chip{position:relative;min-height:40px;display:flex;align-items:center;gap:8px;padding:4px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);font-weight:800;overflow:hidden;text-align:left}
+.q-chip:disabled{opacity:.55}
+.q-main{flex:1;min-width:0}
+.q-main.active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,rgba(255,255,255,.06))}
+.q-text{min-width:0;display:flex;flex-direction:column;line-height:1.1}
+.q-text b{font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-text small{font-size:.68rem;color:var(--muted);white-space:nowrap}
+.q-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.12)}
+.q-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
+.q-small{flex:none;min-width:48px;justify-content:center;gap:4px;padding:4px 8px;border-color:var(--gold);color:var(--gold);background:rgba(255,211,90,.12)}
+.q-small[hidden]{display:none}
+
+.quests,.chest,.wheel,.gamble{display:grid;gap:10px}
+.quest-card{display:grid;gap:8px;padding:12px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid var(--line)}
+.quest-card.running{border-color:var(--accent)}
+.quest-head{display:grid;gap:2px}
+.quest-head small,.quest-card small{color:var(--muted)}
+.quest-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.quest-prize{display:flex;align-items:center;gap:8px;font-weight:800;color:var(--gold);min-width:0}
+.quest-prize svg{flex:none}
+.frame-swatch{display:inline-block;flex:none;width:28px;height:20px;border-radius:6px;border:3px solid var(--c,var(--gold));box-shadow:0 0 8px var(--g,transparent);background:rgba(0,0,0,.4)}
+
+.chest-pick{font-weight:900;font-size:1.2rem;text-align:center;margin:0}
+.chest-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.chest-box{min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px 4px;border-radius:16px;border:2px solid var(--gold);background:linear-gradient(160deg,#7a4a00,#3b2300);color:var(--gold);font-weight:800;text-align:center}
+.chest-box:hover:not(:disabled),.chest-box:focus-visible{background:linear-gradient(160deg,#a8680a,#5a3600)}
+.chest-box.chosen{background:linear-gradient(160deg,#1c6d44,#0d3d27);border-color:var(--good);color:var(--ink);transform:scale(1.04)}
+.chest-box.other{opacity:.6;border-color:var(--line);background:rgba(255,255,255,.06);color:var(--muted)}
+.chest-box small{font-size:.72rem;line-height:1.15}
+.chest-out{display:grid;gap:4px;text-align:center;min-height:2.4em}
+.chest-out small{color:var(--muted)}
+.chest-foot{display:grid}
+.chest-foot .btn{width:100%}
+
+.wheel{justify-items:center;text-align:center}
+.wheel-box{position:relative;width:min(78vw,280px);aspect-ratio:1}
+.wheel-disc{width:100%;height:100%;border-radius:50%;box-shadow:0 0 24px rgba(255,211,90,.35);will-change:transform}
+.wheel-svg{width:100%;height:100%;display:block}
+.wheel-label{fill:#fff;font-weight:900;font-size:9.5px;paint-order:stroke;stroke:rgba(0,0,0,.45);stroke-width:2px}
+.wheel-pointer{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:20px solid var(--gold);filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));z-index:2}
+.wheel .btn{width:100%}
+.prize-cards{display:grid;gap:8px;margin-top:8px}
+.prize-cards:empty{display:none}
+.bonus-card.prize{min-height:56px}
+
+.chain{margin-top:6px;display:grid;gap:6px}
+.chain-step{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.07);opacity:.7}
+.chain-step.now{opacity:1;border:1px solid var(--accent)}
+.chain-step.done{opacity:.85}
+.chain-dot{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14);font-weight:900;font-size:.85rem}
+.chain-step.done .chain-dot{background:var(--good);color:#05301b}
+.chain-step.now .chain-dot{background:var(--accent);color:#06102a}
+.chain-text{flex:1;min-width:0;display:grid;gap:4px}
+.chain-text small{color:var(--muted)}
+
+.gems{margin:4px 0 8px}
+.gem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px}
+.gem{display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.05);opacity:.6;min-width:0}
+.gem.got{opacity:1;background:rgba(255,211,90,.12)}
+.gem small{display:block;color:var(--muted);font-size:.7rem;line-height:1.15}
+.gem-ico{flex:none;font-size:1.3rem;line-height:1}
+.gem.got .gem-ico{filter:drop-shadow(0 0 4px currentColor)}
+.gem-ruby{color:#ff4d6d}.gem-sapphire{color:#4da3ff}.gem-emerald{color:#2fe39b}.gem-topaz{color:#ffb43a}.gem-amethyst{color:#b07cff}.gem-diamond{color:#bff4ff}
+
+.frames{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+.frame-opt{min-width:84px;min-height:64px;display:grid;place-items:center;gap:4px;padding:8px;border-radius:12px;border:2px solid var(--line);background:rgba(255,255,255,.06)}
+.frame-opt.on{border-color:var(--gold);background:rgba(255,211,90,.14)}
+.frame-opt small{color:var(--ink);font-weight:700}
+
+.gamble-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gamble-card{min-height:130px;display:grid;place-items:center;align-content:center;gap:4px;border-radius:16px;border:3px solid #fff;font-weight:900}
+.gamble-card span{font-size:2.6rem;line-height:1}
+.gamble-card.red{background:#c2183a;color:#fff}
+.gamble-card.black{background:#10121f;color:#fff}
+.gamble-card:hover,.gamble-card:focus-visible{border-color:var(--gold)}

@@ -85,6 +85,9 @@ const ICONS = {
   lock: "M7 11V8a5 5 0 0110 0v3M5 11h14v10H5z",
   play: "M8 5v14l11-7z",
   pause: "M8 5v14M16 5v14",
+  target: "M12 3a9 9 0 100 18 9 9 0 000-18zM12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zM12 11v2",
+  chest: "M4 11h16v9H4zM4 11a8 5 0 0116 0M10 14.5h4v2.5h-4z",
+  wheel: "M12 3a9 9 0 100 18 9 9 0 000-18zM12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4",
 };
 
 export function icon(name, size = 22) {
