@@ -34,9 +34,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   pointer-events: none;
 }
 .state-menu #hud, .state-menu #controls, .state-menu #alerts { visibility: hidden; }
-.hud-btn {
-  pointer-events: auto; flex: none; width: 40px; height: 40px; border-radius: 12px;
-  border: 1px solid var(--line); background: var(--panel); display: grid; place-items: center;
+/* Back button and menu drawer (shared/js/gamenav.js): the same plain panels as the HUD. */
+:root {
+  --gn-size: 40px; --gn-radius: 12px; --gn-bg: var(--panel); --gn-fg: var(--ink); --gn-border: 1px solid var(--line);
+  --gn-icon: 20px; --gn-stroke: 2.4; --gn-top: 8px; --gn-side: 10px; --gn-z: 6;
+  --gn-panel-bg: #23262d; --gn-panel-fg: var(--ink); --gn-panel-radius: 20px; --gn-muted: var(--muted); --gn-line: var(--line);
+  --gn-hover: rgba(255, 255, 255, 0.06); --gn-accent: var(--accent); --gn-accent-ink: var(--accent-ink); --gn-backdrop: rgba(20, 22, 27, 0.55);
 }
 .trip { flex: 1; min-width: 0; max-width: 560px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px; }
 .track { position: relative; height: 10px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: visible; }
@@ -117,18 +120,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .overlay[hidden] { display: none; }
 .card { width: min(100%, 460px); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
 .card.narrow { width: min(100%, 340px); text-align: center; }
+/* The lobby (shared/css/gamelobby.css): the same plain panels as the rest of the game. */
+:root {
+  --gn-surface: rgba(255, 255, 255, 0.05); --gn-ink: var(--ink); --gn-chosen: var(--accent); --gn-chosen-ink: var(--accent-ink);
+  --gn-star: var(--accent); --gn-star-off: rgba(255, 255, 255, 0.16); --gn-card-radius: 14px; --gn-tile-radius: 12px;
+}
+.lobby { display: flex; flex-direction: column; gap: 14px; }
+.lob-go { border-radius: 14px; font-weight: 800; }
 .topline { display: flex; justify-content: space-between; align-items: center; }
-.ghost { background: none; border: 0; color: var(--muted); padding: 4px 0; font-weight: 600; }
 .tag { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 2px 8px; }
 h1 { margin: 2px 0 0; font-size: clamp(2rem, 8vw, 2.6rem); line-height: 1; letter-spacing: -.02em; }
 h2 { margin: 0; font-size: 1.6rem; }
 .lead { margin: 0; color: var(--muted); }
-.road-pick { display: flex; align-items: center; gap: 10px; }
-.road-name { flex: 1; text-align: center; display: flex; flex-direction: column; }
-.road-name strong { font-size: 1.25rem; }
-.road-name span { color: var(--accent); letter-spacing: .15em; min-height: 1.2em; }
-.round { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); font-size: 24px; line-height: 1; }
-.round:disabled { opacity: .3; cursor: default; }
 .primary { border: 0; border-radius: 14px; padding: 13px 16px; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 1.05rem; }
 .secondary { border: 1px solid var(--line); border-radius: 14px; padding: 11px 16px; background: rgba(255, 255, 255, 0.06); font-weight: 700; }
 details summary { cursor: pointer; font-weight: 700; color: var(--muted); }

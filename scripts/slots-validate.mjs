@@ -4,9 +4,9 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateMachine } from "../games/slots/src/engine/config.js";
+import { validateMachine } from "../games/crystal-reels/src/engine/config.js";
 
-const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "games", "slots", "machines");
+const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "games", "crystal-reels", "machines");
 let bad = 0;
 for (const f of readdirSync(DIR).filter((n) => n.endsWith(".json"))) {
   const errors = validateMachine(JSON.parse(readFileSync(join(DIR, f), "utf8")));

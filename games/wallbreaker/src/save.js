@@ -38,6 +38,7 @@ export function freshSave() {
       autoLaunch: false, aimAssist: true, sensitivity: 1,
     },
     seenHelp: false,
+    lobbyMode: "classic",   // the mode tab last open in the menu
   };
 }
 

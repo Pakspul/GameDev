@@ -514,6 +514,98 @@ test("Determinism: a seed and the same input reproduce a board exactly", () => {
   assert.equal(play(), play());
 });
 
+// ---- The pin wall machine ----------------------------------------------------------------------------------------
+const PW = CONFIG.pinWall;
+
+test("Pin wall: the aim picks one of the three slots, and a drop enters the wall there, never dead centre", () => {
+  const m = empty({}); m.setType("pins");
+  m.replenishT = -1e9; m.luckyAt = Infinity; m.figureT = -1e9;
+  for (const [x, slot] of [[-9, PW.slots[0]], [-0.4, PW.slots[1]], [1.2, PW.slots[2]], [9, PW.slots[2]]]) {
+    m.setAim(x);
+    assert.equal(m.aim, slot);
+  }
+  m.bank = 10;
+  m.setAim(0);
+  assert.ok(m.drop());
+  const [c] = [...m.board.inWall];
+  assert.ok(c && c.wall && c.player, "the coin is in the wall");
+  const off = Math.abs(c.x - PW.slots[1]);
+  assert.ok(off >= PW.jitter[0] - 1e-9 && off <= PW.jitter[1] + 1e-9, `${off} from the slot's centre`);
+  assert.ok(Math.abs(c.z - PW.z) < 1e-6 && Math.abs(c.y - PW.top) < 1e-6);
+  assert.equal(m.bank, 9);
+});
+
+test("Pin wall: every coin comes out at the bottom within a few seconds, spread over the width, and none leaves the board", () => {
+  const m = empty({}); m.setType("pins");
+  m.bank = 1000;
+  const out = [];
+  m.emit = (t, d) => { if (t === "leaveWall") out.push(d.item); };
+  // As fast as the rate limit allows, cycling through the slots.
+  for (let i = 0; i < 40 * HZ; i++) {
+    if (i % 15 === 0) { m.setAim(PW.slots[(i / 15) % 3]); m.drop(); }
+    m.step();
+    for (const it of m.board.inWall) {
+      assert.ok(it.wallT < 6, `coin #${it.id} has been in the wall ${it.wallT.toFixed(1)} s`);
+      assert.ok(Math.abs(it.z - PW.z) < 1e-3, "held in the wall's plane");
+    }
+  }
+  run(m, 6);
+  assert.equal(m.board.inWall.size, 0);
+  assert.equal(m.slots.length, 0);
+  assert.equal(out.filter((it) => it.player).length, m.progress.stats.dropped);   // (anti-stall sends free coins through the wall too)
+  for (const it of m.board.items.values()) {
+    assert.ok([it.x, it.y, it.z].every(Number.isFinite) && Math.abs(it.x) < B.width / 2 + 1.5 && it.y < 12, `${it.kind} #${it.id} at ${it.x}, ${it.y}, ${it.z}`);
+  }
+  // Where they come out: every part of the width, not just under the three slots.
+  const bins = new Set(out.map((it) => Math.floor(it.x + B.width / 2)));
+  assert.ok(bins.size >= 6, `coins left the wall over ${bins.size} of 7 coin-widths`);
+});
+
+test("Pin wall: a coin waits in its slot until the one before has fallen clear", () => {
+  const m = empty({}); m.setType("pins");
+  m.bank = 10; m.setAim(0);
+  m.drop();
+  m.time += 1;                                          // past the rate limit, but the first coin is still at the top
+  m.drop();
+  assert.equal(m.board.inWall.size, 1);
+  assert.equal(m.slots.length, 1);
+  assert.equal(m.inFlight(), 2, "the lifeline waits for a queued coin too");
+  run(m, 1);
+  assert.equal(m.slots.length, 0);
+});
+
+test("Pin wall: a board saved with coins in the wall and in the slot queue restores exactly", () => {
+  const m = machine(); m.setType("pins");
+  m.newBoard(99);
+  m.bank = 20;
+  m.setAim(PW.slots[0]); m.drop();
+  m.time += 1; m.drop();
+  run(m, 0.3);
+  const snap = JSON.parse(JSON.stringify(m.snapshot()));
+  assert.equal(snap.board.type, "pins");
+  const m2 = machine();                                 // a classic machine: the snapshot switches it
+  m2.restore(snap);
+  assert.equal(m2.type, "pins");
+  assert.equal(m2.board.inWall.size, m.board.inWall.size);
+  assert.deepEqual(m2.slots, snap.slots);
+  run(m2, 4);
+  assert.equal(m2.board.inWall.size, 0, "restored coins fall on through the wall");
+});
+
+test("Save: an old save keeps playing the classic machine; a new one starts on the pin wall; a parked board survives", () => {
+  assert.equal(freshSave().machine, CONFIG.defaultMachine);
+  const old = freshSave(); delete old.machine; delete old.parked;
+  old.board = { board: { items: [] } };
+  assert.equal(migrate(JSON.parse(JSON.stringify(old))).machine, "classic");
+  const s = freshSave();
+  s.machine = "pins";
+  s.board = { board: { type: "pins", items: [] } };
+  s.parked = { classic: { board: { items: [] } }, pins: { board: { items: [] } }, bogus: 1 };
+  const out = migrate(JSON.parse(JSON.stringify(s)));
+  assert.deepEqual(Object.keys(out.parked), ["classic"], "only the other machine's board is parked");
+  assert.equal(migrate({ ...freshSave(), machine: "pachinko" }).machine, CONFIG.defaultMachine);
+});
+
 // ---- Honesty, config and text ------------------------------------------------------------------------------------
 const sources = () => {
   const out = [];

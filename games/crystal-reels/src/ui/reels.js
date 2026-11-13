@@ -7,6 +7,7 @@ import { h, mod, lerp, ease, tween, sleep, timing, symbolSvg } from "./dom.js";
 import { formatCompact } from "../core/format.js";
 
 const SPEED = 24; // rows per second while spinning
+const TALL = 1.5;   // a cell may be this much taller than wide, so a portrait phone's spare height goes to the reels
 
 export class Reels {
   /**
@@ -21,7 +22,8 @@ export class Reels {
     this.mode = new Array(this.reels).fill("idle"); // idle | spin | land
     this.static = new Array(this.reels).fill(false); // true: cells hold explicit symbols, not the strip
     this.stripSet = "base";
-    this.cell = 80;
+    this.cell = 80;   // the width of a cell
+    this.cellH = 80;  // its height: as wide, or taller when there is room
     this.slam = false;
     this.raf = 0;
     this.sticky = {};
@@ -58,12 +60,15 @@ export class Reels {
   /** Size the cells to fit the space the stage gives us. */
   layout(w, h2) {
     const gap = 6, pad = 8;
-    this.cell = Math.max(40, Math.floor(Math.min((w - gap * (this.reels - 1) - pad * 2) / this.reels, (h2 - pad * 2) / this.rows)));
+    const byWidth = (w - gap * (this.reels - 1) - pad * 2) / this.reels, byHeight = (h2 - pad * 2) / this.rows;
+    this.cell = Math.max(40, Math.floor(Math.min(byWidth, byHeight)));
+    this.cellH = Math.max(this.cell, Math.floor(Math.min(byHeight, this.cell * TALL)));
     this.root.style.setProperty("--cell", this.cell + "px");
+    this.root.style.setProperty("--cell-h", this.cellH + "px");
     this.root.style.setProperty("--gap", gap + "px");
     this.root.style.setProperty("--rows", this.rows);
     this.lineLayer.style.width = this.reels * this.cell + (this.reels - 1) * gap + "px";
-    this.lineLayer.style.height = this.rows * this.cell + "px";
+    this.lineLayer.style.height = this.rows * this.cellH + "px";
     this.renderAll();
     this.buildSticky(this.sticky);
   }
@@ -79,7 +84,7 @@ export class Reels {
   }
 
   renderReel(r) {
-    const cell = this.cell, cells = this.cells[r];
+    const cell = this.cellH, cells = this.cells[r];
     if (this.static[r]) return;
     const strip = this.strips[r], L = strip.length, P = this.pos[r], base = Math.floor(P);
     for (let k = 0; k < this.rows + 2; k++) {
@@ -93,7 +98,7 @@ export class Reels {
 
   placeStatic(r) {
     const cells = this.cells[r];
-    for (let k = 0; k < this.rows + 2; k++) cells[k].el.style.transform = `translateY(${(k - 1) * this.cell}px)`;
+    for (let k = 0; k < this.rows + 2; k++) cells[k].el.style.transform = `translateY(${(k - 1) * this.cellH}px)`;
   }
 
   // ---- showing a grid without spinning ----------------------------------------------------------
@@ -249,7 +254,7 @@ export class Reels {
     this.stickyLayer.innerHTML = "";
     for (const [key, id] of Object.entries(map)) {
       const [r, row] = key.split(",").map(Number);
-      const el = h("div", { class: "sticky-cell", style: { transform: `translate(${r * (this.cell + 6)}px, ${row * this.cell}px)`, width: this.cell + "px", height: this.cell + "px" } }, symbolSvg(this.artOf(id)), h("span", { class: "pin" }, "📌"));
+      const el = h("div", { class: "sticky-cell", style: { transform: `translate(${r * (this.cell + 6)}px, ${row * this.cellH}px)`, width: this.cell + "px", height: this.cellH + "px" } }, symbolSvg(this.artOf(id)), h("span", { class: "pin" }, "📌"));
       this.stickyLayer.append(el);
     }
   }
@@ -310,7 +315,7 @@ export class Reels {
         this.setCell(c, nextGrid[r][row]);
         const from = row < n ? row - n : survivorsFrom[row - n];
         if (from !== row && c.el.animate) {
-          c.el.animate([{ transform: `translateY(${(from + 1) * this.cell}px)` }, { transform: `translateY(${(row + 1) * this.cell}px)` }],
+          c.el.animate([{ transform: `translateY(${(from + 1) * this.cellH}px)` }, { transform: `translateY(${(row + 1) * this.cellH}px)` }],
             { duration: 330 / timing.speed, easing: "cubic-bezier(.3,1.25,.5,1)", delay: (r * 25) / timing.speed });
         }
       }

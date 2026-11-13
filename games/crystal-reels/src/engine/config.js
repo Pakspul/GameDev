@@ -1,6 +1,6 @@
 // Machine config: validation (MATH-03) and a prepared form the engine can use quickly.
 // The engine contains no machine-specific numbers: everything comes from a config like
-// games/slots/machines/crystal-fortune.json.
+// games/crystal-reels/machines/crystal-fortune.json.
 
 export const SYMBOL_KINDS = ["regular", "wild", "scatter", "coin", "bonus", "collect"];
 export const JACKPOT_TIERS = ["mini", "minor", "major", "grand"];

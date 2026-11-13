@@ -3,9 +3,6 @@
 (function () {
   const en = {
     "metaDesc": "A brick breaker with seven modes and endless levels. No ads, no purchases, no tracking.",
-    "pause": "Pause",
-    "arcade": "← Arcade",
-    "back": "← Back",
     "play": "Play",
     "promise": "No ads, no timers, no purchases. Credits are earned by playing, and only by playing.",
     "shop": "Shop", "help": "How to play", "stats": "Stats", "settings": "Settings",
@@ -36,6 +33,10 @@
     "prog.streak": "{n} days in a row",
     "prog.stars": "★ {n} / {max}",
     "prog.medals": "{n} / {max} medals",
+    "lobby.modes": "Modes",
+    "lobby.dailyPays": "+{n} credits for your first clear",
+    "lobby.checkpoints": "Classic carries your lives from level to level, so a new game starts from level 1 or a checkpoint (every {n}th level).",
+    "lobby.walls": "Walls",
 
     "hud.level": "Level {n}",
     "hud.zen": "Zen · {n}",
@@ -244,7 +245,6 @@
     "set.palette": "Brick colours", "set.palette.default": "Standard", "set.palette.cb": "Colour-blind safe",
     "set.reducedMotion": "Reduce motion", "set.leftHanded": "Left-handed layout", "set.autoLaunch": "Launch the ball automatically",
     "set.aimAssist": "Aim assist (Descent, Puzzle)", "set.sensitivity": "Paddle sensitivity",
-    "set.language": "Language",
     "set.save": "Save data",
     "set.saveNote": "Your progress is stored on this device only. Export it to keep a copy or move it to another device.",
     "set.saveText": "Save data as text",
@@ -263,9 +263,6 @@
 
   const nl = {
     "metaDesc": "Een brick breaker met zeven spelsoorten en eindeloze levels. Geen advertenties, geen aankopen, geen tracking.",
-    "pause": "Pauze",
-    "arcade": "← Arcade",
-    "back": "← Terug",
     "play": "Spelen",
     "promise": "Geen advertenties, geen wachttijden, geen aankopen. Credits verdien je met spelen, en alleen met spelen.",
     "shop": "Winkel", "help": "Zo speel je", "stats": "Statistieken", "settings": "Instellingen",
@@ -296,6 +293,10 @@
     "prog.streak": "{n} dagen op rij",
     "prog.stars": "★ {n} / {max}",
     "prog.medals": "{n} / {max} medailles",
+    "lobby.modes": "Spelvormen",
+    "lobby.dailyPays": "+{n} credits als je hem vandaag voor het eerst haalt",
+    "lobby.checkpoints": "In Klassiek neem je je levens mee van level naar level. Een nieuw spel begint daarom bij level 1 of bij een checkpoint (elk {n}e level).",
+    "lobby.walls": "Muren",
 
     "hud.level": "Level {n}",
     "hud.zen": "Zen · {n}",
@@ -504,7 +505,6 @@
     "set.palette": "Kleuren blokjes", "set.palette.default": "Standaard", "set.palette.cb": "Kleurenblindveilig",
     "set.reducedMotion": "Minder beweging", "set.leftHanded": "Linkshandige indeling", "set.autoLaunch": "Bal vanzelf lanceren",
     "set.aimAssist": "Mikhulp (Afdaling, Puzzel)", "set.sensitivity": "Gevoeligheid batje",
-    "set.language": "Taal",
     "set.save": "Opgeslagen voortgang",
     "set.saveNote": "Je voortgang staat alleen op dit apparaat. Exporteer hem om een kopie te bewaren of naar een ander apparaat te verhuizen.",
     "set.saveText": "Voortgang als tekst",

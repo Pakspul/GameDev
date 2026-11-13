@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { simulate, simulateFreeSpinsOption, volatilityClass } from "../../games/slots/src/engine/simulate.js";
+import { simulate, simulateFreeSpinsOption, volatilityClass } from "../../games/crystal-reels/src/engine/simulate.js";
 import { MACHINE_IDS, loadMachine } from "./helpers.mjs";
 
 // A quick statistical check of every machine (300,000 spins, fixed seed). The strict MATH-04 check, 10 million

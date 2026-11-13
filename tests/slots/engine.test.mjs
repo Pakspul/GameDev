@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Rng } from "../../games/slots/src/engine/rng.js";
-import { validateMachine, prepare } from "../../games/slots/src/engine/config.js";
-import { evaluateGrid, evaluateScatter } from "../../games/slots/src/engine/evaluate.js";
-import { resolveSpin } from "../../games/slots/src/engine/spin.js";
-import { anticipationPlan } from "../../games/slots/src/engine/anticipation.js";
+import { Rng } from "../../games/crystal-reels/src/engine/rng.js";
+import { validateMachine, prepare } from "../../games/crystal-reels/src/engine/config.js";
+import { evaluateGrid, evaluateScatter } from "../../games/crystal-reels/src/engine/evaluate.js";
+import { resolveSpin } from "../../games/crystal-reels/src/engine/spin.js";
+import { anticipationPlan } from "../../games/crystal-reels/src/engine/anticipation.js";
 import { MACHINE_IDS, loadMachine, loadGame, clone, rigged, gridMachine } from "./helpers.mjs";
 
 // ---- RNG (MATH-02) ---------------------------------------------------------------------------
@@ -99,7 +99,7 @@ test("ECO-01: the starting balance covers at least 200 spins at every machine's 
 test("MATH-03/04/05: every machine's targets follow the specification's defaults", () => {
   for (const id of MACHINE_IDS) {
     const cfg = loadMachine(id);
-    assert.equal(cfg.targets.rtp, 0.96);
+    assert.equal(cfg.targets.rtp, 0.975); // raised from the specification default of 0.96 (ECO-08)
     assert.deepEqual(cfg.targets.hitFrequency, [0.25, 0.35]);
     assert.deepEqual(cfg.targets.freeSpinsEvery, [150, 200]);
     assert.equal(cfg.maxWin, 5000);

@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Nuts &amp; Bolts</title>
 <link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="../../shared/css/gamenav.css">
+<link rel="stylesheet" href="../../shared/css/gamelobby.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,23 +20,12 @@
 
 <div id="app" class="pat-pegs">
   <header class="topbar">
-    <div class="left">
-      <button id="menuBtn" class="hexbtn" data-i18n-attr="aria-label:menuBtn;title:menuBtn.tip">
-        <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></span>
-      </button>
-    </div>
+    <div class="left" id="navLeft"></div>
     <div class="title">
       <span id="diffPill" class="pill"></span>
       <h1 id="levelTitle"></h1>
     </div>
-    <div class="right">
-      <button id="restartBtn" class="hexbtn" data-i18n-attr="aria-label:restart;title:restart.tip">
-        <span class="face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4.5 4v4.5H9"/></svg></span>
-      </button>
-      <button id="fsBtn" class="hexbtn" data-i18n-attr="aria-label:fs;title:fs.tip">
-        <span class="face"><svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span>
-      </button>
-    </div>
+    <div class="right" id="navRight"></div>
   </header>
 
   <div class="status">
@@ -79,36 +70,9 @@
     <div class="card" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
       <div class="cardhead">
         <h2 id="menuTitle" data-i18n="workshop"></h2>
-        <button class="btn small" id="menuShop" data-i18n="shop"></button>
+        <div id="menuWallet"></div>
       </div>
-      <button class="daily" id="dailyBtn">
-        <span class="cal"><small id="calMonth">Oct</small><b id="calDay">30</b></span>
-        <span><span class="dname" data-i18n="daily"></span><span class="dmeta" id="dailyMeta" data-i18n="daily.same"></span></span>
-        <span class="go" data-i18n="play"></span>
-      </button>
-      <div class="group">
-        <div class="label" data-i18n="difficulty"></div>
-        <div class="diffs" id="diffs"></div>
-      </div>
-      <div class="group">
-        <div class="label" data-i18n="levelLabel"></div>
-        <div class="levelrow">
-          <button class="step" id="lvlMinus" data-i18n-attr="aria-label:prevLevel">−</button>
-          <input id="levelInput" type="number" inputmode="numeric" min="1" data-i18n-attr="aria-label:levelNumber">
-          <button class="step" id="lvlPlus" data-i18n-attr="aria-label:nextLevel">+</button>
-        </div>
-        <div class="levelinfo"><span id="levelType"></span><span id="levelBest"></span></div>
-      </div>
-      <div class="actions">
-        <button class="btn steel" id="menuCancel" data-i18n="back"></button>
-        <button class="btn" id="playBtn" data-i18n="play"></button>
-      </div>
-      <div class="statsrow">
-        <div class="stat"><b id="stCleared">0</b><span data-i18n="st.cleared"></span></div>
-        <div class="stat"><b id="stStars">0</b><span data-i18n="st.stars"></span></div>
-        <div class="stat"><b id="stStreak">0</b><span data-i18n="st.streak"></span></div>
-        <div class="stat"><b id="stEarned">0</b><span data-i18n="st.earned"></span></div>
-      </div>
+      <div class="lobby" id="lobby"></div>
       <details class="howto">
         <summary data-i18n="how"></summary>
         <p data-i18n-html="how.1"></p>
@@ -154,6 +118,8 @@
 </div>
 <script src="../../shared/js/platform.js"></script>
 <script src="../../shared/js/i18n.js"></script>
+<script src="../../shared/js/gamenav.js"></script>
+<script src="../../shared/js/gamelobby.js"></script>
 <script src="strings.js"></script>
 <script src="../../shared/js/economy.js"></script>
 <script src="economy.js"></script>

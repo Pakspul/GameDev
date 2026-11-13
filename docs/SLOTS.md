@@ -1,6 +1,6 @@
 # Crystal Reels (slot machines)
 
-A free-to-play slot game with **play money only**: no ads, no purchases, no paid coins, no tracking. It lives in [`games/slots/`](../games/slots) and is built from the acceptance criteria in *Slot Machine Game — Acceptance Criteria* (story IDs such as `REEL-01` below refer to that document).
+A free-to-play slot game with **play money only**: no ads, no purchases, no paid coins, no tracking. It lives in [`games/crystal-reels/`](../games/crystal-reels) and is built from the acceptance criteria in *Slot Machine Game — Acceptance Criteria* (story IDs such as `REEL-01` below refer to that document).
 
 Two machines ship, so every engine feature is reachable in play:
 
@@ -11,12 +11,12 @@ Two machines ship, so every engine feature is reachable in play:
 | Wilds | standard (reels 2–4), multiplier wilds in free spins | expanding wild (reels 2–4) |
 | Features | free spins (sticky wilds), Hold & Spin | free spins with a choice of 3 options, pick bonus |
 | Extras | Mini/Minor fixed + Major/Grand progressive jackpots, collection meter → free spins | cascading reels (×1 ×2 ×3 ×5), collection meter → pick bonus, jackpots inside the pick bonus |
-| RTP / hit frequency / free spins | 96.0% / 31% / 1 in 178 | 96.0% / 32% / 1 in 160 |
+| RTP / hit frequency / free spins | 97.5% / 31% / 1 in 176 | 97.5% / 32% / 1 in 158 |
 
 ## Running it
 
 ```bash
-npm run dev                  # http://localhost:8080/games/slots/index.html   (add ?debug=1 for the debug menu)
+npm run dev                  # http://localhost:8080/games/crystal-reels/index.html   (add ?debug=1 for the debug menu)
 npm run test:slots           # validate configs, unit tests, 1M-spin check of every machine
 node tests/slots/e2e.mjs     # play it in a headless phone browser (needs Playwright, see the README)
 npm run slots:sim            # the math simulator, see below
@@ -28,7 +28,7 @@ npm run slots:verify         # release gate: 10 million spins per machine, RTP w
 No bundler, no libraries, no network: plain ES modules, SVG symbols drawn in code, and every sound synthesised with Web Audio. Text is in English and Dutch through the shared `I18n` layer (`strings.js`).
 
 ```
-games/slots/
+games/crystal-reels/
   index.html, style.css, strings.js, game.js     page, look, text, boot
   machines/*.json                                 one versioned config per machine: ALL odds live here
   data/game.json                                  economy, XP, missions, achievements
@@ -55,7 +55,7 @@ The game, the simulator and the replay tool all drive the same `Session` class, 
 
 ### Spin state machine (REEL-06)
 
-`Idle → Spinning → Stopping → Evaluating → Presenting → (Feature) → Idle`. Each state accepts a fixed set of inputs ([`src/core/state-machine.js`](../games/slots/src/core/state-machine.js)); everything else is dropped, not queued. The per-line win cycle keeps running in Idle and is cancelled the moment a new spin starts (PAY-05).
+`Idle → Spinning → Stopping → Evaluating → Presenting → (Feature) → Idle`. Each state accepts a fixed set of inputs ([`src/core/state-machine.js`](../games/crystal-reels/src/core/state-machine.js)); everything else is dropped, not queued. The per-line win cycle keeps running in Idle and is cancelled the moment a new spin starts (PAY-05).
 
 ### Machine config
 
@@ -83,10 +83,10 @@ Measured with the shipped configs (10 million spins, seed 2026):
 
 | | RTP | hit frequency | free spins | volatility index |
 |---|---|---|---|---|
-| Crystal Fortune | 96.1% (± 0.3) | 31.2% | 1 in 178 | 9.7 (medium) |
-| Neon Tumble | 96.3% (± 0.2) | 31.7% | 1 in 160 | 7.5 (medium) |
+| Crystal Fortune | 97.3% (± 0.3) | 31.2% | 1 in 176 | 8.5 (medium) |
+| Neon Tumble | 97.5% (± 0.2) | 31.7% | 1 in 158 | 7.6 (medium) |
 
-The three free-spins options of Neon Tumble are worth 41.2× the bet each (FS-04 allows ±2%).
+The three free-spins options of Neon Tumble are worth 41.6× the bet each (FS-04 allows ±2%).
 
 ## Fairness, enforced by tests (FAIR-*)
 
@@ -100,6 +100,12 @@ The three free-spins options of Neon Tumble are worth 41.2× the bet each (FS-04
 ### Where this departs from the specification, on purpose
 
 * **The refill has no waiting time.** ECO-04 allows "immediately or after a short cooldown (default 10 min)". The project mission rules out timers that stop you playing, so `data/game.json` sets `refill.cooldownMinutes` to 0. Set it to 10 to get the specification default; the screen and tests support both.
+* **The target RTP is 97.5%, not the specification's 96%** (ECO-08). A player who had lost steadily at 96% asked for a kinder game; the paytable's 3-of-a-kind pays of the lowest symbols were raised (Crystal Fortune: Ten and Jack 10 → 11; Neon Tumble: Circle 3 → 4, Triangle 3 → 4, Square 5 → 6, Hex 7 → 8, Ring 9 → 10) and `targets.rtp` set to 0.975 in both configs. The hit frequency and volatility class are unchanged. The profile's "return" is cash only, so it reads a little below the target while the progressive jackpots have not been won.
+* **Rewards grow with the level** (ECO-07). The bets a player can place grow over 100-fold with the level, so flat rewards stopped mattering. A level-up reward, a mission reward, the timed bonus and the refill are the base amount in `data/game.json` times `1 + economy.rewardPerLevel × (level − 1)` (0.25 per level: ×8.25 at level 30), rounded to tens (`rewardScale`, `scaledReward` in `core/profile.js`).
+* **Max bet is capped** (ECO-08). It picks the highest unlocked bet that is at most `economy.maxBetShare` (2%) of the balance, not the highest the balance can pay, and a toast says so when the cap held back a higher bet. The + button still reaches every unlocked bet.
+* **Loss warnings** (ECO-09). A bet above `economy.riskyBetShare` (5%) of the balance turns orange and says what share of the coins it is. Once per session, when the net loss passes `economy.sessionLossWarn` (50%) of the starting balance, a message appears and autoplay stops.
+* **Autoplay can be unlimited** (REEL-05): ∞ next to 10 / 25 / 50 / 100 (`autoplay.infinite`), with an optional stop when a chosen share of the coins is lost (`autoplay.lossLimits`). Unlimited autoplay still stops for a feature, when the coins run out, and when the session reminder is due.
+* **Export profile** (PERS-06): Settings → Export shows the profile as JSON (level, balance, totals, the return so far, per-machine stats) with a Copy button, for sharing or for checking the actual return.
 * **Autoplay stops when a feature triggers** (REEL-05), so PICK-04's "during autoplay items are picked automatically every second" is offered as an *Auto-pick* switch inside the pick bonus instead.
 * **Scatter, coin and bonus triggers are read from the grid as it landed**, not from cascade refills.
 * **The bonus-reminder notification is opt-in and off by default, but only works while the game is open**: a browser page cannot wake itself up. A native build could use a local notification plugin.
@@ -142,9 +148,9 @@ These need a real device or real players and could not be measured in a headless
 | HS-01..05 | `engine/features.js` (`planHoldSpin`), `ui/machine-screen.js` (`runHoldSpin`) |
 | PICK-01..04 | `engine/features.js` (`planPick`), `ui/machine-screen.js` (`runPick`) |
 | JP-01..03 | `engine/jackpot.js`, jackpot panel and `celebrateJackpot` |
-| ECO-01..06 | `core/profile.js`, `data/game.json` |
+| ECO-01..09 | `core/profile.js` (rewards, `maxBetFor`, `betIsRisky`), `data/game.json` (`economy`, `autoplay`), `ui/machine-screen.js` (Max bet, loss checks, autoplay) |
 | PROG-01..05 | `core/profile.js`, `ui/lobby.js`, `ui/menus.js`; meter in `core/session.js` |
-| PERS-01..05 | `core/save.js` (atomic double slot, checksum, versioned migrations), `core/session.js` |
+| PERS-01..06 | `core/save.js` (atomic double slot, checksum, versioned migrations), `core/session.js`; PERS-06 the profile export: `exportProfile` in `core/profile.js`, `showExport` in `ui/menus.js` |
 | FAIR-01..07 | see above |
 | NFR-04..07, 09..11 | install size 270 KB; no loop runs when idle; safe-area insets and 44 px targets in `style.css`; no animation faster than about 1 Hz; all strings in `strings.js`; no network |
 | TOOL-01..05 | `scripts/slots-sim.mjs`, `src/debug/debug.js`, `Session.replay`; TOOL-05: `npm run dev` serves configs from disk, so a config edit needs only a refresh |

@@ -6,6 +6,7 @@
 //   - ANY request to the internet (the app must work in airplane mode)
 //   - a game that doesn't render a canvas
 //   - a missing translation (every page runs once per language; see shared/js/i18n.js)
+//   - a game without the shared back button and menu (shared/js/gamenav.js)
 // Screenshots land in test-results/ so you can eyeball every game in a few seconds.
 //
 //   npm test            tests dist/ (run `npm run build` first; `npm test` does it for you)
@@ -94,6 +95,20 @@ for (const lang of LANGS) for (const { name, path } of pages) {
   } else {
     const canvas = await page.$$eval("canvas", (cs) => cs.some((c) => c.width > 0 && c.height > 0));
     if (!canvas) problems.push("no visible canvas rendered");
+    // Every game has the shared way out (shared/js/gamenav.js): back top left, the menu drawer top right.
+    const nav = await page.evaluate(() => {
+      const shown = (s) => { const e = document.querySelector(s); const r = e && e.getBoundingClientRect(); return !!r && r.width > 0 && r.height > 0; };
+      const out = { back: shown(".gnav-back"), menu: shown(".gnav-menu") };
+      if (out.menu) {
+        document.querySelector(".gnav-menu").click();
+        out.opens = document.querySelector(".gnav-drawer").open;
+        document.querySelector(".gnav-drawer").close();
+      }
+      return out;
+    });
+    if (!nav.back) problems.push("no back button (top left, shared/js/gamenav.js)");
+    if (!nav.menu) problems.push("no menu button (top right, shared/js/gamenav.js)");
+    else if (!nav.opens) problems.push("the menu button doesn't open the menu drawer");
     // A tap in the middle of the screen: whatever it hits, it must not throw.
     await page.touchscreen.tap(206, 460);
     await page.waitForTimeout(600);

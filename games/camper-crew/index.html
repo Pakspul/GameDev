@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#2b2f36">
 <title>Camper Crew</title>
+<link rel="stylesheet" href="../../shared/css/gamenav.css">
+<link rel="stylesheet" href="../../shared/css/gamelobby.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="state-menu">
@@ -16,9 +18,6 @@
 
 <!-- Heads-up display while driving -->
 <header id="hud">
-  <button type="button" class="hud-btn" id="pauseBtn" data-i18n-attr="aria-label:pause">
-    <svg width="18" height="18" viewBox="0 0 18 18"><rect x="4" y="3" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="10.5" y="3" width="3.5" height="12" rx="1" fill="currentColor"/></svg>
-  </button>
   <div class="trip">
     <div class="track" id="track"><div class="marker" id="marker"></div><div class="flag"></div></div>
     <div class="meters">
@@ -42,17 +41,11 @@
 <section id="menu" class="overlay" aria-label="Camper Crew">
   <div class="card">
     <div class="topline">
-      <button type="button" class="ghost" id="arcadeBtn" data-i18n="arcade"></button>
       <span class="tag" data-i18n="prototype"></span>
     </div>
     <h1>Camper Crew</h1>
     <p class="lead" data-i18n="lead"></p>
-    <div class="road-pick">
-      <button type="button" class="round" id="prevRoad" data-i18n-attr="aria-label:prevRoad">&lsaquo;</button>
-      <div class="road-name"><strong id="roadName"></strong><span id="roadStars"></span></div>
-      <button type="button" class="round" id="nextRoad" data-i18n-attr="aria-label:nextRoad">&rsaquo;</button>
-    </div>
-    <button type="button" class="primary" id="playBtn" data-i18n="drive"></button>
+    <div class="lobby" id="lobby"></div>
     <details>
       <summary data-i18n="how"></summary>
       <ul class="how">
@@ -70,16 +63,6 @@
   </div>
 </section>
 
-<!-- Pause -->
-<section id="pause" class="overlay" data-i18n-attr="aria-label:paused" hidden>
-  <div class="card narrow">
-    <h2 data-i18n="paused"></h2>
-    <button type="button" class="primary" id="resumeBtn" data-i18n="resume"></button>
-    <button type="button" class="secondary" id="restartBtn" data-i18n="restartRoad"></button>
-    <button type="button" class="secondary" id="menuBtn" data-i18n="menu"></button>
-  </div>
-</section>
-
 <!-- Result -->
 <section id="result" class="overlay" data-i18n-attr="aria-label:result" hidden>
   <div class="card narrow">
@@ -94,6 +77,8 @@
 
 <script src="../../shared/js/platform.js"></script>
 <script src="../../shared/js/i18n.js"></script>
+<script src="../../shared/js/gamenav.js"></script>
+<script src="../../shared/js/gamelobby.js"></script>
 <script src="strings.js"></script>
 <script src="../../shared/vendor/three/three.min.js"></script>
 <script src="levels.js"></script>

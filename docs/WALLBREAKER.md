@@ -38,7 +38,7 @@ Everything else from the mission holds: nothing is for sale, no login bonus, the
 | `src/save.js` | Save data under `wallbreaker.save`, versioned, with export and import. |
 | `src/render.js` | Canvas 2D drawing, particles, capsule icons, the HUD rings, aim assist. |
 | `src/audio.js` | Synthesised sound packs and a quiet music loop (WebAudio, no files). |
-| `game.js` | Menus, the modes as sessions, shop, settings, input, the frame loop. Exposes `window.Wallbreaker = { init, pause, resume, destroy }`. |
+| `game.js` | Menus (the lobby from `shared/js/gamelobby.js`: the daily on top, a tab per mode, Play, boosts and the levels with their stars), the modes as sessions, shop, settings, input, the frame loop. Exposes `window.Wallbreaker = { init, pause, resume, destroy }`. |
 | `sw.js`, `manifest.webmanifest` | Offline install for the browser version (network first, cached copy without a network). |
 
 Levels are JSON (`{ kind, number, seed, bricks: [{ id, t, hp, c, r, w, h }] }`): the generator and the handcrafted walls produce the same format.

@@ -1,5 +1,5 @@
-// A seeded headless player for Coin Dozer: auto-drop on, the aim wandering over the shelf, the real
-// machine and physics. Shared by the tests (rules.test.mjs, sim.test.mjs) and scripts/coin-dozer-sim.mjs.
+// A seeded headless player for Coin Dozer: auto-drop on, the aim wandering over the shelf (on the pin
+// wall: from slot to slot), the real machine and physics. Shared by the tests (rules.test.mjs, sim.test.mjs) and scripts/coin-dozer-sim.mjs.
 import { initPhysics, isCoin } from "../../games/coin-dozer/src/board.js";
 import { Machine } from "../../games/coin-dozer/src/machine.js";
 import { CONFIG } from "../../games/coin-dozer/src/config.js";
@@ -16,10 +16,10 @@ export function inBounds(it) {
  * Play `cycles` pusher cycles. Returns stats; `problems` lists every NaN or out-of-bounds body and
  * every exception (an empty list is a pass).
  */
-export async function simulate({ cycles = 200, warmup = 30, seed = 20261107, cfg = CONFIG, progress = freshProgress(cfg), log = null } = {}) {
+export async function simulate({ cycles = 200, warmup = 30, seed = 20261107, cfg = CONFIG, progress = freshProgress(cfg), type = "classic", log = null } = {}) {
   await initPhysics();
   const events = {};
-  const m = new Machine({ cfg, progress, onEvent: (t) => { events[t] = (events[t] || 0) + 1; }, date: () => "2026-11-07" });
+  const m = new Machine({ cfg, progress, type, onEvent: (t) => { events[t] = (events[t] || 0) + 1; }, date: () => "2026-11-07" });
   m.newBoard(seed);
   const player = new Rng(seed ^ 0x9e3779b9);
   const problems = [];

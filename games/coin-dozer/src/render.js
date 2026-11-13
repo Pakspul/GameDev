@@ -2,93 +2,81 @@
 // Coins are instanced: one draw call per coin kind, so 250 standard coins cost one call. Prizes are
 // small groups of primitives. Nothing here changes the simulation; it reads the board's items and
 // interpolates between the last two physics steps so motion stays smooth at any frame rate.
+//
+// The look: physically based materials (metal that reflects a small arcade hall, rendered once per
+// theme in art.js), coins with a raised rim and struck relief, brushed steel, a lacquered cabinet,
+// a neon back panel and chasing bulbs. Colours are given in sRGB and converted, so they show as written.
 import { CONFIG } from "./config.js";
 import { THEMES, FIGURES } from "./themes.js";
 import { gemRings } from "./shapes.js";
+import * as Art from "./art.js";
 
 const THREE = globalThis.THREE;
 const KINDS = ["coin", "gold", "lucky", "bomb", "jackpot"];
 const CAP = { coin: 300, gold: 80, lucky: 8, bomb: 20, jackpot: 4 };
-const B = CONFIG.board;
+const B = CONFIG.board, PW = CONFIG.pinWall;
+const PANEL_TOP = PW.top + 2.3;   // the top of the back panel, above the pin wall's slots
+const OUTER = B.width / 2 + 0.7;  // the inside of the cabinet's sides: the gutters run between the shelf and here
+const MARQUEE = 1.5;              // the height of the lit sign on top of the cabinet
+const lin = (c) => new THREE.Color(c).convertSRGBToLinear();
 
-// ---- Coin faces, drawn once on a canvas: heads on the left half, tails on the right ----------------------
-const FACE = {
-  coin: { a: "#f4f6fa", b: "#9aa1ad", rim: "#d5d9e0", ink: "#6c7380", heads: "star", tails: "1", rimDots: false },
-  gold: { a: "#fff1b0", b: "#c48a12", rim: "#f2c94c", ink: "#8a5a00", heads: "crown", tails: "5", rimDots: true },
-  lucky: { a: "#c9ffd8", b: "#1f9a4a", rim: "#7fe0a0", ink: "#0d5a2a", heads: "clover", tails: "clover", rimDots: true },
-  bomb: { a: "#6b6f7a", b: "#1b1d22", rim: "#3b3e46", ink: "#ffb347", heads: "fuse", tails: "!", rimDots: false },
-  jackpot: { a: "#fff6c8", b: "#d08a00", rim: "#ffd447", ink: "#8a4a00", heads: "star", tails: "50", rimDots: true },
-};
-
-function coinTexture(kind) {
-  const f = FACE[kind], S = 256;
-  const cv = document.createElement("canvas");
-  cv.width = S * 2; cv.height = S;
-  const g = cv.getContext("2d");
-  for (let side = 0; side < 2; side++) {
-    const cx = S * side + S / 2, cy = S / 2, R = S / 2 - 2;
-    const grad = g.createRadialGradient(cx - R * 0.35, cy - R * 0.35, R * 0.1, cx, cy, R);
-    grad.addColorStop(0, f.a); grad.addColorStop(1, f.b);
-    g.fillStyle = grad; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
-    // raised rim, with dots on gold-type coins (so gold and silver differ in marking, not only colour)
-    g.lineWidth = 14; g.strokeStyle = f.rim; g.beginPath(); g.arc(cx, cy, R - 9, 0, Math.PI * 2); g.stroke();
-    g.lineWidth = 2; g.strokeStyle = f.ink; g.globalAlpha = 0.5; g.beginPath(); g.arc(cx, cy, R - 17, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1;
-    if (f.rimDots) {
-      g.fillStyle = f.ink;
-      for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; g.beginPath(); g.arc(cx + Math.cos(a) * (R - 9), cy + Math.sin(a) * (R - 9), 2.6, 0, Math.PI * 2); g.fill(); }
+// ---- Coins ------------------------------------------------------------------------------------------------
+/**
+ * A coin with a raised rim, a recessed field and a rounded edge, turned around its axis. The faces
+ * sample the heads/tails halves of the coin atlas (art.js), the edge samples the reeding strip.
+ * Tails is mapped so it reads the right way up when a coin lands upside down.
+ */
+function coinGeometry(diameter, thickness, segs = 32) {
+  const R = diameter / 2, H = thickness / 2, { S, strip } = Art.COIN_ATLAS, AW = S * 2, AH = S + strip;
+  // The profile from the top centre, round the edge, to the bottom centre: [r, y] as shares of R and H.
+  const P = [[0, 0.62], [0.83, 0.62], [0.87, 1], [0.955, 1], [1, 0.72], [1, -0.72], [0.955, -1], [0.87, -1], [0.83, -0.62], [0, -0.62]];
+  const EDGE = 4;   // the band from P[4] to P[5] is the edge
+  const pos = [], nor = [], uv = [];
+  const uvFace = (x, z, top) => top
+    ? [(S / 2 + (x / R) * (S / 2 - 1)) / AW, 1 - (S / 2 + (z / R) * (S / 2 - 1)) / AH]
+    : [(S * 1.5 + (x / R) * (S / 2 - 1)) / AW, 1 - (S / 2 - (z / R) * (S / 2 - 1)) / AH];
+  for (let k = 0; k < P.length - 1; k++) {
+    const [r0, y0] = P[k], [r1, y1] = P[k + 1];
+    let nr = -(y1 - y0) * R, ny = (r1 - r0) * H;     // the band's outward normal in the profile plane
+    const l = Math.hypot(nr, ny); nr /= l; ny /= l;
+    const top = (y0 + y1) / 2 > 0;
+    for (let j = 0; j < segs; j++) {
+      const quad = [[k, j], [k, j + 1], [k + 1, j + 1], [k + 1, j]].map(([kk, jj]) => {
+        const a = (jj / segs) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+        const r = P[kk][0] * R, y = P[kk][1] * H;
+        const p = [r * c, y, r * s];
+        const t = k === EDGE ? [jj / segs, (1 - S / AH) * (kk === EDGE ? 1 : 0)] : uvFace(p[0], p[2], top);
+        return { p, n: [nr * c, ny, nr * s], t };
+      });
+      // Wind each triangle so it faces outward.
+      const tri = (a, b, c) => {
+        const u = [b.p[0] - a.p[0], b.p[1] - a.p[1], b.p[2] - a.p[2]], v = [c.p[0] - a.p[0], c.p[1] - a.p[1], c.p[2] - a.p[2]];
+        const cx = u[1] * v[2] - u[2] * v[1], cy = u[2] * v[0] - u[0] * v[2], cz = u[0] * v[1] - u[1] * v[0];
+        if (Math.abs(cx) + Math.abs(cy) + Math.abs(cz) < 1e-12) return;      // the centre of a face: degenerate
+        const out = cx * a.n[0] + cy * a.n[1] + cz * a.n[2] > 0;
+        for (const q of out ? [a, b, c] : [a, c, b]) { pos.push(...q.p); nor.push(...q.n); uv.push(...q.t); }
+      };
+      tri(quad[0], quad[1], quad[2]);
+      tri(quad[0], quad[2], quad[3]);
     }
-    const mark = side === 0 ? f.heads : f.tails;
-    g.fillStyle = f.ink; g.strokeStyle = f.ink;
-    if (mark === "star") star(g, cx, cy, R * 0.45, R * 0.2, 5);
-    else if (mark === "crown") crown(g, cx, cy, R * 0.5);
-    else if (mark === "clover") clover(g, cx, cy, R * 0.22);
-    else if (mark === "fuse") fuse(g, cx, cy, R * 0.4);
-    else {
-      g.font = `900 ${mark.length > 1 ? R * 0.8 : R * 1.05}px system-ui, sans-serif`;
-      g.textAlign = "center"; g.textBaseline = "middle";
-      g.fillText(mark, cx, cy + R * 0.06);
-    }
   }
-  const tex = new THREE.CanvasTexture(cv);
-  tex.anisotropy = 4;
-  return tex;
-}
-function star(g, cx, cy, r1, r2, n) {
-  g.beginPath();
-  for (let i = 0; i < n * 2; i++) { const a = -Math.PI / 2 + (i * Math.PI) / n, r = i % 2 ? r2 : r1; g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
-  g.closePath(); g.fill();
-}
-function crown(g, cx, cy, s) {
-  g.beginPath();
-  g.moveTo(cx - s, cy + s * 0.5); g.lineTo(cx - s, cy - s * 0.4); g.lineTo(cx - s * 0.5, cy + s * 0.05); g.lineTo(cx, cy - s * 0.6);
-  g.lineTo(cx + s * 0.5, cy + s * 0.05); g.lineTo(cx + s, cy - s * 0.4); g.lineTo(cx + s, cy + s * 0.5); g.closePath(); g.fill();
-}
-function clover(g, cx, cy, r) {
-  for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    g.beginPath(); g.arc(cx + dx * r * 0.62, cy + dy * r * 0.62, r * 0.75, 0, Math.PI * 2); g.fill();
-  }
-  g.lineWidth = r * 0.3; g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + r * 0.6, cy + r * 1.6, cx + r * 1.4, cy + r * 2); g.stroke();
-}
-function fuse(g, cx, cy, r) {
-  g.beginPath(); g.arc(cx, cy + r * 0.2, r * 0.75, 0, Math.PI * 2); g.fill();
-  g.lineWidth = r * 0.16; g.beginPath(); g.moveTo(cx + r * 0.4, cy - r * 0.35); g.quadraticCurveTo(cx + r * 0.9, cy - r * 1.1, cx + r * 1.2, cy - r * 0.8); g.stroke();
-  g.fillStyle = "#ffe08a";
-  star(g, cx + r * 1.25, cy - r * 0.85, r * 0.4, r * 0.16, 6);
-}
-
-/** A cylinder whose caps sample the heads/tails halves of the face texture and whose edge samples the rim. */
-function coinGeometry(diameter, thickness) {
-  const geo = new THREE.CylinderGeometry(diameter / 2, diameter / 2, thickness, 32, 1);
-  const pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv;
-  const r = diameter / 2;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i), ny = nor.getY(i);
-    if (ny > 0.5) uv.setXY(i, 0.25 + (x / r) * 0.245, 0.5 - (z / r) * 0.49);
-    else if (ny < -0.5) uv.setXY(i, 0.75 - (x / r) * 0.245, 0.5 - (z / r) * 0.49);
-    else { const a = Math.atan2(z, x); uv.setXY(i, 0.25 + Math.cos(a) * 0.23, 0.5 - Math.sin(a) * 0.46); }
-  }
-  uv.needsUpdate = true;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   return geo;
+}
+
+function coinMaterial(kind) {
+  const m = Art.coinMaps(kind);
+  const mat = new THREE.MeshStandardMaterial({
+    map: m.map, normalMap: m.normalMap, roughnessMap: m.ormMap, metalnessMap: m.ormMap,
+    roughness: 1, metalness: 1, envMapIntensity: 0.95,
+  });
+  mat.normalScale.set(1.1, 1.1);
+  if (kind === "lucky") mat.emissive = lin(0x0b3a18);
+  if (kind === "jackpot") mat.emissive = lin(0x2a1400);
+  return mat;
 }
 
 function gemGeometry(colour) {
@@ -113,30 +101,6 @@ function gemGeometry(colour) {
   return geo;
 }
 
-function softDot() {
-  const cv = document.createElement("canvas");
-  cv.width = cv.height = 64;
-  const g = cv.getContext("2d");
-  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grad.addColorStop(0, "rgba(255,255,255,1)"); grad.addColorStop(0.35, "rgba(255,255,255,0.6)"); grad.addColorStop(1, "rgba(255,255,255,0)");
-  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
-  return new THREE.CanvasTexture(cv);
-}
-
-function stripeTexture(a, b) {
-  const cv = document.createElement("canvas");
-  cv.width = 256; cv.height = 32;
-  const g = cv.getContext("2d");
-  g.fillStyle = a; g.fillRect(0, 0, 256, 32);
-  g.fillStyle = b;
-  for (let x = -32; x < 256; x += 32) { g.beginPath(); g.moveTo(x, 32); g.lineTo(x + 16, 32); g.lineTo(x + 32, 0); g.lineTo(x + 16, 0); g.fill(); }
-  const t = new THREE.CanvasTexture(cv);
-  t.wrapS = THREE.RepeatWrapping; t.repeat.set(3, 1);
-  return t;
-}
-
-const hex = (c) => "#" + c.toString(16).padStart(6, "0");
-
 // ---- Figures from their part lists (themes.js) ----------------------------------------------------------
 const geoCache = new Map(), matCache = new Map();
 function partGeometry(p) {
@@ -144,20 +108,21 @@ function partGeometry(p) {
   if (geoCache.has(key)) return geoCache.get(key);
   let g;
   const s = p[1];
-  if (p[0] === "sph") g = new THREE.SphereGeometry(s, 14, 10);
+  if (p[0] === "sph") g = new THREE.SphereGeometry(s, 16, 12);
   else if (p[0] === "box") g = new THREE.BoxGeometry(s[0], s[1], s[2]);
-  else if (p[0] === "cyl") g = new THREE.CylinderGeometry(s[0], s[1], s[2], 16, 1, false, 0, p[4] && p[4].half ? Math.PI : Math.PI * 2);
-  else if (p[0] === "cone") g = new THREE.ConeGeometry(s[0], s[1], 16);
-  else g = new THREE.TorusGeometry(s[0], s[1], 8, 20, s[2] || Math.PI * 2);
+  else if (p[0] === "cyl") g = new THREE.CylinderGeometry(s[0], s[1], s[2], 18, 1, false, 0, p[4] && p[4].half ? Math.PI : Math.PI * 2);
+  else if (p[0] === "cone") g = new THREE.ConeGeometry(s[0], s[1], 18);
+  else g = new THREE.TorusGeometry(s[0], s[1], 10, 24, s[2] || Math.PI * 2);
   geoCache.set(key, g);
   return g;
 }
+/** Figures are glossy painted toys: a little clear-coat shine from the room's reflections. */
 function partMaterial(colour, o = {}) {
   const key = colour + (o.glow ? "g" : "") + (o.clear ? "c" : "");
   if (matCache.has(key)) return matCache.get(key);
-  const m = new THREE.MeshPhongMaterial({ color: colour, shininess: 50, specular: 0x333333 });
-  if (o.glow) m.emissive = new THREE.Color(colour).multiplyScalar(0.55);
-  if (o.clear) { m.transparent = true; m.opacity = 0.78; m.shininess = 110; m.specular = new THREE.Color(0xffffff); }
+  const m = new THREE.MeshStandardMaterial({ color: lin(colour), roughness: 0.32, metalness: 0.05, envMapIntensity: 0.9 });
+  if (o.glow) m.emissive = lin(colour).multiplyScalar(0.7);
+  if (o.clear) { m.transparent = true; m.opacity = 0.78; m.roughness = 0.05; }
   matCache.set(key, m);
   return m;
 }
@@ -182,10 +147,11 @@ export function buildFigure(theme, index, scale = CONFIG.prizes.figure.height / 
 }
 
 const gemGeoCache = new Map();
+/** A gem: faceted, glassy, with an inner glow, so it reads as a jewel among the coins. */
 export function buildGem(theme, colour) {
   if (!gemGeoCache.has(colour)) gemGeoCache.set(colour, gemGeometry(colour));
-  const c = (THEMES[theme] || THEMES.classic).gems[colour];
-  const m = new THREE.MeshPhongMaterial({ color: c, emissive: new THREE.Color(c).multiplyScalar(0.25), specular: 0xffffff, shininess: 140, flatShading: true, transparent: true, opacity: 0.93 });
+  const c = lin((THEMES[theme] || THEMES.classic).gems[colour]);
+  const m = new THREE.MeshStandardMaterial({ color: c, emissive: c.clone().multiplyScalar(0.35), roughness: 0.04, metalness: 0.25, flatShading: true, transparent: true, opacity: 0.92, envMapIntensity: 2.6 });
   const mesh = new THREE.Mesh(gemGeoCache.get(colour), m);
   mesh.castShadow = true;
   return mesh;
@@ -196,113 +162,207 @@ export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.gl = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-    this.gl.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.gl.setPixelRatio(this.dpr);
+    this.gl.outputEncoding = THREE.sRGBEncoding;
+    this.gl.toneMapping = THREE.ACESFilmicToneMapping;
+    this.gl.toneMappingExposure = 1.05;
     this.gl.shadowMap.enabled = true;
     this.gl.shadowMap.type = THREE.PCFShadowMap;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(40, 1, 0.5, 120);
+    this.camera = new THREE.PerspectiveCamera(38, 1, 0.5, 120);
     this.theme = null;
-    this.quality = 0;          // index into config.performance.particleLevels
+    this.type = "classic";
+    this.quality = 0;          // index into config.performance.particleLevels; the last level also lowers the resolution
     this.shakeAmp = 0;
     this.shakeOn = true;
     this.prizeMeshes = new Map();
     this.ghosts = [];          // coins leaving the board: still drawn for a moment as they drop and shrink
     this.parts = [];           // particles
     this.view = { w: 1, h: 1, top: 0, bottom: 0 };
+    // The camera (resize): the horizontal field of view it aims for, the limits on the vertical one, how
+    // far it looks down (degrees), the point it looks at ([y, z]) and where spare height goes (0 all
+    // below the machine, 1 all above it), per machine.
+    this.lens = {
+      hfov: 54, fovMin: 50, fovMax: 76,
+      pitchPins: 28, targetPins: [2.8, -1], anchorPins: 0.5,
+      pitchClassic: 34, targetClassic: [0.8, 0], anchorClassic: 0.8,
+    };
     this.tmpM = new THREE.Matrix4(); this.tmpP = new THREE.Vector3(); this.tmpQ = new THREE.Quaternion(); this.tmpS = new THREE.Vector3(1, 1, 1);
+    this.tmpC = new THREE.Color();
     this.build();
+    active = this;   // thumbnails are drawn with this renderer
   }
 
   build() {
-    const s = this.scene, W = B.width, D = B.depth;
-    this.hemi = new THREE.HemisphereLight(0xffffff, 0x3a3440, 0.5);
+    const s = this.scene, W = B.width, D = B.depth, back = -D / 2;
+    // Light: the room's reflections do most of it (scene.environment, set per theme); a warm key light
+    // casts the shadows, a cool fill keeps the shadow side readable, and two neon lights by the back panel.
+    this.hemi = new THREE.HemisphereLight(0xffffff, 0x1a1820, 0.35);
     s.add(this.hemi);
-    const sun = new THREE.DirectionalLight(0xfff4e6, 0.62);
-    sun.position.set(-4, 14, 8);
+    const sun = new THREE.DirectionalLight(0xfff0dc, 1.7);
+    sun.position.set(-3, 15, 9);
     sun.target.position.set(0, 0, 0.5);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     const sc = sun.shadow.camera;
-    sc.left = -6; sc.right = 6; sc.top = 8; sc.bottom = -8; sc.near = 4; sc.far = 30;
-    sun.shadow.bias = -0.0015;
+    sc.left = -6; sc.right = 6; sc.top = 9; sc.bottom = -8; sc.near = 4; sc.far = 32;
+    sun.shadow.bias = -0.0008;
     s.add(sun, sun.target);
     this.sun = sun;
+    const fill = new THREE.DirectionalLight(0xc8dcff, 0.45);
+    fill.position.set(7, 5, 12);
+    s.add(fill);
+    this.neonLights = [-1, 1].map((sx) => { const l = new THREE.PointLight(0xffffff, 0.9, 11, 2); l.position.set(sx * 2.4, 3.2, back + 0.8); s.add(l); return l; });
     this.feverLight = new THREE.PointLight(0xffcc33, 0, 18);
     this.feverLight.position.set(0, 6, 1);
     s.add(this.feverLight);
 
-    const M = (c, o = {}) => new THREE.MeshPhongMaterial({ color: c, shininess: 40, ...o });
+    const steel = Art.brushed(7);
+    const Std = (o) => new THREE.MeshStandardMaterial(o);
     this.mats = {
-      shelf: M(0xffffff, { shininess: 80, specular: 0x555555 }),
-      cabinet: M(0xffffff), back: M(0xffffff), trim: M(0xffffff, { shininess: 120, specular: 0xaaaaaa }),
-      pusher: M(0xffffff, { shininess: 70 }), pusherFace: new THREE.MeshPhongMaterial({ color: 0xffffff }),
-      chrome: M(0xdfe4ec, { shininess: 140, specular: 0xffffff }),
-      glass: new THREE.MeshPhongMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.16, shininess: 120, specular: 0xffffff, depthWrite: false }),
-      wide: new THREE.MeshBasicMaterial({ color: 0x7cf7ff, transparent: true, opacity: 0, depthWrite: false }),
-      dark: M(0x08080c), bulb: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+      shelf: Std({ color: lin(0xd4d9e0), map: steel.map, roughnessMap: steel.roughnessMap, metalness: 0.9, roughness: 0.55, envMapIntensity: 1 }),
+      steel: Std({ color: lin(0xc9ced6), map: steel.map, roughnessMap: steel.roughnessMap, metalness: 0.9, roughness: 0.5 }),
+      chrome: Std({ color: lin(0xf0f3f7), metalness: 1, roughness: 0.12 }),
+      brass: Std({ color: lin(0xe6b04a), metalness: 1, roughness: 0.22 }),
+      lacquer: Std({ color: 0xffffff, metalness: 0.05, roughness: 0.38, envMapIntensity: 0.35 }),
+      trim: Std({ color: 0xffffff, metalness: 1, roughness: 0.2 }),
+      dark: Std({ color: lin(0x09080c), roughness: 0.9, metalness: 0, envMapIntensity: 0.25 }),
+      rubber: Std({ color: lin(0xd22a3a), roughness: 0.5, metalness: 0 }),
+      panel: Std({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.5, roughness: 0.18, metalness: 0.1 }),
+      marquee: Std({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.6, roughness: 0.2, metalness: 0.1 }),
+      pusherFront: Std({ color: 0xffffff, metalness: 0.2, roughness: 0.3 }),
+      glass: Std({ color: lin(0xdfefff), transparent: true, opacity: 0.1, roughness: 0.03, metalness: 0, envMapIntensity: 2.2, depthWrite: false }),
+      led: new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
+      wide: new THREE.MeshBasicMaterial({ color: 0x7cf7ff, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }),
     };
-    const box = (w, h, d, mat, x, y, z, shadow = true) => {
+    steel.map.repeat.set(1.5, 2);
+    steel.roughnessMap.repeat.set(1.5, 2);
+    const box = (w, h, d, mat, x, y, z, o = {}) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
       m.position.set(x, y, z);
-      m.receiveShadow = shadow;
-      s.add(m);
+      m.receiveShadow = o.receive !== false;
+      m.castShadow = !!o.cast;
+      (o.to || s).add(m);
       return m;
     };
-    // Shelf and the trim along its front edge.
-    box(W, 1, D + 1, this.mats.shelf, 0, -0.5, 0.5 - 0.5);
-    const lip = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, W, 12), this.mats.chrome);
-    lip.rotation.z = Math.PI / 2; lip.position.set(0, -0.02, D / 2);
-    s.add(lip);
-    // Payout tray below the front edge.
-    box(W + 1.6, 0.3, 2.2, this.mats.dark, 0, -2.4, D / 2 + 1.2, false);
-    box(W + 1.6, 1.6, 0.15, this.mats.cabinet, 0, -1.6, D / 2 + 2.3);
-    // Cabinet sides (with the gutters between them and the shelf) and the back.
+    const rod = (r, len, mat, x, y, z, axis, to = s) => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 16), mat);
+      if (axis === "x") m.rotation.z = Math.PI / 2; else if (axis === "z") m.rotation.x = Math.PI / 2;
+      m.position.set(x, y, z);
+      to.add(m);
+      return m;
+    };
+
+    // The shelf (brushed steel) ends exactly where the physics shelf does, with a chrome lip on its front edge.
+    const front = D / 2, shelfBack = back - B.stroke - 2, d = this.mats.dark;
+    box(W, 1, front - shelfBack, [d, d, this.mats.shelf, d, d, d], 0, -0.5, (front + shelfBack) / 2);
+    rod(0.06, W + 0.1, this.mats.chrome, 0, -0.03, front, "x");
+    // Where coins leave the board. Over the front edge (won): the payout chute, a dark drop, with a gold
+    // light along the shelf's front. Off the open sides in front of the rails (lost): the gutters, dark pits
+    // with a red light along their outer wall. So it's clear where a coin will go.
+    const GUT = OUTER - W / 2, chute = 0.9, pitY = -2.4;
+    box(2 * OUTER, 0.2, chute, d, 0, pitY, front + chute / 2, { receive: false });
+    this.mats.win = new THREE.MeshBasicMaterial({ color: lin(0xffc23d), toneMapped: false });
+    this.mats.lose = new THREE.MeshBasicMaterial({ color: lin(0xff2a3c), toneMapped: false });
+    box(W - 0.2, 0.1, 0.02, this.mats.win, 0, -0.18, front + 0.01, { receive: false });
+    const gutFrom = B.sideOpenFrom, gutLen = front - gutFrom;
     for (const sx of [-1, 1]) {
-      box(0.5, 4.2, D + 4, this.mats.cabinet, sx * (W / 2 + 0.85), -0.4, 0.4);
-      box(0.6, 0.2, D + 4, this.mats.dark, sx * (W / 2 + 0.3), -1.4, 0.4, false);       // gutter floor
+      box(GUT, 0.2, gutLen + chute, d, sx * (W / 2 + GUT / 2), pitY, gutFrom + (gutLen + chute) / 2, { receive: false });
+      box(0.04, -pitY, front + chute - shelfBack, d, sx * (OUTER - 0.02), pitY / 2, (front + chute + shelfBack) / 2, { receive: false });
+      box(0.03, 0.13, gutLen + chute, this.mats.lose, sx * (OUTER - 0.05), -0.1, gutFrom + (gutLen + chute) / 2, { receive: false });
     }
-    box(W + 2.2, 9, 0.4, this.mats.back, 0, 3.4, -D / 2 - 0.5);
-    // The back wall above the pusher: it sweeps riders off as the pusher retracts.
-    const wallBottom = B.pusherHeight + 0.04;
-    box(W, 1.0, 0.3, this.mats.cabinet, 0, wallBottom + 0.5, -D / 2 - 0.15);
-    box(W, 0.08, 0.36, this.mats.trim, 0, wallBottom + 1.0, -D / 2 - 0.15);
-    // Acrylic side rails (physics: board.js) and the Wide Shelf panels over the gutters.
-    const railLen = B.sideOpenFrom + D / 2;
+    // The front apron below the chute: lacquer with a trim rod and bulbs, a little below the shelf so the
+    // chute shows.
+    box(2 * OUTER + 0.9, 3, 0.4, this.mats.lacquer, 0, -1.85, front + chute + 0.2);
+    rod(0.07, 2 * OUTER + 0.9, this.mats.trim, 0, -0.33, front + chute + 0.4, "x");
+    // The rails: solid lacquered walls with a chrome cap, from the back to where the gutters open, filling
+    // the width of the gutter so nothing shows behind them. A chrome post ends each one: in front of it coins
+    // can fall off the side.
+    const railFrom = shelfBack, railLen = gutFrom - railFrom;
     for (const sx of [-1, 1]) {
-      const r = box(0.06, B.railHeight, railLen, this.mats.glass, sx * (W / 2 + 0.05), B.railHeight / 2, -D / 2 + railLen / 2, false);
-      r.renderOrder = 2;
-      box(0.1, 0.08, railLen, this.mats.chrome, sx * (W / 2 + 0.05), B.railHeight, -D / 2 + railLen / 2);
+      box(GUT, B.railHeight + 1, railLen, this.mats.lacquer, sx * (W / 2 + GUT / 2), (B.railHeight - 1) / 2, railFrom + railLen / 2);
+      rod(0.06, railLen, this.mats.chrome, sx * (W / 2 + 0.05), B.railHeight, railFrom + railLen / 2, "z");
+      box(0.04, 0.05, railLen, this.mats.led, sx * (W / 2 + 0.005), B.railHeight - 0.12, railFrom + railLen / 2, { receive: false });
+      const post = rod(GUT / 2, B.railHeight + 0.2, this.mats.chrome, sx * (W / 2 + GUT / 2), B.railHeight / 2 + 0.1, gutFrom, "y");
+      post.castShadow = true;
+    }
+    // The cabinet sides beyond the gutters: tall at the back, sloping down toward the player, with a trim
+    // rod along the top.
+    const sideBack = back - 1.2, sideFront = front + chute + 0.4, hBack = 4.2, hFront = 1.1, foot = -3.4;
+    const shape = new THREE.Shape([[sideBack, foot], [sideFront, foot], [sideFront, hFront], [sideBack, hBack]].map(([u, v]) => new THREE.Vector2(u, v)));
+    const sideGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.45, bevelEnabled: false });
+    sideGeo.rotateY(-Math.PI / 2);   // the shape's x runs along z; it extrudes toward -x
+    const slope = Math.atan2(hBack - hFront, sideFront - sideBack), slopeLen = Math.hypot(hBack - hFront, sideFront - sideBack);
+    for (const sx of [-1, 1]) {
+      const m = new THREE.Mesh(sideGeo, this.mats.lacquer);
+      m.position.x = sx > 0 ? OUTER + 0.45 : -OUTER;
+      m.receiveShadow = true;
+      s.add(m);
+      const r = rod(0.09, slopeLen, this.mats.trim, sx * (OUTER + 0.22), (hBack + hFront) / 2, (sideBack + sideFront) / 2, "z");
+      r.rotation.x = Math.PI / 2 + slope;
+    }
+    // The back wall above the pusher, with a steel lip where riders are swept off, and the neon panel above it.
+    const wallBottom = B.pusherHeight + 0.04, panelTop = PANEL_TOP;
+    box(W + 2.2, panelTop + 2, 0.4, this.mats.dark, 0, panelTop / 2 - 1, back - 0.45);
+    box(W, 0.36, 0.32, this.mats.steel, 0, wallBottom + 0.18, back - 0.16);
+    rod(0.04, W, this.mats.chrome, 0, wallBottom + 0.36, back, "x");
+    this.panel = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.6, panelTop - wallBottom - 0.36), this.mats.panel);
+    this.panel.position.set(0, (panelTop + wallBottom + 0.36) / 2, back - 0.01);
+    s.add(this.panel);
+    // The top of the back panel: a chrome header with a row of chasing bulbs, and the marquee above it.
+    box(W + 2.2, 0.5, 0.7, this.mats.lacquer, 0, panelTop + 0.25, back - 0.1);
+    rod(0.06, W + 2.2, this.mats.trim, 0, panelTop, back + 0.25, "x");
+    box(W + 2.2, MARQUEE, 0.5, this.mats.lacquer, 0, panelTop + 0.5 + MARQUEE / 2, back - 0.2);
+    this.marquee = new THREE.Mesh(new THREE.PlaneGeometry(W + 1.6, MARQUEE - 0.24), this.mats.marquee);
+    this.marquee.position.set(0, panelTop + 0.5 + MARQUEE / 2, back + 0.06);
+    s.add(this.marquee);
+    rod(0.07, W + 2.2, this.mats.trim, 0, panelTop + 0.5 + MARQUEE, back + 0.05, "x");
+    // The Wide Shelf panels: glowing covers over the gutters while the event lasts.
+    for (const sx of [-1, 1]) {
       const openLen = D / 2 - B.sideOpenFrom;
-      const w = box(0.08, B.railHeight, openLen, this.mats.wide, sx * (W / 2 + 0.05), B.railHeight / 2, B.sideOpenFrom + openLen / 2, false);
+      const w = box(0.08, B.railHeight, openLen, this.mats.wide, sx * (W / 2 + 0.05), B.railHeight / 2, B.sideOpenFrom + openLen / 2, { receive: false });
       w.renderOrder = 3;
     }
-    // Bulbs along the back panel: they chase slowly, and glow with the fever.
-    this.bulbs = [];
-    const bulbGeo = new THREE.SphereGeometry(0.11, 10, 8);
-    for (let i = 0; i < 15; i++) {
-      const b = new THREE.Mesh(bulbGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
-      b.position.set(-W / 2 - 0.3 + (i / 14) * (W + 0.6), 2.6, -D / 2 - 0.25);
-      s.add(b);
-      this.bulbs.push(b);
+
+    // Bulbs: along the header, down the sloping tops of the cabinet sides and along the front apron. One
+    // instanced mesh; the colours chase in render().
+    const bulbAt = [];
+    for (let i = 0; i < 17; i++) bulbAt.push([-W / 2 - 0.6 + (i / 16) * (W + 1.2), panelTop + 0.25, back + 0.27]);
+    for (const sx of [-1, 1]) for (let i = 0; i < 12; i++) {
+      const k = (i + 0.5) / 12;
+      bulbAt.push([sx * (OUTER + 0.22), hBack + (hFront - hBack) * k + 0.14, sideBack + (sideFront - sideBack) * k]);
     }
-    // Pusher.
+    for (let i = 0; i < 15; i++) bulbAt.push([-OUTER + (i / 14) * 2 * OUTER, -0.33, front + chute + 0.48]);
+    this.bulbs = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), bulbAt.length);
+    bulbAt.forEach((p, i) => { this.tmpM.makeTranslation(p[0], p[1], p[2]); this.bulbs.setMatrixAt(i, this.tmpM); this.bulbs.setColorAt(i, this.tmpC.set(0xffffff)); });
+    this.bulbs.frustumCulled = false;
+    s.add(this.bulbs);
+
+    // The pusher: brushed steel with a lacquered, striped front plate and a light strip along its top edge.
     const pl = B.stroke + 2.2;
     this.pusherLen = pl;
-    const faceTex = stripeTexture("#ffffff", "#dddddd");
-    this.mats.pusherFace.map = faceTex;
+    const top = Std({ color: lin(0x80868f), map: steel.map, roughnessMap: steel.roughnessMap, metalness: 1, roughness: 0.4 });
     this.pusher = new THREE.Mesh(new THREE.BoxGeometry(W - 0.01, B.pusherHeight, pl),
-      [this.mats.pusher, this.mats.pusher, this.mats.pusher, this.mats.pusher, this.mats.pusherFace, this.mats.pusher]);
+      [this.mats.steel, this.mats.steel, top, this.mats.steel, this.mats.pusherFront, this.mats.steel]);
     this.pusher.castShadow = true; this.pusher.receiveShadow = true;
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(W - 0.2, 0.05, 0.03), this.mats.led);
+    strip.position.set(0, B.pusherHeight / 2 - 0.06, pl / 2 + 0.016);
+    this.pusher.add(strip);
+    const lip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, W - 0.02, 12), this.mats.chrome);
+    lip.rotation.z = Math.PI / 2; lip.position.set(0, B.pusherHeight / 2, pl / 2);
+    this.pusher.add(lip);
     s.add(this.pusher);
+
+    this.buildPinWall();
+    this.buildRail();
 
     // Coins: one instanced mesh per kind.
     this.coinMeshes = {};
     const C = CONFIG.coin;
+    const geoStd = coinGeometry(1, C.thickness), geoBig = coinGeometry(C.jackpotDiameter, C.jackpotThickness, 48);
     for (const k of KINDS) {
-      const geo = k === "jackpot" ? coinGeometry(C.jackpotDiameter, C.jackpotThickness) : coinGeometry(1, C.thickness);
-      const mat = new THREE.MeshPhongMaterial({ map: coinTexture(k), specular: k === "bomb" ? 0x1a1a1a : 0x3a3a3a, shininess: 28 });
-      if (k === "lucky") mat.emissive = new THREE.Color(0x0a3a18);
-      const im = new THREE.InstancedMesh(geo, mat, CAP[k]);
+      const im = new THREE.InstancedMesh(k === "jackpot" ? geoBig : geoStd, coinMaterial(k), CAP[k]);
       im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       im.count = 0;
       im.frustumCulled = false;
@@ -311,69 +371,204 @@ export class Renderer {
       this.coinMeshes[k] = im;
     }
 
-    // Aim: a ghost coin and a thin guide line down to the shelf.
-    this.ghost = new THREE.Mesh(coinGeometry(1, C.thickness), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }));
-    this.guide = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1, 0.03), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }));
-    this.marker = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.42, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
+    // Aim: a see-through coin where the next one will drop, a thin guide line and a ring on the shelf.
+    const ghostMat = coinMaterial("coin");
+    ghostMat.transparent = true; ghostMat.opacity = 0.5; ghostMat.depthWrite = false;
+    ghostMat.emissive = lin(0x6a4400);
+    this.ghost = new THREE.Mesh(geoStd, ghostMat);
+    this.guide = new THREE.Mesh(new THREE.BoxGeometry(0.025, 1, 0.025), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false, toneMapped: false }));
+    this.marker = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.42, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
     this.marker.rotation.x = -Math.PI / 2;
     s.add(this.ghost, this.guide, this.marker);
 
-    // Particles.
+    // Particles: twinkling sparkles.
     this.maxParts = 500;
     const pg = new THREE.BufferGeometry();
     this.pPos = new Float32Array(this.maxParts * 3);
     this.pCol = new Float32Array(this.maxParts * 3);
     pg.setAttribute("position", new THREE.BufferAttribute(this.pPos, 3).setUsage(THREE.DynamicDrawUsage));
     pg.setAttribute("color", new THREE.BufferAttribute(this.pCol, 3).setUsage(THREE.DynamicDrawUsage));
-    this.points = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.28, map: softDot(), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    this.points = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.34, map: Art.sparkle(), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
     this.points.frustumCulled = false;
     s.add(this.points);
+  }
+
+  /** The pin wall machine's parts: brass pins, rubber bumpers, the glass, its frame and the three slots. */
+  buildPinWall() {
+    const g = this.pinGroup = new THREE.Group(), W = B.width, back = -B.depth / 2;
+    const glassZ = PW.z + 0.16, depth = glassZ - back;
+    const pins = this.pinPositions();
+    const pinGeo = new THREE.CylinderGeometry(PW.pinRadius, PW.pinRadius, depth, 12);
+    pinGeo.rotateX(Math.PI / 2);
+    const capGeo = new THREE.SphereGeometry(PW.pinRadius * 1.6, 12, 8);
+    const pinMesh = new THREE.InstancedMesh(pinGeo, this.mats.brass, pins.length);
+    const capMesh = new THREE.InstancedMesh(capGeo, this.mats.brass, pins.length);
+    pins.forEach(([x, y], i) => {
+      pinMesh.setMatrixAt(i, this.tmpM.makeTranslation(x, y, back + depth / 2));
+      capMesh.setMatrixAt(i, this.tmpM.makeTranslation(x, y, back + 0.02));
+    });
+    pinMesh.castShadow = true;
+    g.add(pinMesh, capMesh);
+    for (const r of PW.bumpers) {
+      for (const sx of [-1, 1]) {
+        const y = PW.rowTop - r * PW.rowGap;
+        const b = new THREE.Mesh(new THREE.CylinderGeometry(PW.bumperRadius, PW.bumperRadius, depth, 20, 1, false, sx > 0 ? Math.PI : 0, Math.PI), this.mats.rubber);
+        b.rotation.x = Math.PI / 2;
+        b.position.set(sx * W / 2, y, back + depth / 2);
+        g.add(b);
+      }
+    }
+    const h = PW.top + 1 - PW.bottom, cy = (PW.top + 1 + PW.bottom) / 2;
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(W, h), this.mats.glass);
+    glass.position.set(0, cy, glassZ + 0.02);
+    glass.renderOrder = 2;
+    g.add(glass);
+    // The frame: lacquered columns at the sides, a chrome strip along the bottom edge of the glass.
+    for (const sx of [-1, 1]) {
+      const c = new THREE.Mesh(new THREE.BoxGeometry(0.34, h, 0.5), this.mats.lacquer);
+      c.position.set(sx * (W / 2 + 0.17), cy, back + 0.2);
+      g.add(c);
+    }
+    const bottomBar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, W, 12), this.mats.chrome);
+    bottomBar.rotation.z = Math.PI / 2; bottomBar.position.set(0, PW.bottom, glassZ + 0.04);
+    g.add(bottomBar);
+    // The slot plate across the top, with an opening and a light for each slot.
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(W + 0.68, 0.42, 0.62), this.mats.lacquer);
+    plate.position.set(0, PW.top + 0.75, PW.z + 0.05);
+    g.add(plate);
+    for (const y of [PW.top + 0.96, PW.top + 0.54]) {
+      const r = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, W + 0.68, 12), this.mats.trim);
+      r.rotation.z = Math.PI / 2; r.position.set(0, y, PW.z + 0.37);
+      g.add(r);
+    }
+    // Each slot: a dark opening with a light strip in it (lit for the chosen slot) and an arrow above.
+    this.slotLights = PW.slots.map((x) => {
+      const hole = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.22, 0.02), this.mats.dark);
+      hole.position.set(x, PW.top + 0.75, PW.z + 0.37);
+      const light = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.07), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
+      light.position.set(x, PW.top + 0.75, PW.z + 0.385);
+      const arrow = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.26), new THREE.MeshBasicMaterial({ color: 0xffffff, map: arrowTexture(), transparent: true, toneMapped: false }));
+      arrow.position.set(x, PW.top + 1.2, PW.z + 0.37);
+      light.userData.arrow = arrow;
+      g.add(hole, light, arrow);
+      return light;
+    });
+    this.scene.add(g);
+  }
+
+  /** The classic machine's drop rail: a chrome bar the see-through coin hangs under while you aim. */
+  buildRail() {
+    const g = this.railGroup = new THREE.Group(), W = B.width;
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, W + 0.6, 16), this.mats.chrome);
+    bar.rotation.z = Math.PI / 2; bar.position.set(0, B.dropHeight + 0.62, B.dropZ);
+    g.add(bar);
+    this.carriage = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 0.22), this.mats.trim);
+    this.carriage.position.set(0, B.dropHeight + 0.62, B.dropZ);
+    g.add(this.carriage);
+    this.scene.add(g);
+  }
+
+  pinPositions() {
+    const out = [];
+    PW.rows.forEach((row, r) => { for (const x of row) out.push([x, PW.rowTop - r * PW.rowGap]); });
+    return out;
   }
 
   setTheme(id) {
     if (this.theme === id) return;
     this.theme = id;
     const T = THEMES[id] || THEMES.classic;
-    this.scene.background = new THREE.Color(T.bg);
-    this.scene.fog = new THREE.Fog(T.bg, 26, 60);
-    this.mats.shelf.color.setHex(T.shelf);
-    this.mats.cabinet.color.setHex(T.cabinet);
-    this.mats.back.color.setHex(T.back);
-    this.mats.trim.color.setHex(T.trim);
-    this.mats.pusher.color.setHex(T.pusher);
-    this.mats.pusherFace.map = stripeTexture(hex(T.pusher), hex(T.pusherFace));
-    this.mats.pusherFace.needsUpdate = true;
-    this.mats.wide.color.setHex(T.bulbs);
-    this.feverLight.color.setHex(T.bulbs);
-    this.bulbColor = new THREE.Color(T.bulbs);
+    this.scene.background = lin(T.bg);
+    this.scene.fog = new THREE.Fog(lin(T.bg), 30, 70);
+    if (this.scene.environment) this.scene.environment.dispose();
+    this.scene.environment = Art.environment(this.gl, T.neon);
+    this.mats.lacquer.color.copy(lin(T.cabinet));
+    this.mats.trim.color.copy(lin(T.trim));
+    this.mats.pusherFront.map = Art.stripes(hexCss(T.pusherFace), hexCss(T.pusher));
+    this.mats.pusherFront.needsUpdate = true;
+    const art = Art.neonPanel(T);
+    const sign = Art.marquee(T, 640, 96);
+    for (const k of ["map", "emissiveMap"]) {
+      if (this.mats.panel[k]) this.mats.panel[k].dispose();
+      this.mats.panel[k] = art[k];
+      if (this.mats.marquee[k]) this.mats.marquee[k].dispose();
+      this.mats.marquee[k] = sign[k];
+    }
+    this.mats.panel.needsUpdate = this.mats.marquee.needsUpdate = true;
+    this.mats.led.color.copy(lin(T.bulbs));
+    this.mats.wide.color.copy(lin(T.bulbs));
+    this.neonLights.forEach((l, i) => l.color.copy(lin(T.neon[i])));
+    this.feverLight.color.copy(lin(T.bulbs));
+    this.bulbColor = lin(T.bulbs);
+    this.slotColor = lin(T.neon[1]);
     for (const m of this.prizeMeshes.values()) this.scene.remove(m.obj);
     this.prizeMeshes.clear();   // rebuilt with the new theme's figures and gem colours on the next frame
   }
 
-  setQuality(level) { this.quality = Math.max(0, Math.min(CONFIG.performance.particleLevels.length - 1, level)); }
+  /** Show the pin wall or the drop rail, and frame the camera for that machine. */
+  setMachine(type) {
+    this.type = type === "pins" ? "pins" : "classic";
+    this.pinGroup.visible = this.type === "pins";
+    this.railGroup.visible = this.type === "classic";
+    const v = this.view;
+    if (v.w > 1) this.resize(v.w, v.h, v.top, v.bottom);
+  }
 
-  /** Fit the board to the screen: the shelf's width fills the width in portrait; landscape letterboxes. */
+  setQuality(level) {
+    const n = CONFIG.performance.particleLevels.length;
+    this.quality = Math.max(0, Math.min(n - 1, level));
+    // On the slowest level, also draw fewer pixels.
+    const ratio = this.quality === n - 1 ? Math.min(this.dpr, 1.25) : this.dpr;
+    if (ratio !== this.gl.getPixelRatio()) { this.gl.setPixelRatio(ratio); this.gl.setSize(this.view.w, this.view.h, false); }
+  }
+
+  /**
+   * Fit the machine to the screen between the top bar and the controls, the way a player stands at a
+   * real pusher: a wide lens, low and close to the front edge, so the shelf runs away from you in
+   * perspective (near coins big, far ones small) and the back wall faces you at the top. The front edge
+   * with its chute and the open gutters fill the width; the cabinet's sides may run off the screen.
+   * Landscape letterboxes.
+   */
   resize(w, h, top = 0, bottom = 0) {
     this.view = { w, h, top, bottom };
     this.gl.setSize(w, h, false);
-    const cam = this.camera;
+    const cam = this.camera, pins = this.type === "pins", L = this.lens;
+    const usableH = Math.max(100, h - top - bottom * 0.55);
+    // The lens: wide across the board whatever the screen's shape, within limits.
+    const hfov = L.hfov * Math.PI / 180, aspect = w / usableH;
+    cam.fov = Math.max(L.fovMin, Math.min(L.fovMax, 2 * Math.atan(Math.tan(hfov / 2) / Math.min(aspect, 1)) * 180 / Math.PI));
     cam.aspect = w / h;
-    const usableH = Math.max(100, h - top - bottom * 0.35);
-    // Tilt ~60° looking down at the shelf.
-    const tilt = 60 * Math.PI / 180;
-    const vfov = 40 * Math.PI / 180;
-    cam.fov = 40;
-    const halfW = B.width / 2 + 0.8;
-    const hfovHalf = Math.atan(Math.tan(vfov / 2) * (w / usableH));
-    const dW = halfW / Math.tan(hfovHalf);
-    const dH = (B.depth * Math.sin(tilt) * 0.5 + 1.6) / Math.tan(vfov / 2);
-    const d = Math.max(dW, dH);
-    const target = new THREE.Vector3(0, 0, 0.6);
-    cam.position.set(0, target.y + Math.sin(tilt) * d, target.z + Math.cos(tilt) * d);
-    cam.lookAt(target);
-    // Shift the picture so the board sits between the top bar and the controls.
-    const shift = (top - bottom * 0.65) / 2;
-    cam.setViewOffset(w, h, 0, -shift, w, h);
+    cam.clearViewOffset();
+    cam.updateProjectionMatrix();
+    const tilt = (pins ? L.pitchPins : L.pitchClassic) * Math.PI / 180;
+    const target = new THREE.Vector3(0, pins ? L.targetPins[0] : L.targetClassic[0], pins ? L.targetPins[1] : L.targetClassic[1]);
+    const dir = new THREE.Vector3(0, Math.sin(tilt), Math.cos(tilt));
+    const X = OUTER + 0.1, back = -B.depth / 2, front = B.depth / 2, topY = pins ? PANEL_TOP + 0.6 + MARQUEE : B.dropHeight + 2.4;
+    // The front edge and its gutters fill the width (the apron below may run off the sides); the height
+    // runs from the apron's top to the top of the back.
+    const pts = [[-X, 0, front], [X, 0, front], [0, -0.35, front + 0.9], [-B.width / 2, topY, back], [B.width / 2, topY, back]].map((p) => new THREE.Vector3(...p));
+    const bounds = () => {
+      cam.lookAt(target);
+      cam.updateMatrixWorld();
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      for (const p of pts) { const v = this.tmpP.copy(p).project(cam); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); }
+      return { x0, x1, y0, y1 };
+    };
+    let lo = 3, hi = 120;
+    for (let i = 0; i < 32; i++) {
+      const d = (lo + hi) / 2;
+      cam.position.copy(target).addScaledVector(dir, d);
+      const b = bounds();
+      const fits = b.x1 - b.x0 <= 2 * 0.985 && ((b.y1 - b.y0) / 2) * h <= usableH;
+      if (fits) hi = d; else lo = d;
+    }
+    cam.position.copy(target).addScaledVector(dir, hi);
+    const b = bounds();
+    // Shift the picture into the space between the top bar and the controls. Room to spare goes above and
+    // below by the machine's anchor: the free drop sits low, so its short back doesn't leave a tall apron.
+    const centre = ((1 - (b.y0 + b.y1) / 2) / 2) * h, contentH = ((b.y1 - b.y0) / 2) * h;
+    const anchor = pins ? L.anchorPins : L.anchorClassic;
+    cam.setViewOffset(w, h, 0, centre - (top + (usableH - contentH) * anchor + contentH / 2), w, h);
     cam.updateProjectionMatrix();
     this.baseCamPos = cam.position.clone();
   }
@@ -384,8 +579,12 @@ export class Renderer {
     return { x: (v.x + 1) / 2 * this.view.w, y: (1 - v.y) / 2 * this.view.h };
   }
 
-  /** The aim position (shelf x) under a screen x: the ghost coin sits right above the finger. */
+  /** The aim (shelf x) under a screen x: the see-through coin sits right above the finger. */
   aimFromScreen(px) {
+    if (this.type === "pins") {
+      const s = PW.slots, a = this.toScreen(s[0], PW.top, PW.z).x, b = this.toScreen(s[s.length - 1], PW.top, PW.z).x;
+      return s[0] + ((px - a) / (b - a)) * (s[s.length - 1] - s[0]);
+    }
     const lim = B.width / 2 - B.aimMargin;
     const a = this.toScreen(-lim, B.dropHeight, B.dropZ).x, b = this.toScreen(lim, B.dropHeight, B.dropZ).x;
     return -lim + ((px - a) / (b - a)) * 2 * lim;
@@ -400,7 +599,7 @@ export class Renderer {
   /** Sparkles: n particles of a colour from a point. */
   burst(x, y, z, colour, n, speed = 2.5, up = 2.5) {
     n = Math.round(n * CONFIG.performance.particleLevels[this.quality]);
-    const c = new THREE.Color(colour);
+    const c = lin(colour);
     for (let i = 0; i < n; i++) {
       if (this.parts.length >= this.maxParts) this.parts.shift();
       const a = Math.random() * Math.PI * 2, s = speed * (0.3 + Math.random() * 0.7);
@@ -487,43 +686,60 @@ export class Renderer {
     }
     for (const [id, pm] of this.prizeMeshes) if (!seen.has(id)) { this.scene.remove(pm.obj); this.prizeMeshes.delete(id); }
 
-    // Aim.
-    const show = !!o.showAim;
-    this.ghost.visible = this.guide.visible = this.marker.visible = show;
-    if (show) {
-      const x = o.aim || 0;
-      this.ghost.position.set(x, B.dropHeight, B.dropZ);
-      const bottom = B.pusherHeight + 0.02;
-      this.guide.scale.y = B.dropHeight - bottom;
-      this.guide.position.set(x, (B.dropHeight + bottom) / 2, B.dropZ);
-      this.marker.position.set(x, bottom, B.dropZ);
+    // Aim. Classic: a see-through coin under the rail, a guide line and a ring where it lands.
+    // Pin wall: the chosen slot's arrow lights up and the see-through coin waits above it, on its edge.
+    const t = o.time || 0;
+    const show = !!o.showAim, x = o.aim || 0;
+    this.ghost.visible = show;
+    this.guide.visible = this.marker.visible = show && this.type === "classic";
+    if (this.type === "classic") {
+      this.carriage.position.x = x;
+      if (show) {
+        this.ghost.rotation.set(0, 0, 0);
+        this.ghost.position.set(x, B.dropHeight, B.dropZ);
+        const bottom = B.pusherHeight + 0.02;
+        this.guide.scale.y = B.dropHeight - bottom;
+        this.guide.position.set(x, (B.dropHeight + bottom) / 2, B.dropZ);
+        this.marker.position.set(x, bottom, B.dropZ);
+      }
+    } else {
+      this.ghost.rotation.set(Math.PI / 2, 0, 0);
+      this.ghost.position.set(x, PW.top + 1.85, PW.z + 0.2);
+      this.slotLights.forEach((l, i) => {
+        const on = show && Math.abs(PW.slots[i] - x) < 0.01;
+        const k = on ? 1.6 + 0.6 * Math.sin(t * 6) : 0.18;
+        l.material.color.copy(this.slotColor || this.tmpC.set(0xffffff)).multiplyScalar(k);
+        l.userData.arrow.material.color.copy(l.material.color);
+        l.userData.arrow.visible = on;
+      });
     }
 
     // Wide Shelf panels and the fever glow (a smooth pulse, about once a second: no flashing).
-    const t = o.time || 0;
     this.mats.wide.opacity = o.wide ? 0.22 + 0.08 * Math.sin(t * 3) : 0;
     const fever = o.fever || 0;
-    this.feverLight.intensity = fever * (0.9 + 0.5 * Math.sin(t * Math.PI * 2));
-    for (let i = 0; i < this.bulbs.length; i++) {
-      const wave = 0.5 + 0.5 * Math.sin(t * (fever ? 4 : 1.6) - i * 0.7);
-      const c = this.bulbs[i].material.color;
-      c.copy(this.bulbColor || new THREE.Color(0xffd166)).multiplyScalar(0.35 + 0.65 * wave);
+    this.feverLight.intensity = fever * (1.2 + 0.6 * Math.sin(t * Math.PI * 2));
+    this.mats.panel.emissiveIntensity = 1.5 + fever * 0.8 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2));
+    const n = this.bulbs.count, base = this.bulbColor || lin(0xffd166);
+    for (let i = 0; i < n; i++) {
+      const wave = 0.5 + 0.5 * Math.sin(t * (fever ? 5 : 2.2) - i * 0.9);
+      this.bulbs.setColorAt(i, this.tmpC.copy(base).multiplyScalar(0.25 + 1.6 * wave * wave));
     }
+    this.bulbs.instanceColor.needsUpdate = true;
 
     // Particles.
-    let n = 0;
+    let np = 0;
     for (let i = this.parts.length - 1; i >= 0; i--) {
       const p = this.parts[i];
       p.life += dt;
       if (p.life >= p.max) { this.parts.splice(i, 1); continue; }
       p.vy -= 9 * dt;
       p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
-      const k = 1 - p.life / p.max;
-      this.pPos[n * 3] = p.x; this.pPos[n * 3 + 1] = p.y; this.pPos[n * 3 + 2] = p.z;
-      this.pCol[n * 3] = p.r * k; this.pCol[n * 3 + 1] = p.g * k; this.pCol[n * 3 + 2] = p.b * k;
-      n++;
+      const k = (1 - p.life / p.max) * (0.75 + 0.25 * Math.sin(p.life * 40 + i));
+      this.pPos[np * 3] = p.x; this.pPos[np * 3 + 1] = p.y; this.pPos[np * 3 + 2] = p.z;
+      this.pCol[np * 3] = p.r * k * 1.6; this.pCol[np * 3 + 1] = p.g * k * 1.6; this.pCol[np * 3 + 2] = p.b * k * 1.6;
+      np++;
     }
-    this.points.geometry.setDrawRange(0, n);
+    this.points.geometry.setDrawRange(0, np);
     this.points.geometry.attributes.position.needsUpdate = true;
     this.points.geometry.attributes.color.needsUpdate = true;
 
@@ -541,34 +757,75 @@ export class Renderer {
   }
 }
 
+const hexCss = (c) => "#" + c.toString(16).padStart(6, "0");
+
+let arrowTex = null;
+/** A downward arrow, for the lights above the pin wall's slots. */
+function arrowTexture() {
+  if (arrowTex) return arrowTex;
+  const c = document.createElement("canvas");
+  c.width = 64; c.height = 40;
+  const g = c.getContext("2d");
+  g.fillStyle = "#fff";
+  g.shadowColor = "#fff"; g.shadowBlur = 6;
+  g.beginPath(); g.moveTo(12, 8); g.lineTo(52, 8); g.lineTo(32, 32); g.closePath(); g.fill();
+  arrowTex = new THREE.CanvasTexture(c);
+  return arrowTex;
+}
+
 // ---- Thumbnails for the collection and the Workshop ------------------------------------------------------
-let thumb = null;
+// Drawn by the game's own renderer into an off-screen target, lit by the machine's reflections. A second
+// WebGL renderer would have to build its own reflection map first, which froze the first Workshop or
+// collection screen for a moment (seconds on a slow phone).
+let thumb = null, active = null;
+const TS = 160, SS = 2;   // thumbnail size in pixels, drawn this many times larger and scaled down (smooth edges)
+/** The picture of a collection item if it has been drawn already, else null. */
+export const cachedThumbnail = (theme, index) => (thumb && thumb.cache.get(theme + ":" + index)) || null;
 /** A small picture of a collection item (index 0–3 gems, 4–11 figures), as a data URL. */
 export function thumbnail(theme, index) {
   if (!thumb) {
-    const canvas = document.createElement("canvas");
-    canvas.width = canvas.height = 160;
-    const gl = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
-    gl.setClearColor(0x000000, 0);
     const scene = new THREE.Scene();
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x555566, 0.9));
-    const d = new THREE.DirectionalLight(0xffffff, 0.8);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555566, 0.6));
+    const d = new THREE.DirectionalLight(0xffffff, 1.4);
     d.position.set(-2, 3, 4);
     scene.add(d);
     const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
     cam.position.set(0, 0.55, 2.2);
     cam.lookAt(0, 0, 0);
-    thumb = { gl, scene, cam, cache: new Map() };
+    const N = TS * SS, rt = new THREE.WebGLRenderTarget(N, N);
+    rt.texture.encoding = THREE.sRGBEncoding;
+    const big = document.createElement("canvas"), out = document.createElement("canvas");
+    big.width = big.height = N; out.width = out.height = TS;
+    thumb = { scene, cam, rt, big, out, px: new Uint8Array(N * N * 4), cache: new Map() };
   }
   const key = theme + ":" + index;
   if (thumb.cache.has(key)) return thumb.cache.get(key);
+  const gl = active.gl, N = TS * SS;
+  thumb.scene.environment = active.scene.environment;
   const obj = index < 4 ? buildGem(theme, ["red", "blue", "green", "yellow"][index]) : buildFigure(theme, index - 4, 1);
   if (index < 4) { obj.scale.setScalar(1.05); obj.rotation.set(0.5, 0.4, 0); }
   else obj.rotation.y = -0.45;
   thumb.scene.add(obj);
-  thumb.gl.render(thumb.scene, thumb.cam);
-  const url = thumb.gl.domElement.toDataURL("image/png");
+  const clear = gl.getClearColor(new THREE.Color()), alpha = gl.getClearAlpha(), exposure = gl.toneMappingExposure;
+  gl.setRenderTarget(thumb.rt);
+  gl.setClearColor(0x000000, 0);
+  gl.toneMappingExposure = 1.2;
+  gl.clear();
+  gl.render(thumb.scene, thumb.cam);
+  gl.readRenderTargetPixels(thumb.rt, 0, 0, N, N, thumb.px);
+  gl.setRenderTarget(null);
+  gl.setClearColor(clear, alpha);
+  gl.toneMappingExposure = exposure;
   thumb.scene.remove(obj);
+  // WebGL reads bottom up; flip into the canvas, then scale down.
+  const img = new ImageData(N, N), row = N * 4;
+  for (let y = 0; y < N; y++) img.data.set(thumb.px.subarray((N - 1 - y) * row, (N - y) * row), y * row);
+  thumb.big.getContext("2d").putImageData(img, 0, 0);
+  const g = thumb.out.getContext("2d");
+  g.clearRect(0, 0, TS, TS);
+  g.imageSmoothingQuality = "high";
+  g.drawImage(thumb.big, 0, 0, TS, TS);
+  const url = thumb.out.toDataURL("image/png");
   thumb.cache.set(key, url);
   return url;
 }

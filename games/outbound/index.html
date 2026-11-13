@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Outbound</title>
 <link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="../../shared/css/gamenav.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,13 +13,8 @@
 <div id="app">
   <section id="home" class="view" data-i18n-attr="aria-label:levels">
     <div class="wrap">
-      <div class="topline">
+      <div class="topline" id="homeBar">
         <button type="button" class="points" id="pointsBtn" data-i18n-attr="aria-label:pointsShop"><span class="gem" id="gemIcon"></span><span><b class="num" id="pointsVal">0</b> <span data-i18n="points"></span></span></button>
-        <div class="seg" id="themeSeg" role="radiogroup" data-i18n-attr="aria-label:appearance">
-          <button type="button" role="radio" data-theme-opt="auto" aria-checked="true"></button>
-          <button type="button" role="radio" data-theme-opt="light" aria-checked="false"></button>
-          <button type="button" role="radio" data-theme-opt="dark" aria-checked="false"></button>
-        </div>
       </div>
       <header class="hero">
         <div class="hero-text">
@@ -69,20 +65,6 @@
       </section>
 
       <footer class="foot">
-        <div class="setting">
-          <div>
-            <strong id="smartLabel" data-i18n="smartTap"></strong>
-            <small data-i18n="smartTap.note"></small>
-          </div>
-          <button type="button" class="switch" id="smartTap" role="switch" aria-checked="true" aria-labelledby="smartLabel"></button>
-        </div>
-        <div class="setting" id="laneRow" hidden>
-          <div>
-            <strong id="laneLabel" data-i18n="laneTrace"></strong>
-            <small data-i18n="laneTrace.note"></small>
-          </div>
-          <button type="button" class="switch" id="laneTrace" role="switch" aria-checked="true" aria-labelledby="laneLabel"></button>
-        </div>
         <details class="rules">
           <summary data-i18n="how"></summary>
           <ul>
@@ -105,12 +87,10 @@
 
   <section id="game" class="view" data-i18n-attr="aria-label:puzzle" hidden>
     <header class="gbar">
-      <button type="button" class="round" id="backBtn" data-i18n-attr="aria-label:backToLevels"></button>
       <div class="gtitle">
         <span class="pill" id="gTier"></span>
         <h1 class="num" id="gLevel"></h1>
       </div>
-      <button type="button" class="round" id="restartBtn" data-i18n-attr="aria-label:restart"></button>
     </header>
     <div class="status">
       <div class="hearts" id="hearts"></div>
@@ -165,6 +145,7 @@
   </div>
 <script src="../../shared/js/platform.js"></script>
 <script src="../../shared/js/i18n.js"></script>
+<script src="../../shared/js/gamenav.js"></script>
 <script src="strings.js"></script>
 <script src="../../shared/js/economy.js"></script>
 <script src="economy.js"></script>

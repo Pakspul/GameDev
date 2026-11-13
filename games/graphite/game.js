@@ -262,7 +262,7 @@ function persist() {
 let lastTick = 0;
 function tickTimer() {
   const now = performance.now();
-  if (G && !G.done && !$("#game").hidden && document.visibilityState === "visible" && $("#overlay").hidden && $("#settings").hidden) {
+  if (G && !G.done && !$("#game").hidden && document.visibilityState === "visible" && $("#overlay").hidden && !nav.isOpen()) {
     G.elapsed += Math.min(5, (now - lastTick) / 1000);
   }
   lastTick = now;
@@ -733,7 +733,7 @@ canvas.addEventListener("pointercancel", endDrag);
 
 /* ---------- keyboard ---------- */
 document.addEventListener("keydown", (e) => {
-  if (!G || $("#game").hidden || !$("#overlay").hidden || !$("#settings").hidden) return;
+  if (!G || $("#game").hidden || !$("#overlay").hidden) return;
   const n = G.p.n;
   const move = { ArrowUp: -n, ArrowDown: n, ArrowLeft: -1, ArrowRight: 1 }[e.key];
   if (move !== undefined) {
@@ -803,7 +803,7 @@ function buildControls() {
     pad.style.gridTemplateColumns = "1fr";
     pad.innerHTML = `<div class="legend">${_t("legend.stars", { k: G.p.k })}</div>`;
     tools.innerHTML = tool("tUndo", "undo", _t("tool.undo")) + tool("tAuto", "dots", _t("tool.autodot")) + tool("tHint", "bulb", _t("tool.hint"));
-    $("#tAuto").addEventListener("click", () => { store.settings.autodot = !store.settings.autodot; save(); updateControls(); syncSettings(); });
+    $("#tAuto").addEventListener("click", () => { store.settings.autodot = !store.settings.autodot; save(); updateControls(); });
   }
   $("#tUndo").addEventListener("click", undo);
   $("#tHint").addEventListener("click", hint);
@@ -1022,6 +1022,7 @@ function confirmRestart() {
 function showView(v) {
   $("#home").hidden = v !== "game" ? false : true;
   $("#game").hidden = v !== "game";
+  placeNav(v);
   if (v === "game" && !(history.state && history.state.graphite)) history.pushState({ graphite: 1 }, "");
 }
 function goHome() {
@@ -1037,6 +1038,7 @@ function leaveGame() {
   $("#overlay").hidden = true;
   $("#game").hidden = true;
   $("#home").hidden = false;
+  placeNav("home");
   document.body.dataset.kind = store.ui.kind;
   renderHome();
 }
@@ -1102,40 +1104,51 @@ function renderHome() {
   $("#rulesBody").innerHTML = "<ul>" + K.rules.map((r) => `<li>${r}</li>`).join("") + "</ul>";
 }
 
-/* ---------- settings ---------- */
-function syncSettings() {
-  document.querySelectorAll("[data-setting]").forEach((b) => b.setAttribute("aria-checked", String(!!store.settings[b.dataset.setting])));
-  document.querySelectorAll("[data-theme-opt]").forEach((b) => b.setAttribute("aria-checked", String(store.settings.theme === b.dataset.themeOpt)));
+/* ---------- navigation: back (top left) and the menu drawer (top right) ---------- */
+// The drawer holds the settings, and in a puzzle also "start over" and the rules.
+function setting(key, icon) {
+  return {
+    icon, label: _t("set." + key), note: _t("set." + key + ".note"), checked: !!store.settings[key],
+    onToggle(on) { store.settings[key] = on; save(); updateTimer(); if (G) { draw(); updateControls(); } },
+  };
 }
-document.querySelectorAll("[data-setting]").forEach((b) => b.addEventListener("click", () => {
-  const k = b.dataset.setting;
-  store.settings[k] = !store.settings[k];
-  save(); syncSettings(); updateTimer();
-  if (G) { draw(); updateControls(); }
-}));
-document.querySelectorAll("[data-theme-opt]").forEach((b) => b.addEventListener("click", () => {
-  store.settings.theme = b.dataset.themeOpt; save(); syncSettings(); applyTheme();
-}));
-// Language is shared with the hub and every other game; switching reloads the page.
-I18n.languages.forEach((l) => {
-  const b = document.createElement("button");
-  b.type = "button"; b.setAttribute("role", "radio"); b.lang = l.code; b.textContent = l.name;
-  b.setAttribute("aria-checked", String(l.code === I18n.lang));
-  b.addEventListener("click", () => I18n.set(l.code));
-  $("#langSeg").appendChild(b);
+const nav = GameNav.create({
+  title: "Graphite",
+  items: () => {
+    const inGame = !$("#game").hidden && G;
+    const K = KINDS[inGame ? G.kind : store.ui.kind];
+    return [
+      inGame && { icon: "restart", label: _t("restart.ok"), onSelect: confirmRestart, disabled: G.done },
+      inGame && { icon: "help", label: _t("howTo") + " " + K.name, html: "<ul>" + K.rules.map((r) => `<li>${r}</li>`).join("") + "</ul>" },
+      { heading: _t("settings") },
+      {
+        icon: "theme", label: _t("appearance"), value: store.settings.theme,
+        options: ["auto", "light", "dark"].map((v) => ({ value: v, label: _t("theme." + v) })),
+        onChoose(v) { store.settings.theme = v; save(); applyTheme(); },
+      },
+      setting("mistakes", "mistakes"),
+      setting("timer", "timer"),
+      setting("autodot", "dots"),
+      setting("sound", "sound"),
+      !inGame && GameNav.language(),
+    ];
+  },
 });
-$("#settingsBtn").addEventListener("click", () => { syncSettings(); $("#settings").hidden = false; });
-$("#settingsClose").addEventListener("click", () => { $("#settings").hidden = true; });
-$("#settings").addEventListener("click", (e) => { if (e.target.id === "settings") $("#settings").hidden = true; });
-
-$("#arcadeBtn").addEventListener("click", () => { if (window.Platform) Platform.home(); });
-$("#backBtn").addEventListener("click", goHome);
-$("#restartBtn").addEventListener("click", confirmRestart);
+function placeNav(view) {
+  if (view === "game") {
+    $(".gbar").prepend(nav.back);
+    $(".gbar").append(nav.menu);
+    nav.setBack(goHome, _t("backToLevels"));
+  } else {
+    $("#homeBar").append(nav.back, nav.menu);
+    nav.setBack();
+  }
+}
 
 /* ---------- boot ---------- */
 fillIcons();
 applyTheme();
-syncSettings();
+placeNav("home");
 renderHome();
 // Fonts arrive a moment after first paint; redraw so the board uses them.
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (G) draw(); });

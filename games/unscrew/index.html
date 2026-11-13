@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Unscrew</title>
 <link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="../../shared/css/gamenav.css">
+<link rel="stylesheet" href="../../shared/css/gamelobby.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,9 +17,6 @@
 
 <div id="hud" hidden>
   <div class="top">
-    <button class="ibtn" id="pauseBtn" data-i18n-attr="aria-label:pause">
-      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="3" y="2" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="11" y="2" width="4" height="14" rx="1.5" fill="currentColor"/></svg>
-    </button>
     <div class="lvl"><div class="lvl-n"><span data-i18n="hud.level"></span> <span id="lvN">1</span></div><div class="lvl-s"><span class="hh" id="hearts"></span><span id="lvS">—</span></div></div>
     <div class="pill" data-i18n-attr="aria-label:coins"><span id="coinIco"></span><span id="coinN">0</span></div>
     <div class="score"><div class="score-l" data-i18n="hud.score"></div><div class="score-n" id="scoreN">0</div></div>
@@ -39,33 +38,7 @@
     <div><h1>UNSCREW</h1><p data-i18n="tagline"></p></div>
   </div>
   <div class="card" id="menuCard">
-    <div class="sec">
-      <div class="lbl" data-i18n="menu.view"></div>
-      <div class="seg" id="modeSeg">
-        <button class="opt" data-mode="2d" aria-pressed="false">
-          <svg viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="5" width="20" height="9" rx="4.5" fill="#8fd3ff"/><rect x="11" y="10" width="9" height="20" rx="4.5" fill="#ffcf70"/><rect x="15" y="16" width="16" height="9" rx="4.5" transform="rotate(-30 23 20)" fill="#b8a4ff"/><circle cx="8" cy="9.5" r="2.4" fill="#ff3d9a"/><circle cx="15.5" cy="25" r="2.4" fill="#1f7bff"/><circle cx="26" cy="17" r="2.4" fill="#8fd61f"/></svg>
-          <span><span class="t">2D</span><br><span class="d" data-i18n="menu.2d"></span></span>
-        </button>
-        <button class="opt" data-mode="3d" aria-pressed="false">
-          <svg viewBox="0 0 34 34" aria-hidden="true"><path d="M17 3l12 7v14l-12 7-12-7V10z" fill="#7cc68d"/><path d="M17 17l12-7v14l-12 7z" fill="#4f9e64"/><path d="M17 17L5 10l12-7 12 7z" fill="#b8e3b5"/><circle cx="17" cy="10" r="2.4" fill="#ff3d9a"/><circle cx="23" cy="21" r="2.4" fill="#ffcc1a"/><circle cx="10.5" cy="20" r="2.4" fill="#7b4dff"/></svg>
-          <span><span class="t">3D</span><br><span class="d" data-i18n="menu.3d"></span></span>
-        </button>
-      </div>
-    </div>
-    <div class="sec">
-      <div class="lbl" data-i18n="menu.difficulty"></div>
-      <div class="diffs" id="diffs"></div>
-    </div>
-    <div class="stats">
-      <div class="stat"><b id="stBest">—</b><span data-i18n="menu.best"></span></div>
-      <div class="stat"><b id="stLvl">—</b><span data-i18n="menu.highest"></span></div>
-      <div class="stat"><b id="stStars">—</b><span data-i18n="menu.stars"></span></div>
-      <div class="stat"><b id="stCoins">0</b><span data-i18n="coins"></span></div>
-    </div>
-    <div class="btns">
-      <button class="btn primary" id="contBtn" hidden></button>
-      <div class="row2"><button class="btn" id="newBtn" data-i18n="menu.newRun"></button><button class="btn" id="shopBtn" data-i18n="menu.shop"></button></div>
-    </div>
+    <div class="lobby" id="lobby"></div>
     <details class="how">
       <summary data-i18n="how.title"></summary>
       <ul>
@@ -88,6 +61,8 @@
 </div>
 <script src="../../shared/js/platform.js"></script>
 <script src="../../shared/js/i18n.js"></script>
+<script src="../../shared/js/gamenav.js"></script>
+<script src="../../shared/js/gamelobby.js"></script>
 <script src="strings.js"></script>
 <script src="../../shared/js/economy.js"></script>
 <script src="economy.js"></script>

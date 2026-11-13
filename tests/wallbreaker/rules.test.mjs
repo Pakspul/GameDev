@@ -661,10 +661,11 @@ test("Quality: the offline service worker stores every file the game needs", () 
 });
 
 // ---- helpers --------------------------------------------------------------------------------------------------
+/** The game's texts, plus those the shared back button, menu and lobby bring (shared/js/gamenav.js, gamelobby.js). */
 function loadStrings() {
-  let got;
-  const ctx = vm.createContext({ I18n: { add: (d) => { got = d; }, apply: () => {} } });
-  vm.runInContext(readFileSync(join(GAME, "strings.js"), "utf8"), ctx);
+  const got = { en: {}, nl: {} };
+  const ctx = vm.createContext({ window: {}, I18n: { add: (d) => { for (const l in d) Object.assign(got[l] || (got[l] = {}), d[l]); }, apply: () => {}, t: (k) => k } });
+  for (const f of ["../../shared/js/gamenav.js", "../../shared/js/gamelobby.js", "strings.js"]) vm.runInContext(readFileSync(join(GAME, f), "utf8"), ctx);
   return got;
 }
 function stripComments(s) { return s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, ""); }

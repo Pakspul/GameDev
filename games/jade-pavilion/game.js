@@ -362,7 +362,6 @@ function hud(){
   $('#nShuffle').textContent=sl>0?(isFinite(sl)?sl:'∞'):'−250';
   $('#btnUndo').disabled=!G.undo.length;
   const hb=$('#btnHighlight');hb.disabled=!!G.d.noHighlight;hb.setAttribute('aria-pressed',String(save.settings.highlight&&!G.d.noHighlight));hb.title=_t(G.d.noHighlight?'tool.glow.off':'tool.glow.tip');
-  $('#btnSound').setAttribute('aria-pressed',String(save.settings.sound));
 }
 let lastSec=-1;
 function hudTick(){
@@ -373,47 +372,56 @@ function hudTick(){
   if(G.d.timed)$('#incense i').style.width=(G.timeLeft/G.limit*100)+'%';
 }
 const overlayOpen=()=>!!document.querySelector('.overlay:not([hidden])');
-function openOverlay(id){document.querySelectorAll('.overlay').forEach(o=>o.hidden=o.id!==id);const f=$('#'+id+' [data-autofocus]');if(f)setTimeout(()=>{try{f.focus({preventScroll:true});}catch(_){}},50);}
-function closeOverlays(){cam.tYaw=0;document.querySelectorAll('.overlay').forEach(o=>o.hidden=true);}
+function openOverlay(id){document.querySelectorAll('.overlay').forEach(o=>o.hidden=o.id!==id);navBack();const f=$('#'+id+' [data-autofocus]');if(f)setTimeout(()=>{try{f.focus({preventScroll:true});}catch(_){}},50);}
+function closeOverlays(){cam.tYaw=0;document.querySelectorAll('.overlay').forEach(o=>o.hidden=true);navBack();}
 let toastT=0;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},1900);}
 function popup(pos,text,cls){const v=pos.clone().project(camera),el=document.createElement('div');el.className='pop '+(cls||'');el.textContent=text;el.style.left=((v.x+1)/2*innerWidth)+'px';el.style.top=((1-v.y)/2*innerHeight)+'px';$('#fx').appendChild(el);setTimeout(()=>el.remove(),1200);}
 function showBanner(){const b=$('#banner');$('#bannerEyebrow').textContent=G.daily?_t('dailyChallenge'):_t('banner.level',{diff:G.d.name,n:G.level});$('#bannerName').textContent=G.daily?prettyDate(G.dateStr):displayName();$('#bannerMeta').textContent=_t('banner.tiles',{n:G.tiles.length})+(G.d.timed?_t('banner.incense',{t:fmtTime(G.limit)}):'');b.hidden=false;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>{b.hidden=true;},2600);}
 
+/* ---------- Back (top left) and the menu drawer (top right) ---------- */
+// At the table, back opens the main menu; on the main menu it leaves for the arcade.
+// The drawer holds the table settings, and at the table also restart and recenter. It pauses the incense.
+const nav=GameNav.create({title:'Jade Pavilion',items:()=>{const atTable=$('#menu').hidden&&G.loaded&&G.state==='play';return[
+  atTable&&{icon:'restart',label:_t('restart'),onSelect:()=>{startLevel(G.diffKey,G.level);closeOverlays();}},
+  atTable&&{icon:'view',label:_t('recenter'),onSelect:recenter},
+  {heading:_t('settings')},
+  {icon:'theme',label:_t('theme'),value:save.settings.theme,options:['jade','lacquer','moon'].map(k=>({value:k,label:_t('theme.'+k)})),onChoose:applyTheme},
+  {icon:'sound',label:_t('sound'),checked:save.settings.sound,onToggle:toggleSound},
+  {icon:'glow',label:_t('dim'),checked:save.settings.highlight,onToggle(on){save.settings.highlight=on;persist();hud();}},
+  {icon:'help',label:_t('howTo'),html:`<p>${_t('menu.lede')}</p><p>${_t('keys')}</p>`},
+  !atTable&&GameNav.language()];}});
+document.getElementById('app').appendChild(GameNav.bar(nav));
+function navBack(){if($('#menu').hidden)nav.setBack(openMenu,_t('backToMenu'));else nav.setBack();}
+
 /* ---------- Menu ---------- */
-let menuSel=save.lastDiff,menuLevel=save.prog[menuSel]?save.prog[menuSel].unlocked:1;
+// The lobby (shared/js/gamelobby.js): today's deal, the four tables as tabs, one tap to play on, every level.
+let menuSel=save.lastDiff in save.prog?save.lastDiff:'garden';
 const GLYPHC={breeze:'#1c1a17',garden:'#bb2a2a',dragon:'#16704a',emperor:'#1f4c98'};
 function renderMenu(){
-  $('#diffs').innerHTML=['breeze','garden','dragon','emperor'].map(k=>{const d=DIFFS[k],p=save.prog[k],st=totalStars(k);return `<button class="diff" role="radio" aria-checked="${k===menuSel}" data-k="${k}"><span class="mini" style="color:${GLYPHC[k]}">${d.glyph}</span><span class="dtx"><span class="nm">${d.name}</span><span class="ds">${d.desc}</span></span><span class="pg"><b>${_t('lv',{n:p.unlocked})}</b>★ ${st}</span></button>`;}).join('');
-  document.querySelectorAll('.diff').forEach(b=>b.onclick=()=>{menuSel=b.dataset.k;menuLevel=save.prog[menuSel].unlocked;Sfx.click();renderMenu();});
-  const p=save.prog[menuSel];menuLevel=clamp(menuLevel,1,p.unlocked);
-  $('#lvOut').textContent=_t('level',{n:menuLevel});$('#lvPrev').disabled=menuLevel<=1;$('#lvNext').disabled=menuLevel>=p.unlocked;
-  const st=p.stars[menuLevel];$('#lvStars').textContent=st?'★'.repeat(st)+'☆'.repeat(3-st)+_t('best',{n:fmt(p.best[menuLevel]||0)}):_t('notCleared');
-  const inGame=G.loaded&&G.state==='play'&&!G.fresh;
-  $('#resumeBtn').hidden=!inGame;
-  if(inGame)$('#resumeBtn').innerHTML=`<span>${_t('resume')}</span><small>${G.d.name} · ${G.daily?prettyDate(G.dateStr):_t('lv',{n:G.level})} · ${_t('tilesLeft',{n:aliveCount()})}</small>`;
-  const db=save.daily[todayStr()];$('#dailyMeta').textContent=prettyDate(todayStr())+(db?_t('best',{n:fmt(db)}):_t('notPlayed'));
-  document.querySelectorAll('[data-theme-k]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themeK===save.settings.theme)));
-  $('#optSound').setAttribute('aria-pressed',String(save.settings.sound));$('#optHighlight').setAttribute('aria-pressed',String(save.settings.highlight));
+  const p=save.prog[menuSel],d=DIFFS[menuSel],next=p.unlocked,db=save.daily[todayStr()],inGame=G.loaded&&G.state==='play'&&!G.fresh;
+  const st=Object.values(p.stars).filter(Boolean);
+  $('#lobby').replaceChildren(
+    GameLobby.daily({eyebrow:_t('dailyChallenge'),title:prettyDate(todayStr()),meta:db?_t('dailyBest',{n:fmt(db)}):_t('dailyNew'),done:!!db,label:db?_t('again'):_t('play'),onClick:()=>{Sfx.ensure();startLevel('daily',1);closeOverlays();}}),
+    GameLobby.tabs({label:_t('difficulty'),value:menuSel,options:['breeze','garden','dragon','emperor'].map(k=>({value:k,label:DIFFS[k].name,icon:`<span class="mini" style="color:${GLYPHC[k]}">${DIFFS[k].glyph}</span>`,meta:_t('lv',{n:save.prog[k].unlocked})+' · ★ '+totalStars(k)})),onChoose:k=>{menuSel=k;Sfx.click();renderMenu();}}),
+    GameLobby.play({eyebrow:d.name,title:_t('level',{n:next}),text:d.desc,action:{label:_t('play'),onClick:()=>playFromMenu(menuSel,next)},
+      more:[inGame&&{label:_t('resume'),sub:`${G.d.name} · ${G.daily?prettyDate(G.dateStr):_t('lv',{n:G.level})} · ${_t('tilesLeft',{n:aliveCount()})}`,onClick:()=>{Sfx.ensure();closeOverlays();}}],
+      stats:[[st.length,_t('lobby.cleared')],[st.reduce((a,b)=>a+b,0),_t('lobby.stars')],[st.filter(x=>x===3).length,_t('lobby.perfect')]]}),
+    GameLobby.levels({last:p.unlocked,stars:n=>p.stars[n]||0,onPick:n=>playFromMenu(menuSel,n)}));
+  $('#lobby .lob-play .lob-go').setAttribute('data-autofocus','');
 }
 function openMenu(){renderMenu();openOverlay('menu');}
-$('#lvPrev').onclick=()=>{menuLevel--;renderMenu();};$('#lvNext').onclick=()=>{menuLevel++;renderMenu();};
-$('#playBtn').onclick=()=>{Sfx.ensure();if(G.loaded&&G.fresh&&G.state==='play'&&!G.daily&&G.diffKey===menuSel&&G.level===menuLevel){closeOverlays();showBanner();return;}startLevel(menuSel,menuLevel);closeOverlays();};
-$('#resumeBtn').onclick=()=>{Sfx.ensure();closeOverlays();};
-$('#dailyBtn').onclick=()=>{Sfx.ensure();startLevel('daily',1);closeOverlays();};
-document.querySelectorAll('[data-theme-k]').forEach(b=>b.onclick=()=>{applyTheme(b.dataset.themeK);renderMenu();});
-$('#optSound').onclick=()=>{toggleSound();renderMenu();};
-$('#optHighlight').onclick=()=>{save.settings.highlight=!save.settings.highlight;persist();renderMenu();hud();};
+// A level that's already dealt and untouched behind the menu is simply shown; anything else is dealt anew.
+function playFromMenu(k,n){Sfx.ensure();if(G.loaded&&G.fresh&&G.state==='play'&&!G.daily&&G.diffKey===k&&G.level===n){closeOverlays();showBanner();return;}startLevel(k,n);closeOverlays();}
 function applyTheme(k){const th=THEMES[k]||THEMES.jade;save.settings.theme=k in THEMES?k:'jade';persist();scene.background.set(th.bg);scene.fog.color.copy(lin(th.bg));feltMat.color.copy(lin(th.felt)).multiplyScalar(1.35);backMat.color.copy(lin(th.back));poolMat.color.copy(lin(th.pool));Object.entries(th.css).forEach(([a,b])=>document.documentElement.style.setProperty(a,b));}
 function toggleSound(){save.settings.sound=!save.settings.sound;persist();hud();if(save.settings.sound)Sfx.click();}
 
 /* toolbar */
-$('#btnMenu').onclick=()=>openMenu();
 $('#btnUndo').onclick=undo;$('#btnHint').onclick=hint;$('#btnShuffle').onclick=()=>shuffle(false);
 $('#btnHighlight').onclick=()=>{save.settings.highlight=!save.settings.highlight;persist();hud();};
-$('#btnView').onclick=recenter;$('#btnSound').onclick=toggleSound;
+$('#btnView').onclick=recenter;
 $('#winNext').onclick=()=>{startLevel(G.diffKey,G.level+1);closeOverlays();};
 $('#winReplay').onclick=()=>{startLevel(G.diffKey,G.level);closeOverlays();};
-$('#winMenu').onclick=()=>{menuSel=G.daily?menuSel:G.diffKey;menuLevel=G.daily?menuLevel:Math.min(G.level+1,save.prog[G.diffKey].unlocked);openMenu();};
+$('#winMenu').onclick=()=>{if(!G.daily)menuSel=G.diffKey;openMenu();};
 $('#stuckShuffle').onclick=()=>shuffle(true);$('#stuckUndo').onclick=undo;
 $('#stuckRestart').onclick=()=>{startLevel(G.diffKey,G.level);closeOverlays();};
 $('#toRetry').onclick=()=>{startLevel(G.diffKey,G.level);closeOverlays();};$('#toMenu').onclick=openMenu;
@@ -429,7 +437,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)saveResume(
 let lastT=performance.now(),clock=0,sparkT=0;
 function frame(now){
   const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;clock+=dt;
-  const running=G.loaded&&G.state==='play'&&!overlayOpen()&&!document.hidden&&G.dealing===0;
+  const running=G.loaded&&G.state==='play'&&!overlayOpen()&&!nav.isOpen()&&!document.hidden&&G.dealing===0;
   if(running){G.elapsed+=dt;if(G.comboT>0)G.comboT=Math.max(0,G.comboT-dt);if(G.d.timed){G.timeLeft-=dt;if(G.timeLeft<=0){G.timeLeft=0;timeout();}}}
   if(G.hintT>0){G.hintT-=dt;if(G.hintT<=0)G.hint=null;}
   runTweens(dt);runParts(dt);

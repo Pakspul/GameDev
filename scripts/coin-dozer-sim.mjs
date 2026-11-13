@@ -7,12 +7,14 @@
 //   npm run coin-dozer:sim                         200 measured advances (after 30 to fill the board)
 //   npm run coin-dozer:sim -- --cycles 10000       the long stability run (acceptance criterion 28)
 //   npm run coin-dozer:sim -- --seed 7 --check     exit 1 on a problem or a cascade rate outside 1/10–1/3
+//   npm run coin-dozer:sim -- --machine pins       the pin wall machine (default: classic)
 import { simulate } from "../tests/coin-dozer/sim.mjs";
 
 const arg = (name, d) => { const i = process.argv.indexOf("--" + name); return i > 0 ? Number(process.argv[i + 1]) : d; };
 const cycles = arg("cycles", 200), seed = arg("seed", 20261107), check = process.argv.includes("--check");
-console.log(`Coin Dozer simulation: ${cycles} pusher cycles, seed ${seed}`);
-const r = await simulate({ cycles, seed, log: (m, steps) => console.log(`  cycle ${m.board.cycles}: bank ${m.bank}, ${m.board.items.size} bodies, ${(steps / 60 / 60).toFixed(0)} min played`) });
+const type = process.argv.includes("--machine") ? process.argv[process.argv.indexOf("--machine") + 1] : "classic";
+console.log(`Coin Dozer simulation: ${type} machine, ${cycles} pusher cycles, seed ${seed}`);
+const r = await simulate({ cycles, seed, type, log: (m, steps) => console.log(`  cycle ${m.board.cycles}: bank ${m.bank}, ${m.board.items.size} bodies, ${(steps / 60 / 60).toFixed(0)} min played`) });
 const m = r.machine, ev = r.events;
 const pct = (a, b) => (b ? ((100 * a) / b).toFixed(1) + "%" : "-");
 console.log(`  played        ${(m.time / 60).toFixed(1)} min, ${r.steps} steps, ${r.msPerStep.toFixed(2)} ms per physics step`);

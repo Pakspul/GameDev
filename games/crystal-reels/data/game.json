@@ -1,6 +1,12 @@
 {
  "schema": 1,
  "startingBalance": 25000,
+ "economy": {
+  "rewardPerLevel": 0.25,
+  "maxBetShare": 0.02,
+  "riskyBetShare": 0.05,
+  "sessionLossWarn": 0.5
+ },
  "xp": {
   "perCoinBet": 0.05,
   "thresholds": [
@@ -169,6 +175,13 @@
    25,
    50,
    100
+  ],
+  "infinite": true,
+  "lossLimits": [
+   0,
+   10,
+   25,
+   50
   ]
  },
  "missions": {

@@ -146,12 +146,35 @@ export function showSettings(app) {
         if (!ok) { input.checked = false; s.bonusReminder = false; toast(app, t("set.noNotify"), "info"); }
       }
     }),
+    h("div", { class: "field" }, h("span", {}, h("b", { text: t("set.export") }), h("small", { text: t("set.export.note") })),
+      h("button", { type: "button", class: "pill-btn", text: t("set.export.open"), onclick: () => showExport(app) })),
     h("div", { class: "danger-zone" }, h("button", { type: "button", class: "btn danger", text: t("set.reset"), onclick: async () => {
       const i = await ask(app, { title: t("set.reset"), body: h("p", { text: t("set.reset.confirm") }), buttons: [{ label: t("cancel") }, { label: t("set.reset.do"), danger: true }], dismissible: true });
       if (i === 1) app.resetProgress();
     } })),
     h("p", { class: "fine", text: t("set.promise") }));
   openModal(app, { title: t("settings"), body });
+}
+
+// ---- export the profile as JSON ------------------------------------------------------------------------------
+/** Copy text to the clipboard; falls back to selecting it in a hidden field where the clipboard API is blocked. */
+async function copyText(text, fallbackEl) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* not allowed here: try the old way */ }
+  try { fallbackEl.focus(); fallbackEl.select(); return document.execCommand("copy"); } catch (e) { return false; }
+}
+
+export function showExport(app) {
+  const t = app.t;
+  const json = JSON.stringify(P.exportProfile(app.profile, app.game), null, 2);
+  const box = h("textarea", { class: "export-box", readonly: true, rows: 9, spellcheck: "false", "aria-label": t("set.export") }, json);
+  const copy = h("button", { type: "button", class: "btn primary", text: t("set.export.copy") });
+  copy.onclick = async () => {
+    const ok = await copyText(json, box);
+    app.audio.sfx("tap");
+    if (ok) { copy.textContent = t("set.export.copied"); setTimeout(() => { copy.textContent = t("set.export.copy"); }, 2000); }
+    else { box.focus(); box.select(); toast(app, t("set.export.manual"), "info", 4500); }
+  };
+  openModal(app, { title: t("set.export"), body: h("div", { class: "export" }, h("p", { class: "note", text: t("set.export.text") }), box, h("div", { class: "export-actions" }, copy)) });
 }
 
 // ---- profile, missions and achievements (PROG-04, PROG-05) ------------------------------------------------

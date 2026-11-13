@@ -58,25 +58,25 @@ await check("AC1: opens straight into play: about 60 coins, 3 prizes, a bank of 
   ok(s.prizes === 3, `prizes ${s.prizes}`);
   ok(!s.overlay, "something covers the board");
   ok(await cd("!document.querySelector('#hint').hidden"), "the first-launch hint is missing");
-  await page.screenshot({ path: join(OUT, "coin-dozer-start.png") });
+  await page.screenshot({ path: join(OUT, "coin-dozer-start.png"), timeout: 30000 });
 });
 
-await check("AC2: dragging on the lower half moves the ghost coin, clamped to the shelf", async () => {
+await check("AC2: a new player starts on the pin wall; dragging picks one of its three slots", async () => {
+  ok((await cd("CoinDozer.machine.type")) === "pins", "not the pin wall");
   await touch("touchStart", 206, 700);
-  await touch("touchMove", 300, 700);
+  await touch("touchMove", 400, 700);
   await page.waitForTimeout(100);
   const a1 = await cd("CoinDozer.machine.aim");
   await touch("touchMove", 2, 700);
   await page.waitForTimeout(100);
   const a2 = await cd("CoinDozer.machine.aim");
-  ok(a1 > 0.5, `aim after dragging right: ${a1}`);
-  ok(Math.abs(a2 + 3) < 1e-9, `aim at the far left: ${a2} (expected the clamp, -3)`);
+  ok(a1 === 2.1 && a2 === -2.1, `slots after dragging right and left: ${a1}, ${a2}`);
   ok(await cd("CoinDozer.renderer.ghost.visible"), "no ghost coin");
   await touch("touchEnd");
   await page.waitForTimeout(300);
 });
 
-await check("AC3: a release drops exactly one coin; a second within 0.25 s is ignored", async () => {
+await check("AC3: a press drops exactly one coin at once; a second within 0.25 s is ignored", async () => {
   const ready = () => page.waitForFunction(() => CoinDozer.machine.time - CoinDozer.machine.lastDrop > 0.3);
   await ready();
   const before = await cd("CoinDozer.save.progress.stats.dropped");
@@ -90,16 +90,23 @@ await check("AC3: a release drops exactly one coin; a second within 0.25 s is ig
   const after = await cd("CoinDozer.save.progress.stats.dropped");
   ok(after - before === 1, `drops: ${after - before}`);
   ok(await cd("document.querySelector('#hint').hidden"), "the hint should go after the first drop");
-  // A tap on the top half doesn't drop.
+  // A press drops before it's released, and a press on the top half (where the pin wall's slots are) counts.
   await ready();
-  await touch("touchStart", 206, 200); await touch("touchEnd");
-  await page.waitForTimeout(50);
-  ok((await cd("CoinDozer.save.progress.stats.dropped")) === after, "a tap on the board dropped a coin");
+  await touch("touchStart", 330, 260);
+  ok((await cd("CoinDozer.save.progress.stats.dropped")) === after + 1, "a press on the slots didn't drop a coin straight away");
+  ok((await cd("CoinDozer.machine.aim")) === 2.1, "a press on the right picks the right slot");
+  await touch("touchEnd");
+  // A mouse click does the same.
+  await ready();
+  await page.mouse.move(80, 600);
+  await page.mouse.down();
+  ok((await cd("CoinDozer.save.progress.stats.dropped")) === after + 2, "a mouse press didn't drop a coin");
+  await page.mouse.up();
 });
 
-await check("AC20: every button is at least 44 × 44 CSS px and sits in the bottom 35% of the screen", async () => {
-  const bad = await cd(`[...document.querySelectorAll("button")].filter((b) => b.offsetParent).map((b) => { const r = b.getBoundingClientRect(); return { id: b.id || b.textContent.trim(), w: r.width, h: r.height, top: r.top }; })
-    .filter((r) => r.w < 44 || r.h < 44 || r.top < innerHeight * 0.65)`);
+await check("AC20: every button is at least 44 × 44 CSS px and sits in the bottom 35% of the screen (the arcade's back and menu buttons excepted)", async () => {
+  const bad = await cd(`[...document.querySelectorAll("button")].filter((b) => b.offsetParent && !b.closest(".gnav-drawer")).map((b) => { const r = b.getBoundingClientRect(); return { id: b.id || b.className || b.textContent.trim(), w: r.width, h: r.height, top: r.top, nav: b.classList.contains("gnav-btn") }; })
+    .filter((r) => r.w < 44 || r.h < 44 || (!r.nav && r.top < innerHeight * 0.65))`);
   ok(bad.length === 0, "buttons: " + JSON.stringify(bad));
   ok((await cd("document.querySelectorAll('#controls button').length")) === 4, "four controls");
 });
@@ -122,10 +129,52 @@ await check("Pause stops the physics and shows Resume, Workshop, Settings and Ex
   await page.waitForTimeout(500);
   ok((await cd("CoinDozer.machine.time")) === t, "the board moved while paused");
   for (const b of ["Resume", "Workshop", "Settings", "Exit to the arcade"]) ok(await page.getByRole("button", { name: b }).count(), `no ${b} button`);
-  await page.screenshot({ path: join(OUT, "coin-dozer-pause.png") });
+  await page.screenshot({ path: join(OUT, "coin-dozer-pause.png"), timeout: 30000 });
   await page.getByRole("button", { name: "Resume" }).click();
   await page.waitForTimeout(300);
   ok((await cd("CoinDozer.machine.time")) > t, "Resume didn't restart the board");
+});
+
+await check("Machines: the free drop aims anywhere (clamped); switching keeps the bank and parks the other board", async () => {
+  await page.click("#pauseBtn");
+  const before = await cd(`(() => { const m = CoinDozer.machine; return { bank: m.bank, n: m.board.items.size }; })()`);
+  await page.locator(".machine.classic").click();
+  ok((await cd("CoinDozer.machine.type")) === "classic", "didn't switch");
+  ok((await cd("CoinDozer.machine.bank")) === before.bank, "the bank didn't come along");
+  ok((await cd("CoinDozer.save.parked.pins.board.items.length")) === before.n, "the pin wall's board isn't parked");
+  ok((await page.locator('.machine.classic[aria-checked="true"]').count()) === 1, "the card doesn't show the choice");
+  await page.getByRole("button", { name: "Resume" }).click();
+  await page.waitForTimeout(200);
+  await touch("touchStart", 206, 700);
+  await touch("touchMove", 300, 700);
+  await page.waitForTimeout(100);
+  const a1 = await cd("CoinDozer.machine.aim");
+  await touch("touchMove", 2, 700);
+  await page.waitForTimeout(100);
+  const a2 = await cd("CoinDozer.machine.aim");
+  ok(a1 > 0.5, `aim after dragging right: ${a1}`);
+  ok(Math.abs(a2 + 3) < 1e-9, `aim at the far left: ${a2} (expected the clamp, -3)`);
+  await touch("touchEnd");
+  await page.screenshot({ path: join(OUT, "coin-dozer-classic.png"), timeout: 30000 });
+  // And back: the pin wall's board returns as it was.
+  await page.click("#pauseBtn");
+  await page.locator(".machine.pins").click();
+  ok((await cd("CoinDozer.machine.type")) === "pins" && (await cd("CoinDozer.machine.board.items.size")) >= before.n - 3, "the pin wall's board didn't come back");
+  await page.getByRole("button", { name: "Resume" }).click();
+});
+
+await check("The menu drawer (top right) pauses the board and offers the machines; back (top left) is there", async () => {
+  ok(await page.isVisible(".gnav-back"), "no back button");
+  await page.click(".gnav-menu");
+  ok(await cd("document.querySelector('.gnav-drawer').open"), "the drawer didn't open");
+  const t = await cd("CoinDozer.machine.time");
+  await page.waitForTimeout(300);
+  ok((await cd("CoinDozer.machine.time")) === t, "the board moved behind the drawer");
+  ok(await page.locator(".gnav-drawer").getByText("Pin wall").count(), "no machine choice");
+  await page.click(".gnav-close");
+  await page.waitForTimeout(1000);
+  ok(!(await cd("document.querySelector('.gnav-drawer').open")), "the drawer didn't close");
+  ok((await cd("CoinDozer.machine.time")) > t, "closing the drawer didn't resume");
 });
 
 await check("AC15: the Workshop blocks a purchase without credits, and a purchase with credits applies and persists", async () => {
@@ -145,7 +194,7 @@ await check("AC15: the Workshop blocks a purchase without credits, and a purchas
   await buy.click();
   ok((await cd("CoinDozer.save.progress.credits")) === 60, "40 credits spent");
   ok((await cd("CoinDozer.machine.maxNudges")) === 4, "the upgrade applies at once");
-  await page.screenshot({ path: join(OUT, "coin-dozer-workshop.png"), fullPage: true });
+  await page.screenshot({ path: join(OUT, "coin-dozer-workshop.png"), fullPage: true, timeout: 30000 });
   await closeScreens();
 });
 
@@ -156,7 +205,7 @@ await check("The collection shows 12 slots per theme, silhouettes for prizes not
   ok((await page.locator(".grid .slot.has").count()) === 1, "one owned");
   await page.locator(".grid .slot.has").click();
   ok((await page.textContent(".detail")).includes("Rubber Duck"), "tapping shows the name");
-  await page.screenshot({ path: join(OUT, "coin-dozer-collection.png") });
+  await page.screenshot({ path: join(OUT, "coin-dozer-collection.png"), timeout: 30000 });
   await closeScreens();
 });
 
@@ -164,7 +213,7 @@ await check("AC21: sound, vibration and screen shake each switch off and stay of
   await page.click("#pauseBtn");
   await page.getByRole("button", { name: "Settings" }).click();
   for (const name of ["Sound", "Vibration", "Screen shake"]) await page.getByRole("switch", { name }).click();
-  await page.screenshot({ path: join(OUT, "coin-dozer-settings.png") });
+  await page.screenshot({ path: join(OUT, "coin-dozer-settings.png"), timeout: 30000 });
   await closeScreens();
   await open();
   const s = await cd("CoinDozer.save.settings");
@@ -209,7 +258,7 @@ await check("Landscape doesn't break: the board letterboxes and the controls sta
   await page.setViewportSize({ width: 915, height: 412 });
   await page.waitForTimeout(500);
   ok(await page.isVisible("#controls"), "controls hidden");
-  await page.screenshot({ path: join(OUT, "coin-dozer-landscape.png") });
+  await page.screenshot({ path: join(OUT, "coin-dozer-landscape.png"), timeout: 30000 });
   await page.setViewportSize({ width: 412, height: 839 });
   await page.waitForTimeout(300);
 });

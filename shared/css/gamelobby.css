@@ -1,0 +1,127 @@
+/* GameLobby: the parts of a game's own menu, see shared/js/gamelobby.js. The same layout in every game;
+   the look comes from the game through the --gn-* variables it already sets for GameNav, plus:
+
+     --gn-surface   tiles, tabs and cards           --gn-ink      text on them (default: inherit)
+     --gn-chosen    the chosen tab / variant        --gn-chosen-ink  its text
+     --gn-star      a lit star                      --gn-star-off    an unlit one
+     --gn-display   the font of names and numbers   --gn-card-radius --gn-tile-radius
+
+   Load it after gamenav.css and before the game's own style.css, so the game can restyle .lob-* further. */
+
+.lob-choice, .lob-tabs, .lob-card, .lob-levels, .lob-wallet, .lob-choice *, .lob-tabs *, .lob-card *, .lob-levels * { box-sizing: border-box; }
+/* Resets without weight (:where), so every rule below, and the game's own, wins over them. */
+:where(.lob-choice, .lob-tabs, .lob-card, .lob-levels) button, :where(.lob-wallet) {
+  margin: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.lob-choice button:focus-visible, .lob-tabs button:focus-visible, .lob-card button:focus-visible, .lob-levels button:focus-visible, .lob-wallet:focus-visible {
+  outline: 2px solid var(--gn-accent, currentColor); outline-offset: 2px;
+}
+.lob-choice svg, .lob-card svg, .lob-levels svg { display: block; }
+
+/* Variants: one row of equal buttons. */
+.lob-choice {
+  display: flex; gap: 3px; padding: 4px; width: 100%;
+  border-radius: calc(var(--gn-tile-radius, 14px) + 4px); background: var(--gn-surface, rgba(127, 127, 127, .12)); border: 1px solid var(--gn-line, transparent);
+}
+.lob-choice button {
+  flex: 1 1 0; min-width: 0; min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 10px;
+  border: 0; border-radius: var(--gn-tile-radius, 14px); background: none; color: var(--gn-muted, inherit); text-align: left;
+}
+.lob-choice button > svg { flex: none; width: 22px; height: 22px; }
+.lob-choice .lob-txt { min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+.lob-choice .lob-txt b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lob-choice .lob-txt small { font-size: .74rem; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lob-choice button[aria-checked="true"] { background: var(--gn-chosen, var(--gn-accent, #2f5fd0)); color: var(--gn-chosen-ink, var(--gn-accent-ink, #fff)); }
+
+/* Difficulties: tabs that scroll sideways on a narrow screen. */
+/* contain: the row scrolls, so its tabs must never widen the menu around it. */
+.lob-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -4px; padding: 2px 4px 4px; scroll-behavior: smooth; contain: inline-size; }
+.lob-tabs::-webkit-scrollbar { display: none; }
+.lob-tab {
+  flex: 1 0 auto; min-width: 96px; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px 14px 9px;
+  border-radius: var(--gn-tile-radius, 14px); border: 1px solid var(--gn-line, rgba(127, 127, 127, .25));
+  background: var(--gn-surface, rgba(127, 127, 127, .12)); color: var(--gn-ink, inherit); text-align: left;
+}
+.lob-tab b { display: flex; align-items: center; gap: 7px; font-family: var(--gn-display, inherit); font-weight: 700; font-size: 1rem; line-height: 1.1; white-space: nowrap; }
+.lob-ico { flex: none; display: grid; place-items: center; }
+.lob-ico svg { width: 20px; height: 20px; }
+.lob-tab small { font-size: .74rem; opacity: .75; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lob-tab .lob-note { opacity: .7; white-space: normal; max-width: 22ch; line-height: 1.25; }
+.lob-pips { display: flex; gap: 3px; }
+.lob-pips i { width: 14px; height: 4px; border-radius: 2px; background: currentColor; opacity: .22; }
+.lob-pips i.on { opacity: 1; }
+.lob-tab[aria-selected="true"] { background: var(--gn-chosen, var(--gn-accent, #2f5fd0)); color: var(--gn-chosen-ink, var(--gn-accent-ink, #fff)); border-color: transparent; }
+
+/* Cards: where you are, and the daily challenge. */
+.lob-card {
+  display: flex; flex-direction: column; gap: 12px; padding: 16px;
+  border-radius: var(--gn-card-radius, 18px); border: 1px solid var(--gn-line, rgba(127, 127, 127, .25));
+  background: var(--gn-surface, rgba(127, 127, 127, .12)); color: var(--gn-ink, inherit);
+}
+.lob-play-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; }
+.lob-play-text { flex: 1 1 180px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lob-play-text h2 { margin: 0; font-family: var(--gn-display, inherit); font-weight: 800; font-size: 1.5rem; line-height: 1.1; text-wrap: balance; }
+.lob-play-text p { margin: 0; color: var(--gn-muted, inherit); font-size: .9rem; }
+.lob-eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gn-muted, inherit); }
+.lob-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; justify-content: flex-end; }
+.lob-go, .lob-alt {
+  flex: 1 1 auto; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 10px 20px;
+  border: 0; border-radius: 999px; font-weight: 700; font-size: 1rem; line-height: 1.15; white-space: nowrap;
+}
+.lob-go { background: var(--gn-accent, #2f5fd0); color: var(--gn-accent-ink, #fff); }
+.lob-go svg { flex: none; width: 17px; height: 17px; }
+.lob-alt { background: transparent; color: inherit; border: 1px solid var(--gn-line, rgba(127, 127, 127, .35)); }
+.lob-go span, .lob-alt span { display: flex; flex-direction: column; align-items: flex-start; }
+.lob-go small, .lob-alt small { font-size: .74rem; font-weight: 500; opacity: .75; }
+.lob-go:active, .lob-alt:active { transform: scale(.97); }
+.lob-stats { display: flex; flex-wrap: wrap; gap: 4px 20px; color: var(--gn-muted, inherit); font-size: .86rem; }
+.lob-stats b { color: var(--gn-ink, var(--gn-fg, inherit)); font-family: var(--gn-display, inherit); font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+.lob-daily { flex-direction: row; align-items: center; justify-content: space-between; gap: 14px; }
+.lob-daily-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lob-daily-text strong { font-family: var(--gn-display, inherit); font-size: 1.1rem; line-height: 1.2; }
+.lob-daily-text small { color: var(--gn-muted, inherit); font-size: .82rem; }
+.lob-daily .lob-go { flex: none; padding: 10px 18px; }
+.lob-daily.done .lob-go { background: transparent; color: inherit; border: 1px solid var(--gn-line, rgba(127, 127, 127, .35)); }
+
+/* Levels: a grid of tiles with their stars, a page at a time. */
+.lob-levels { display: flex; flex-direction: column; gap: 10px; }
+.lob-levels-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; }
+.lob-levels-head h3 { margin: 0; font-family: var(--gn-display, inherit); font-weight: 700; font-size: 1.05rem; }
+.lob-pager { display: flex; align-items: center; gap: 4px; color: var(--gn-muted, inherit); font-size: .88rem; font-variant-numeric: tabular-nums; }
+.lob-pager span { min-width: 64px; text-align: center; }
+.lob-pager button {
+  width: 36px; height: 36px; display: grid; place-items: center; padding: 0;
+  border-radius: 10px; border: 1px solid var(--gn-line, rgba(127, 127, 127, .25)); background: var(--gn-surface, rgba(127, 127, 127, .12));
+}
+.lob-pager svg { width: 18px; height: 18px; }
+.lob-pager .lob-fwd svg { transform: scaleX(-1); }
+.lob-pager button:disabled { opacity: .35; cursor: default; }
+.lob-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; }
+.lob-lvl {
+  aspect-ratio: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 4px;
+  border-radius: var(--gn-tile-radius, 14px); border: 1px solid var(--gn-line, rgba(127, 127, 127, .25));
+  background: var(--gn-surface, rgba(127, 127, 127, .12)); color: var(--gn-ink, inherit);
+}
+.lob-n { font-family: var(--gn-display, inherit); font-weight: 700; font-size: 1.05rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.lob-stars { display: flex; gap: 1px; }
+.lob-stars i { display: block; width: 11px; height: 11px; color: var(--gn-star-off, rgba(127, 127, 127, .35)); }
+.lob-stars i.on { color: var(--gn-star, #f5b301); }
+.lob-stars svg { width: 100%; height: 100%; }
+.lob-lvl.perfect { border-color: color-mix(in srgb, var(--gn-star, #f5b301) 55%, transparent); background: color-mix(in srgb, var(--gn-star, #f5b301) 14%, var(--gn-surface, transparent)); }
+.lob-lvl.next { border: 2px solid var(--gn-accent, #2f5fd0); }
+.lob-lvl.next .lob-n { color: var(--gn-accent, inherit); }
+.lob-lvl.past { cursor: default; }
+.lob-lvl.locked { cursor: default; opacity: .4; background: transparent; }
+.lob-lock { width: 13px; height: 13px; color: var(--gn-muted, inherit); }
+.lob-lock svg { width: 100%; height: 100%; }
+.lob-lvl:not([aria-disabled]):active { transform: scale(.94); }
+
+/* The balance: a chip next to the menu button that opens the shop. */
+.lob-wallet {
+  flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: var(--gn-size, 44px); padding: 4px 14px 4px 8px;
+  border-radius: 999px; border: var(--gn-border, 1px solid rgba(127, 127, 127, .25)); background: var(--gn-bg, rgba(127, 127, 127, .14)); color: var(--gn-fg, inherit);
+  font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.lob-coin { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6c8, var(--gn-star, #f5b301) 55%, #b07a00); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .12); }
+.lob-wallet:active { transform: scale(.96); }

@@ -22,7 +22,8 @@ How the repository is organised, why, and how to improve it step by step without
 │   ├── wallbreaker/         src/ holds the engine, generator, modes, economy (config.js has every number), renderer and save
 │   └── coin-dozer/          src/ holds the physics board (Rapier), the machine's rules, economy, themes, renderer and save; config.js has every number
 ├── shared/                  Things every game uses, kept in exactly one place
-│   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md)
+│   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md), gamenav.js (back button and menu), gamelobby.js (a game's own menu)
+│   ├── css/                 gamenav.css, gamelobby.css: the neutral look of those, which each game restyles
 │   ├── vendor/three/        three.js r128 (the 3D engine), served locally
 │   ├── vendor/rapier/       Rapier 0.19.3 (rigid-body physics, WebAssembly inside an ES module), used by Coin Dozer
 │   └── icons/               App icon
@@ -67,7 +68,7 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Graphite | English + Dutch | ~2,200 | 2D canvas, redraws only on change | `graphite.v1` | Four logic puzzle types, generators in a Web Worker, logic-based hints, four dailies |
 | Wallbreaker | English + Dutch | ~3,300 (ES modules) | 2D canvas, frame loop only while a level is played | `wallbreaker.save` | Brick breaker, seven modes on one engine (`src/engine.js`, fixed 120 Hz, swept collision); seeded levels; its own economy in `src/config.js`; service worker for offline install. See [WALLBREAKER.md](WALLBREAKER.md) |
 | Coin Dozer | English + Dutch | ~2,900 (ES modules) | three.js r128 + Rapier physics, instanced coins; nothing runs while paused or hidden | `coin-dozer.save` | Coin pusher: fixed 60 Hz physics, seeded board, prizes and bonus events; its own economy in `src/config.js`; service worker for offline install. See [COIN-DOZER.md](COIN-DOZER.md) |
-| Crystal Reels | English + Dutch | ~6,000 (ES modules) | DOM + SVG, no canvas except particles; frame loop only while something moves | `honest-arcade.slots.save.0/1` | Slot machines with play money; maths engine + simulator in `games/slots/src/engine`, see [SLOTS.md](SLOTS.md) |
+| Crystal Reels | English + Dutch | ~6,000 (ES modules) | DOM + SVG, no canvas except particles; frame loop only while something moves | `honest-arcade.slots.save.0/1` | Slot machines with play money; maths engine + simulator in `games/crystal-reels/src/engine`, see [SLOTS.md](SLOTS.md) |
 | Camper Crew | English + Dutch | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
 
 Graphite came later and was written for this repository directly, not as an artifact. It already uses `Platform.home()` and `Platform.haptic()`, draws nothing while the board is idle, and has no three.js at all.
@@ -106,6 +107,30 @@ shared/js/platform.js
 ```
 
 Each game then calls `Platform.home()` from **its own** menu, styled in its own way. The look stays separate; only the plumbing is shared.
+
+### Navigation: the same in every game, in each game's style
+
+Every game has the same two corner buttons, from `shared/js/gamenav.js` (`GameNav.create`):
+
+- **Top left, back.** In a level it goes to the game's own menu, on that menu to the arcade. The game says where with `nav.setBack(fn, label)` whenever its screen changes; `nav.setBack()` means "to the arcade". The Android back button does the same (`Platform.onBack`).
+- **Top right, ☰.** A drawer from the right, like the hub's menu. The game lists its items (actions, switches, choices, folding "how to play" text) in a function that runs on every open; "Back to arcade" is always added at the bottom. `onOpen`/`onClose` let a game pause while it's open.
+
+The game decides where the two buttons go: into its own top bar (Graphite, Outbound, Nuts & Bolts, Crystal Reels, the head of each Wallbreaker menu screen, and the HUD of Unscrew, Camper Crew and Wallbreaker) or into a bar of their own fixed to the top corners (`GameNav.bar(nav)`, for screens without a header). The look comes from `--gn-*` variables that each game sets in its `style.css` (listed at the top of `shared/css/gamenav.css`); a game may restyle `.gnav-btn` further, as Nuts & Bolts does with its hex buttons. `npm test` fails for a game without both buttons.
+
+### A game's own menu: the same layout in every game
+
+Between the arcade and a level sits the game's own menu, its lobby. `shared/js/gamelobby.js` (`GameLobby`) gives the parts, each a plain element the game puts in its own markup, top to bottom:
+
+| Part | What it is | Who has it |
+|---|---|---|
+| `GameLobby.wallet` | the balance, next to ☰; a tap opens the shop | every game with a shop |
+| `GameLobby.daily` | today's puzzle, with Play | games with a daily |
+| `GameLobby.choice` | variants side by side (2D/3D, flat/boxes/shapes) | games with variants |
+| `GameLobby.tabs` | difficulties (or modes) as tabs that scroll sideways | games with more than one |
+| `GameLobby.play` | where you are, with one big Play (and Resume or New run beside it) | every game |
+| `GameLobby.levels` | every level as a tile with its stars, a page at a time; the next one ringed, later ones locked | every game with levels |
+
+A game leaves out what it doesn't have and rebuilds the parts when something changes (a tab chosen, a level won). The look comes from the same `--gn-*` variables as the drawer, plus a few of its own (listed at the top of `shared/css/gamelobby.css`). Games with runs pass `playable(n)` so the grid shows the stars of every level but only starts the ones the rules allow. Outbound, Graphite and Crystal Reels have their own code for this layout, from before the kit; move them onto it when they're next touched.
 
 ### 2. Extract when you touch, not in one big refactor
 

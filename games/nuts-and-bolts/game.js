@@ -1228,7 +1228,6 @@ function NBCore() {
   $("undoBtn").addEventListener("click", undo);
   $("hintBtn").addEventListener("click", hint);
   $("spareBtn").addEventListener("click", addSpare);
-  $("restartBtn").addEventListener("click", restart);
   $("replayBtn").addEventListener("click", restart);
   $("nextBtn").addEventListener("click", () => {
     if (!M) return;
@@ -1241,21 +1240,14 @@ function NBCore() {
   const root = document.documentElement;
   const fsSupported = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
   const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
-  if (!fsSupported) $("fsBtn").hidden = true;
   async function toggleFs() {
     try {
       if (fsElement()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
       else await (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
     } catch (e) { toast(_t("fs.denied")); }
   }
-  function updateFsIcon() {
-    const on = !!fsElement();
-    $("fsIcon").innerHTML = on ? '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>' : '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>';
-    $("fsBtn").setAttribute("aria-label", _t(on ? "fs.exit" : "fs"));
-  }
-  $("fsBtn").addEventListener("click", toggleFs);
-  document.addEventListener("fullscreenchange", updateFsIcon);
-  document.addEventListener("webkitfullscreenchange", updateFsIcon);
+  document.addEventListener("fullscreenchange", () => nav.refresh());
+  document.addEventListener("webkitfullscreenchange", () => nav.refresh());
 
   let wakeLock = null;
   async function requestWake() {
@@ -1264,60 +1256,73 @@ function NBCore() {
   }
 
   // ---------------------------------------------------------------- menu
+  // The workshop is the lobby (shared/js/gamelobby.js): today's puzzle, the four difficulties as tabs, one
+  // tap to play on, and every level with its stars. The puzzle you were on stays loaded behind it.
   let menuDiff = current.diff;
   const maxLevel = d => progress[d] || 1;
-  function renderDiffs() {
-    const box = $("diffs"); box.innerHTML = "";
-    DIFF_KEYS.forEach((k, i) => {
-      const b = document.createElement("button");
-      b.className = "diff"; b.type = "button"; b.setAttribute("aria-pressed", String(k === menuDiff));
-      b.innerHTML = '<span class="name">' + DIFF_INFO[k].name + '<span class="pips">' + [0, 1, 2, 3].map(j => '<b class="' + (j <= i ? "on" : "") + '"></b>').join("") + '</span></span><span class="meta">' + DIFF_INFO[k].meta + '</span><span class="reach">' + _t("unlockedTo", { n: maxLevel(k) }) + "</span>";
-      b.addEventListener("click", () => { menuDiff = k; setLevelInput(current.mode === "level" && k === current.diff ? current.level : maxLevel(k)); renderDiffs(); });
-      box.appendChild(b);
-    });
-  }
-  function setLevelInput(v) {
-    const max = maxLevel(menuDiff);
-    v = Math.min(max, Math.max(1, v | 0 || 1));
-    const inp = $("levelInput");
-    inp.value = v; inp.max = max;
-    $("lvlMinus").disabled = v <= 1; $("lvlPlus").disabled = v >= max;
-    $("levelType").innerHTML = _t("levelType", { n: v, type: TYPE_NAME[C.typeFor(v)] });
-    const best = eco.best[menuDiff + ":" + v] || 0;
-    $("levelBest").innerHTML = best ? '<span class="stars">' + [1, 2, 3].map(k => starSvg(k <= best)).join("") + "</span>" : v === max ? "<b>" + _t("new") + "</b>" : "";
-  }
-  function renderDaily() {
-    const d = new Date(), day = today();
-    $("calMonth").textContent = shortDate(d, { month: "short" });
-    $("calDay").textContent = d.getDate();
-    const done = eco.daily.done[day], streak = liveStreak();
-    $("dailyMeta").textContent = TYPE_NAME[dailyType(day)] + " · " + (done ? _t("daily.solved", { stars: plural(done, "star") }) : streak ? _t("daily.streak", { days: plural(streak, "day") }) : _t("daily.start"));
-  }
-  function renderStats() {
-    $("stCleared").textContent = eco.cleared;
-    $("stStars").textContent = eco.stars;
-    $("stStreak").textContent = liveStreak();
-    $("stEarned").textContent = eco.earned;
+  const onLevel = (d, n) => current.mode === "level" && current.diff === d && current.level === n;
+  function playFromMenu(d, n) { if (onLevel(d, n)) closeMenu(); else { closeMenu(); startLevel(d, n); } }
+  function renderMenu() {
+    const d = new Date(), day = today(), done = eco.daily.done[day], streak = liveStreak(), next = maxLevel(menuDiff);
+    $("menuWallet").replaceChildren(GameLobby.wallet({ value: eco.washers, icon: washerSvg, onClick: () => { closeMenu(); openShop(); } }));
+    const cal = '<span class="cal"><small>' + shortDate(d, { month: "short" }) + "</small><b>" + d.getDate() + "</b></span>";
+    $("lobby").replaceChildren(
+      GameLobby.daily({
+        icon: cal, eyebrow: _t("daily"), title: TYPE_NAME[dailyType(day)], done: !!done,
+        meta: done ? _t("daily.solved", { stars: plural(done, "star") }) : streak ? _t("daily.streak", { days: plural(streak, "day") }) : _t("daily.start"),
+        label: _t("play"), onClick: () => { closeMenu(); startDaily(); },
+      }),
+      GameLobby.tabs({
+        label: _t("difficulty"), value: menuDiff,
+        options: DIFF_KEYS.map((k, i) => ({ value: k, label: DIFF_INFO[k].name, pips: [i + 1, 4], meta: _t("level", { n: maxLevel(k) }) })),
+        onChoose: k => { menuDiff = k; renderMenu(); },
+      }),
+      GameLobby.play({
+        eyebrow: DIFF_INFO[menuDiff].name, title: _t("level", { n: next }), text: TYPE_NAME[C.typeFor(next)] + " · " + DIFF_INFO[menuDiff].meta,
+        action: { label: _t("play"), onClick: () => playFromMenu(menuDiff, next) },
+        more: [!onLevel(menuDiff, next) && { label: _t("resume"), sub: $("diffPill").textContent, onClick: closeMenu }],
+        stats: [[eco.cleared, _t("lobby.cleared")], [eco.stars, _t("lobby.stars")], [liveStreak(), _t("st.streak").toLowerCase()], [eco.earned, _t("st.earned").toLowerCase()]],
+      }),
+      GameLobby.levels({
+        last: next, next: onLevel(menuDiff, current.level) ? current.level : next,
+        stars: n => eco.best[menuDiff + ":" + n] || 0,
+        onPick: n => playFromMenu(menuDiff, n),
+      }));
   }
   function openMenu() {
     menuDiff = current.diff;
-    setLevelInput(current.mode === "level" ? current.level : maxLevel(menuDiff));
-    renderDiffs(); renderDaily(); renderStats();
+    renderMenu();
     $("shop").hidden = true;
     $("menu").hidden = false;
-    $("playBtn").focus({ preventScroll: true });
+    syncNav();
+    if (matchMedia("(hover: hover)").matches) $("lobby").querySelector(".lob-play .lob-go").focus({ preventScroll: true });
   }
-  const closeMenu = () => { $("menu").hidden = true; };
-  const levelValue = () => { const v = parseInt($("levelInput").value, 10); return Math.min(maxLevel(menuDiff), Math.max(1, isNaN(v) ? 1 : v)); };
-  $("menuBtn").addEventListener("click", openMenu);
-  $("menuCancel").addEventListener("click", closeMenu);
-  $("lvlMinus").addEventListener("click", () => setLevelInput(levelValue() - 1));
-  $("lvlPlus").addEventListener("click", () => setLevelInput(levelValue() + 1));
-  $("levelInput").addEventListener("change", () => setLevelInput(levelValue()));
-  $("levelInput").addEventListener("keydown", e => { if (e.key === "Enter") $("playBtn").click(); });
-  $("playBtn").addEventListener("click", () => { closeMenu(); startLevel(menuDiff, levelValue()); });
-  $("dailyBtn").addEventListener("click", () => { closeMenu(); startDaily(); });
-  $("menuShop").addEventListener("click", () => { closeMenu(); openShop(); });
+  const closeMenu = () => { $("menu").hidden = true; syncNav(); };
+
+  // Back (top left) and the menu drawer (top right), as hex buttons in the top bar. In a puzzle, back
+  // opens the workshop; in the workshop it leaves for the arcade (the bar then sits above the workshop).
+  const nav = GameNav.create({
+    title: "Nuts & Bolts",
+    items: () => {
+      const inPuzzle = $("menu").hidden;
+      return [
+        inPuzzle && { icon: "restart", label: _t("restart"), onSelect: restart },
+        { icon: "shop", label: _t("shop"), onSelect: openShop },
+        fsSupported && { icon: "fullscreen", label: _t("fs"), checked: !!fsElement(), onToggle: toggleFs },
+        { icon: "help", label: _t("how"), html: [1, 2, 3].map(n => "<p>" + _t("how." + n) + "</p>").join("") },
+        !inPuzzle && GameNav.language(),
+      ];
+    },
+  });
+  for (const b of [nav.back, nav.menu]) { b.classList.add("hexbtn"); b.firstChild.classList.add("face"); }
+  $("navLeft").append(nav.back);
+  $("navRight").append(nav.menu);
+  function syncNav() {
+    const inMenu = !$("menu").hidden;
+    $("app").classList.toggle("menu-open", inMenu);
+    if (inMenu) nav.setBack(); else nav.setBack(openMenu, _t("backToMenu"));
+  }
+  syncNav();
   $("menu").addEventListener("pointerdown", e => { if (e.target === $("menu")) closeMenu(); });
 
   // ---------------------------------------------------------------- shop
@@ -1350,7 +1355,7 @@ function NBCore() {
   }
   $("boardGrid").addEventListener("click", onShopClick);
   $("finishGrid").addEventListener("click", onShopClick);
-  function openShop() { renderShop(); $("menu").hidden = true; $("shop").hidden = false; $("shopClose").focus({ preventScroll: true }); }
+  function openShop() { renderShop(); $("menu").hidden = true; syncNav(); $("shop").hidden = false; $("shopClose").focus({ preventScroll: true }); }
   const closeShop = () => { $("shop").hidden = true; };
   $("washerChip").addEventListener("click", openShop);
   $("shopClose").addEventListener("click", closeShop);
@@ -1388,6 +1393,7 @@ function NBCore() {
     const hot = data && data.state;
     if (valid(hot)) { veil.hidden = true; adopt(hot); return; }
     if (current.mode === "daily") startDaily(); else resumeLevels();
+    openMenu(); // the workshop is the way in, with the puzzle you were on behind it
   }
   if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
     window.claude.hot.snapshot(() => ({ state: snapshotM() }));
