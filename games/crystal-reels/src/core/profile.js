@@ -57,6 +57,21 @@ export function xpProgress(game, xp) {
   return { level, into: xp - from, needed: to - from, fraction: (xp - from) / (to - from), max: false };
 }
 
+// ---- rewards that grow with the level (ECO-07) ----------------------------------------------------
+// The bets a player can place grow with the level (up to 125 times the first one). Rewards that stayed
+// flat would shrink to nothing next to them, so level-ups, missions, the timed bonus and the refill grow too.
+
+/** What one coin of a base reward is worth at this level: 1 at level 1, then +rewardPerLevel per level. */
+export function rewardScale(game, level) {
+  const per = (game.economy && game.economy.rewardPerLevel) || 0;
+  return 1 + per * Math.max(0, level - 1);
+}
+
+/** A base reward from game.json at a level (the player's own when none is given), in whole tens of coins. */
+export function scaledReward(game, profile, base, level = levelForXp(game, profile.xp)) {
+  return Math.round((base * rewardScale(game, level)) / 10) * 10;
+}
+
 /** XP is proportional to the bet. Level-up rewards are paid out here. */
 export function grantXp(profile, game, bet) {
   const before = levelForXp(game, profile.xp);
@@ -64,7 +79,7 @@ export function grantXp(profile, game, bet) {
   const after = levelForXp(game, profile.xp);
   const levelUps = [];
   for (let l = before + 1; l <= after; l++) {
-    const coins = (game.xp.rewards[String(l)] || {}).coins || 0;
+    const coins = scaledReward(game, profile, (game.xp.rewards[String(l)] || {}).coins || 0, l);
     profile.balance += coins;
     levelUps.push({ level: l, coins });
   }
@@ -75,6 +90,27 @@ export function playerLevel(game, profile) { return levelForXp(game, profile.xp)
 
 export function unlockedBets(cfg, level) {
   return cfg.betLevels.filter((_, i) => cfg.betUnlockLevels[i] <= level);
+}
+
+/**
+ * The bet "Max bet" picks: the highest unlocked bet that is at most economy.maxBetShare of the balance,
+ * so one tap never puts a large part of the balance on a single spin. When the balance is too small for
+ * any bet inside that share, the lowest unlocked bet. `capped` says the cap held back a higher bet.
+ */
+export function maxBetFor(game, cfg, profile) {
+  const allowed = unlockedBets(cfg, levelForXp(game, profile.xp));
+  const share = (game.economy && game.economy.maxBetShare) || 0;
+  const affordable = allowed.filter((b) => b <= profile.balance);
+  const within = share ? allowed.filter((b) => b <= profile.balance * share) : affordable;
+  const bet = within.length ? within[within.length - 1] : allowed[0];
+  const top = affordable.length ? affordable[affordable.length - 1] : allowed[0];
+  return { bet, capped: bet < top, share };
+}
+
+/** A bet that is a large part of the balance (more than economy.riskyBetShare), and not already the lowest. */
+export function betIsRisky(game, cfg, bet, balance) {
+  const share = (game.economy && game.economy.riskyBetShare) || 0;
+  return !!share && bet > cfg.betLevels[0] && bet > balance * share;
 }
 
 export function machineUnlocked(game, profile, id) {
@@ -110,7 +146,7 @@ export function activeMissions(profile, game, day) {
   ensureDay(profile, day);
   const byId = Object.fromEntries(game.missions.pool.map((m) => [m.id, m]));
   return missionOrder(game, day).filter((id) => !profile.missions.done.includes(id)).slice(0, game.missions.active)
-    .map((id) => ({ ...byId[id], progress: profile.missions.progress[id] || 0 }));
+    .map((id) => ({ ...byId[id], reward: scaledReward(game, profile, byId[id].reward), progress: profile.missions.progress[id] || 0 }));
 }
 
 /** Add progress to every active mission measuring this metric. Returns the missions that just completed. */
@@ -211,34 +247,59 @@ export function actualReturn(profile) {
   return profile.totals.wagered ? profile.totals.won / profile.totals.wagered : 0;
 }
 
+/**
+ * The profile as one JSON-friendly object, for the "Export profile" button: a short summary first (level,
+ * balance, totals, the return so far) and then the profile itself. A machine's saved state is cut down to
+ * its bet, jackpot pools and meter; the outcome of an unfinished spin is left out.
+ */
+export function exportProfile(profile, game, now = Date.now()) {
+  const machines = {};
+  for (const [id, m] of Object.entries(profile.machines)) {
+    const st = m.state || {};
+    machines[id] = { stats: m.stats, state: { bet: st.bet, pools: st.pools, meter: st.meter } };
+  }
+  const won = profile.totals.won, wagered = profile.totals.wagered;
+  return {
+    game: "Crystal Reels",
+    exportedAt: new Date(now).toISOString(),
+    summary: {
+      level: levelForXp(game, profile.xp), xp: Math.round(profile.xp), balance: profile.balance,
+      spins: profile.totals.spins, wagered, won, net: won - wagered,
+      returnPercent: wagered ? Math.round((won / wagered) * 10000) / 100 : null,
+    },
+    profile: { ...profile, machines },
+  };
+}
+
 // ---- economy (ECO-04, ECO-05, ECO-06) --------------------------------------------------------
 
 /** Safety net: when the balance cannot cover the lowest bet, a free refill is offered. No purchase is ever involved. */
 export function refillStatus(profile, game, lowestBet, now = Date.now()) {
   const needed = profile.balance < lowestBet;
-  if (!needed) return { needed: false, ready: false, availableAt: null, amount: game.refill.amount };
+  const amount = scaledReward(game, profile, game.refill.amount);
+  if (!needed) return { needed: false, ready: false, availableAt: null, amount };
   if (profile.refill.since === null) profile.refill.since = now;
   const availableAt = profile.refill.since + game.refill.cooldownMinutes * 60000;
-  return { needed: true, ready: now >= availableAt, availableAt, amount: game.refill.amount };
+  return { needed: true, ready: now >= availableAt, availableAt, amount };
 }
 
 export function claimRefill(profile, game, lowestBet, now = Date.now()) {
   const st = refillStatus(profile, game, lowestBet, now);
   if (!st.needed || !st.ready) return 0;
-  profile.balance += game.refill.amount;
+  profile.balance += st.amount;
   profile.refill.since = null;
-  return game.refill.amount;
+  return st.amount;
 }
 
 export function timedBonusStatus(profile, game, now = Date.now()) {
   if (!game.timedBonus.enabled) return { enabled: false, ready: false, nextAt: null, amount: 0 };
-  return { enabled: true, ready: now >= profile.timedBonus.nextAt, nextAt: profile.timedBonus.nextAt, amount: game.timedBonus.amount };
+  return { enabled: true, ready: now >= profile.timedBonus.nextAt, nextAt: profile.timedBonus.nextAt, amount: scaledReward(game, profile, game.timedBonus.amount) };
 }
 
 export function claimTimedBonus(profile, game, now = Date.now()) {
   const st = timedBonusStatus(profile, game, now);
   if (!st.ready) return 0;
-  profile.balance += game.timedBonus.amount;
+  profile.balance += st.amount;
   profile.timedBonus.nextAt = now + game.timedBonus.hours * 3600000;
-  return game.timedBonus.amount;
+  return st.amount;
 }

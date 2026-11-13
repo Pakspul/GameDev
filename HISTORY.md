@@ -19,6 +19,21 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-13
+
+**Done**
+- Crystal Reels, after a player who made 400k at the start and then lost steadily to level 30 (a 89.6% return): the payout was fine (96% RTP at every bet), but the bets grow over 100-fold with the level while rewards stayed flat, and Max bet picked the highest bet the balance could pay. Now **rewards grow with the level** (×8.25 at level 30), **Max bet stays within 2% of the balance**, a **large bet is flagged** and a **session loss of 50%** gives a warning, and the **RTP target is 97.5%** (small pays raised on both machines; 10 million spins: 97.3% and 97.5%).
+- **Autoplay can be unlimited (∞)**, with an optional loss limit, and the session reminder still interrupts it.
+- **Settings → Export profile** shows the profile as JSON with a Copy button.
+- On phones: **dialogs scroll** (the rules, settings, profile and autoplay dialogs were taller than the screen and could not be reached), the **controls fit** (Turbo ran off the right edge; now a stepper and Max bet / Turbo / Auto in three equal columns beside the spin button), and the **reels use the spare height** (cells up to 1.5× taller than wide, bigger jackpot panels and win amount on taller screens).
+- The folder `games/slots` is now **`games/crystal-reels`** (the save key, test folder and npm script names are unchanged, so saved progress survives).
+
+**Decided**
+- Loss limits are a warning and an option, never a lock: nothing stops a player who chooses to keep playing with play money.
+
+**Next**
+- Look at the feel of the taller reels on a real phone.
+
 ## 2026-11-07
 
 **Done**

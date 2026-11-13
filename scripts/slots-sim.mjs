@@ -18,12 +18,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { simulate, simulateFreeSpinsOption, formatReport } from "../games/slots/src/engine/simulate.js";
-import { Session } from "../games/slots/src/core/session.js";
-import { validateMachine } from "../games/slots/src/engine/config.js";
+import { simulate, simulateFreeSpinsOption, formatReport } from "../games/crystal-reels/src/engine/simulate.js";
+import { Session } from "../games/crystal-reels/src/core/session.js";
+import { validateMachine } from "../games/crystal-reels/src/engine/config.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const DIR = join(ROOT, "games", "slots", "machines");
+const DIR = join(ROOT, "games", "crystal-reels", "machines");
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes("--" + n);
 const opt = (n, d) => { const i = argv.indexOf("--" + n); return i >= 0 ? argv[i + 1] : d; };
@@ -41,7 +41,7 @@ if (flag("replay")) {
 
 if (flag("changed")) {
   try {
-    const out = execFileSync("git", ["diff", "--name-only", "origin/main...HEAD", "--", "games/slots/machines", "games/slots/src/engine"], { cwd: ROOT, encoding: "utf8" });
+    const out = execFileSync("git", ["diff", "--name-only", "origin/main...HEAD", "--", "games/crystal-reels/machines", "games/crystal-reels/src/engine"], { cwd: ROOT, encoding: "utf8" });
     const engineChanged = out.split("\n").some((l) => l.includes("src/engine"));
     if (!engineChanged) ids = ids.filter((id) => out.includes(`machines/${id}.json`));
   } catch (e) { /* no git history here: check everything */ }

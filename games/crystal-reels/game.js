@@ -54,7 +54,8 @@ async function boot() {
     t: _t, locale: deviceLocale(),
     skipper: new Skipper(),
     screen: null, lobby: null, infoOpen: null,
-    sessionStart: { time: now, won: profile.totals.won, wagered: profile.totals.wagered },
+    sessionStart: { time: now, won: profile.totals.won, wagered: profile.totals.wagered, balance: profile.balance },
+    lossWarned: false,
     remindedAt: now,
   };
   app.audio = new AudioEngine(() => profile.settings);

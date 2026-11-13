@@ -17,7 +17,7 @@ const OUT = join(ROOT, "test-results");
 await mkdir(OUT, { recursive: true });
 
 const server = await startServer({ dir: ROOT, port: 0, host: "127.0.0.1" });
-const base = `http://127.0.0.1:${server.address().port}/games/slots/index.html`;
+const base = `http://127.0.0.1:${server.address().port}/games/crystal-reels/index.html`;
 const browser = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required"] });
 let failures = 0;
 const check = (cond, msg) => { if (cond) console.log("  ✓ " + msg); else { failures++; console.log("  ✗ " + msg); } };
@@ -85,7 +85,7 @@ await page.evaluate(() => { const a = window.slotsApp; a.screen.turbo = false; }
 await page.click(".spin-btn");
 await page.waitForTimeout(150);
 check((await state(page)) === "spinning", "REEL-01: the reels are moving right after the tap");
-check(await page.evaluate(() => document.querySelector(".bet-row .round-btn").disabled && document.querySelector(".topbar .gnav-back").disabled), "REEL-01: bet controls and navigation are disabled while spinning");
+check(await page.evaluate(() => document.querySelector(".bet-box .round-btn").disabled && document.querySelector(".topbar .gnav-back").disabled), "REEL-01: bet controls and navigation are disabled while spinning");
 check(await app(page, (b) => window.slotsApp.profile.balance === b - 40, before), "the bet is deducted at the tap");
 await page.screenshot({ path: join(OUT, "slots-spinning.png") });
 await page.click(".spin-btn"); // slam stop
@@ -127,7 +127,7 @@ await fromMenu("Rules");
 await page.waitForSelector(".info");
 await page.click(".tab >> text=Features");
 let text = await page.textContent(".modal");
-check(text.includes("96.00%"), "MATH-06: the rules show the RTP from the config");
+check(text.includes("97.50%"), "MATH-06: the rules show the RTP from the config");
 check(/5[,.]000×/.test(text), "MATH-05: the rules state the max win cap");
 await page.click(".tab >> text=Lines");
 check((await page.$$(".mini-wrap")).length === 20, "PAY-01: every payline is drawn on a mini grid");
@@ -221,7 +221,66 @@ await page.click(".modal .btn.primary");
 check((await app(page, () => window.slotsApp.profile.balance)) >= 10000, "the free refill is paid out");
 await page.context().close();
 
-// ---- 6. Dutch ------------------------------------------------------------------------------------------------------------------------
+// ---- 6. a small phone: everything fits, dialogs scroll, unlimited autoplay, export ------------------------------------------------
+console.log("Small phone (320 x 568)");
+page = await newPage();
+await start(page, { level: 12000, balance: 29980 }); // level 23
+await page.setViewportSize({ width: 320, height: 568 });
+await page.waitForTimeout(500);
+await page.evaluate(() => { const d = document.getElementById("debug-btn"); if (d) d.remove(); }); // the development-only button sits on Max bet
+const fit = await page.evaluate(() => {
+  const W = document.documentElement.clientWidth;
+  const rects = [...document.querySelectorAll(".controls button, .topbar button, .balance")].map((b) => b.getBoundingClientRect());
+  return { noScroll: document.documentElement.scrollWidth <= W, inside: rects.every((r) => r.left >= -0.5 && r.right <= W + 0.5), small: [...document.querySelectorAll(".controls button")].every((b) => b.getBoundingClientRect().height >= 43.5) };
+});
+check(fit.noScroll && fit.inside, "NFR-06: Turbo, Auto, Max bet, the spin button and the top bar all fit a 320 px screen");
+check(fit.small, "NFR-07: every control is at least 44 px tall");
+await page.screenshot({ path: join(OUT, "slots-machine-small.png") });
+const dialog = (open) => app(page, (o) => {
+  window.slotsApp[o.fn](...(o.screen ? [window.slotsApp.screen] : []));
+  return new Promise((resolve) => setTimeout(() => {
+    const card = document.querySelector(".modal-card:last-child") || document.querySelector(".modal-card"), body = card.querySelector(".modal-body"), r = card.getBoundingClientRect();
+    const scrollable = body.scrollHeight > body.clientHeight + 1;
+    body.scrollTop = 1e5;
+    resolve({ fits: r.top >= 0 && r.bottom <= innerHeight + 0.5, scrollable, reachesEnd: !scrollable || body.scrollTop + body.clientHeight >= body.scrollHeight - 1 });
+  }, 400));
+}, open);
+const closeAll = async () => { await page.evaluate(() => document.querySelectorAll(".modal .icon-btn").forEach((b) => b.click())); await page.waitForTimeout(350); };
+for (const [name, o] of [["rules", { fn: "showInfo", screen: true }], ["settings", { fn: "showSettings" }], ["profile", { fn: "showProfile" }]]) {
+  const d = await dialog(o);
+  check(d.fits && d.reachesEnd, `the ${name} dialog fits the screen${d.scrollable ? " and scrolls to its end" : ""}`);
+  await closeAll();
+}
+// Max bet stays within 2 % of the balance (ECO-08); a bet that is a big share of it is flagged (ECO-09)
+await page.click(".pill-row .pill-btn >> nth=0");
+check((await app(page, () => window.slotsApp.screen.bet)) === 400, "ECO-08: Max bet with 29,980 coins picks 400, not the highest unlocked bet");
+await app(page, () => { const s = window.slotsApp.screen; window.slotsApp.profile.balance = 5000; s.session.setBet(1000); s.refresh(); });
+check(await app(page, () => document.querySelector(".bet-label").classList.contains("risky")), "ECO-09: a bet of 20 % of the balance is flagged");
+await app(page, () => { const s = window.slotsApp.screen; window.slotsApp.profile.balance = 200000; s.session.setBet(20); s.refresh(); s.updateControls(); });
+// unlimited autoplay
+await page.click(".pill-row .pill-btn >> nth=2");
+check((await page.$$(".auto-modal .chip")).length === 5 && (await page.textContent(".auto-modal .chip-inf")) === "∞", "autoplay offers 10 / 25 / 50 / 100 and ∞");
+const chipsFit = await page.evaluate(() => { const c = document.querySelector(".auto-modal"), r = c.getBoundingClientRect(); return [...c.querySelectorAll(".chip")].every((b) => b.getBoundingClientRect().right <= r.right + 0.5); });
+check(chipsFit, "all autoplay choices fit on one row");
+await page.click(".chip-inf");
+await app(page, () => { window.slotsDebug.setSpeed(8); window.slotsApp.screen.turbo = true; });
+await page.waitForFunction(() => window.slotsApp.profile.totals.spins >= 12 || !window.slotsApp.screen.auto.active, null, { timeout: 90000 });
+const inf = await app(page, () => ({ active: window.slotsApp.screen.auto.active, label: document.querySelector(".auto-label").textContent, spins: window.slotsApp.profile.totals.spins }));
+check(inf.active ? inf.label.includes("∞") : inf.spins >= 1, "unlimited autoplay keeps going and shows ∞ (it only stops by itself for a feature)");
+await app(page, () => window.slotsApp.screen.stopAuto(true));
+await playOut(page);
+// export
+await app(page, () => window.slotsApp.showSettings());
+await page.click(".settings .field .pill-btn");
+await page.waitForSelector(".export-box");
+const exp = await app(page, () => { try { const j = JSON.parse(document.querySelector(".export-box").value); return { level: j.summary.level, has: !!j.profile && !!j.exportedAt && "returnPercent" in j.summary }; } catch (e) { return null; } });
+check(exp && exp.level >= 1 && exp.has, "the exported profile is valid JSON with a summary");
+await page.screenshot({ path: join(OUT, "slots-export.png") });
+check(!!(await page.$(".export-actions .btn.primary")), "there is a Copy button");
+check(page.problems.length === 0, "no console errors" + page.problems.join(" | "));
+await page.context().close();
+
+// ---- 7. Dutch ------------------------------------------------------------------------------------------------------------------------
 console.log("Dutch");
 page = await newPage("nl");
 await start(page);

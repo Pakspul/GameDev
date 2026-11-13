@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { formatCoins, formatCompact, formatDuration } from "../../games/slots/src/core/format.js";
-import { SpinStateMachine, ACCEPTS, STATES } from "../../games/slots/src/core/state-machine.js";
-import { SaveStore, SAVE_VERSION, migrate, checksum } from "../../games/slots/src/core/save.js";
-import * as P from "../../games/slots/src/core/profile.js";
-import { tierOf } from "../../games/slots/src/engine/tiers.js";
+import { formatCoins, formatCompact, formatDuration } from "../../games/crystal-reels/src/core/format.js";
+import { SpinStateMachine, ACCEPTS, STATES } from "../../games/crystal-reels/src/core/state-machine.js";
+import { SaveStore, SAVE_VERSION, migrate, checksum } from "../../games/crystal-reels/src/core/save.js";
+import * as P from "../../games/crystal-reels/src/core/profile.js";
+import { tierOf } from "../../games/crystal-reels/src/engine/tiers.js";
 import { loadGame, loadMachine, SLOTS, MACHINE_IDS } from "./helpers.mjs";
 
 const game = loadGame();
@@ -163,7 +163,7 @@ test("PROG-01: each spin awards XP proportional to the bet; level-ups grant thei
   const up = P.grantXp(p, game, 40);
   assert.equal(up.length, 1);
   assert.equal(up[0].level, 2);
-  assert.equal(p.balance, before + game.xp.rewards["2"].coins);
+  assert.equal(p.balance, before + P.scaledReward(game, p, game.xp.rewards["2"].coins, 2)); // ECO-07: scaled by the level reached
   assert.ok(P.xpProgress(game, p.xp).fraction >= 0);
   assert.ok(game.xp.thresholds.every((t, i, a) => i === 0 || t > a[i - 1]), "thresholds ascend");
 });
@@ -301,4 +301,84 @@ test("FAIR-01/02/ECO-06: no ads, no purchases, no tracking, no network requests 
     const text = f.endsWith(".json") ? raw : stripComments(raw).replace(/<meta[^>]*>/g, ""); // the meta description may say "no purchases"
     for (const re of banned) assert.ok(!re.test(text), `${f} matches ${re}`);
   }
+});
+
+// ---- economy that follows the bets (ECO-07..09) ----------------------------------------------------------
+test("ECO-07: rewards grow with the level so they keep pace with the bets", () => {
+  assert.equal(P.rewardScale(game, 1), 1);
+  assert.ok(P.rewardScale(game, 30) > P.rewardScale(game, 10) && P.rewardScale(game, 10) > P.rewardScale(game, 2));
+  const p = P.newProfile(game, 1);
+  assert.equal(P.timedBonusStatus(p, game, 5).amount, game.timedBonus.amount, "level 1 pays the base amount");
+  p.xp = game.xp.thresholds[29]; // level 30
+  assert.equal(P.playerLevel(game, p), 30);
+  assert.equal(P.timedBonusStatus(p, game, 5).amount, P.scaledReward(game, p, game.timedBonus.amount));
+  assert.ok(P.timedBonusStatus(p, game, 5).amount > 5 * game.timedBonus.amount);
+  const before = p.balance;
+  assert.equal(P.claimTimedBonus(p, game, 5), P.timedBonusStatus({ ...p, timedBonus: { nextAt: 0 } }, game, 5).amount);
+  assert.ok(p.balance > before);
+  for (const m of P.activeMissions(p, game, "2026-11-04")) assert.ok(m.reward > game.missions.pool.find((x) => x.id === m.id).reward, m.id);
+  p.balance = 0;
+  assert.equal(P.refillStatus(p, game, 20, 1).amount, P.scaledReward(game, p, game.refill.amount));
+});
+
+test("ECO-07: a level-up pays the reward of the level it reached, scaled", () => {
+  const p = P.newProfile(game, 1);
+  p.xp = game.xp.thresholds[9] - 1; // one XP short of level 10
+  const before = p.balance;
+  const ups = P.grantXp(p, game, 40);
+  assert.equal(ups[0].level, 10);
+  assert.equal(ups[0].coins, P.scaledReward(game, p, game.xp.rewards["10"].coins, 10));
+  assert.equal(p.balance, before + ups[0].coins);
+});
+
+test("ECO-08: Max bet stays within a small share of the balance, and is never above what can be paid", () => {
+  const cfg = loadMachine("crystal-fortune");
+  const share = game.economy.maxBetShare;
+  assert.ok(share > 0 && share <= 0.05);
+  const p = P.newProfile(game, 1);
+  p.xp = game.xp.thresholds[29]; // level 30: every bet unlocked
+  for (const balance of [30, 500, 5000, 29980, 400000, 5000000]) {
+    p.balance = balance;
+    const r = P.maxBetFor(game, cfg, p);
+    assert.ok(cfg.betLevels.includes(r.bet), `${balance}: a real bet level`);
+    if (balance >= cfg.betLevels[0]) assert.ok(r.bet <= balance, `${balance}: affordable`);
+    if (r.bet > cfg.betLevels[0]) assert.ok(r.bet <= balance * share, `${balance}: ${r.bet} is over ${share * 100}% of the balance`);
+  }
+  p.balance = 29980;
+  assert.deepEqual(P.maxBetFor(game, cfg, p), { bet: 400, capped: true, share });
+  p.balance = 400000;
+  assert.equal(P.maxBetFor(game, cfg, p).bet, 5000);
+  p.balance = 25; // too little for the cap: the lowest bet that can be paid
+  assert.equal(P.maxBetFor(game, cfg, p).bet, 20);
+  const low = P.newProfile(game, 1); // level 1: only the first three bets are unlocked
+  low.balance = 5000000;
+  assert.equal(P.maxBetFor(game, cfg, low).bet, 100);
+});
+
+test("ECO-09: a bet that is a large share of the balance is flagged, the lowest bet never is", () => {
+  const cfg = loadMachine("crystal-fortune");
+  assert.equal(P.betIsRisky(game, cfg, 20, 25), false, "the lowest bet is never risky");
+  assert.equal(P.betIsRisky(game, cfg, 40, 100000), false);
+  assert.equal(P.betIsRisky(game, cfg, 1000, 5000), true);
+  assert.equal(P.betIsRisky(game, cfg, 400, 29980), false);
+});
+
+test("PERS-06: the profile can be exported as JSON with a summary and without unfinished-spin data", () => {
+  const p = P.newProfile(game, 1);
+  p.totals = { wagered: 1000, won: 896, spins: 25 };
+  P.machineEntry(p, "crystal-fortune").state = { bet: 40, pools: { major: 1 }, meter: { count: 2, betSum: 80 }, pending: { outcome: { big: true } }, queue: [1], feature: null };
+  const out = P.exportProfile(p, game, Date.UTC(2026, 10, 13));
+  assert.equal(out.summary.returnPercent, 89.6);
+  assert.equal(out.summary.net, -104);
+  assert.equal(out.summary.level, 1);
+  assert.equal(out.exportedAt, "2026-11-13T00:00:00.000Z");
+  assert.deepEqual(Object.keys(out.profile.machines["crystal-fortune"].state), ["bet", "pools", "meter"]);
+  assert.doesNotThrow(() => JSON.parse(JSON.stringify(out)));
+  assert.equal(P.exportProfile(P.newProfile(game, 1), game).summary.returnPercent, null, "no spins yet: no return to show");
+});
+
+test("ECO-09: autoplay offers an unlimited run and loss limits", () => {
+  assert.equal(game.autoplay.infinite, true);
+  assert.ok(game.autoplay.lossLimits.includes(0) && game.autoplay.lossLimits.some((x) => x > 0));
+  assert.ok(game.economy.sessionLossWarn > 0 && game.economy.sessionLossWarn <= 1);
 });

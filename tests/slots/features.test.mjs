@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Rng } from "../../games/slots/src/engine/rng.js";
-import { prepare } from "../../games/slots/src/engine/config.js";
-import { resolveSpin } from "../../games/slots/src/engine/spin.js";
-import { planFreeSpins, planHoldSpin, planPick, choiceSpins } from "../../games/slots/src/engine/features.js";
-import { jackpotAmounts, initialPools, addContribution, resetTier } from "../../games/slots/src/engine/jackpot.js";
-import { Session } from "../../games/slots/src/core/session.js";
+import { Rng } from "../../games/crystal-reels/src/engine/rng.js";
+import { prepare } from "../../games/crystal-reels/src/engine/config.js";
+import { resolveSpin } from "../../games/crystal-reels/src/engine/spin.js";
+import { planFreeSpins, planHoldSpin, planPick, choiceSpins } from "../../games/crystal-reels/src/engine/features.js";
+import { jackpotAmounts, initialPools, addContribution, resetTier } from "../../games/crystal-reels/src/engine/jackpot.js";
+import { Session } from "../../games/crystal-reels/src/core/session.js";
 import { MACHINE_IDS, loadMachine, clone, rigged, gridMachine } from "./helpers.mjs";
 
 const G = "G"; // non-paying filler (a collect symbol) for feature fixtures

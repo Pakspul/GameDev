@@ -32,12 +32,12 @@ if (gi > 0 && !(await readdir(join(ROOT, "games"))).includes(ONLY)) {
 }
 
 // Slots: an invalid machine config must fail the build (MATH-03), before anything is assembled.
-if (!ONLY || ONLY === "slots") {
-  const { validateMachine } = await import("../games/slots/src/engine/config.js");
-  const dir = join(ROOT, "games", "slots", "machines");
+if (!ONLY || ONLY === "crystal-reels") {
+  const { validateMachine } = await import("../games/crystal-reels/src/engine/config.js");
+  const dir = join(ROOT, "games", "crystal-reels", "machines");
   for (const f of (await readdir(dir)).filter((n) => n.endsWith(".json"))) {
     const errors = validateMachine(JSON.parse(await readFile(join(dir, f), "utf8")));
-    if (errors.length) { console.error(`games/slots/machines/${f} is invalid:\n  ` + errors.join("\n  ")); process.exit(1); }
+    if (errors.length) { console.error(`games/crystal-reels/machines/${f} is invalid:\n  ` + errors.join("\n  ")); process.exit(1); }
   }
 }
 
@@ -50,7 +50,7 @@ for (const entry of INCLUDE) {
 // `// <debug> … // </debug>` block that loads them is cut out of the game's script.
 //   slots:   the debug menu and its forcing code, ?debug (TOOL-03)
 //   unscrew: the model inspector, ?models (docs/UNSCREW-MODELS.md)
-for (const [game, dir, needle] of [["slots", "src/debug", "debug"], ["unscrew", "dev", "inspector"]]) {
+for (const [game, dir, needle] of [["crystal-reels", "src/debug", "debug"], ["unscrew", "dev", "inspector"]]) {
   const gameJs = join(DIST, "games", game, "game.js");
   if (!(await stat(gameJs).catch(() => null))) continue; // not in this build (--game)
   await rm(join(DIST, "games", game, dir), { recursive: true, force: true });

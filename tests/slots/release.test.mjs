@@ -7,7 +7,7 @@ import { ROOT } from "./helpers.mjs";
 
 // Always check a fresh release build.
 execFileSync(process.execPath, [join(ROOT, "scripts", "build.mjs")], { cwd: ROOT, stdio: "ignore" });
-const dist = join(ROOT, "dist", "games", "slots");
+const dist = join(ROOT, "dist", "games", "crystal-reels");
 const files = [];
 const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = join(d, e.name); e.isDirectory() ? walk(p) : files.push(p); } };
 walk(dist);
@@ -28,5 +28,5 @@ test("MATH-03: the build refuses an invalid machine config", () => {
   // validation runs before anything is copied; the same check the build uses
   const bad = { id: "x" };
   assert.ok(files.length > 0);
-  assert.throws(() => execFileSync(process.execPath, ["--input-type=module", "-e", `import { prepare } from ${JSON.stringify(join(ROOT, "games/slots/src/engine/config.js"))}; prepare(${JSON.stringify(bad)});`], { stdio: "ignore" }));
+  assert.throws(() => execFileSync(process.execPath, ["--input-type=module", "-e", `import { prepare } from ${JSON.stringify(join(ROOT, "games/crystal-reels/src/engine/config.js"))}; prepare(${JSON.stringify(bad)});`], { stdio: "ignore" }));
 });

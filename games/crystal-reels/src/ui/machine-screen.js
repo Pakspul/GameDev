@@ -15,6 +15,7 @@ import { jackpotAmounts } from "../engine/jackpot.js";
 import * as P from "../core/profile.js";
 
 const TIERS = ["below", "win", "big", "mega", "epic"];
+const HUD_STRIP = 46; // the room above the reels that the feature HUD (spins left, total, pause) uses; see .stage in style.css
 
 export class MachineScreen {
   constructor(app, cfg) {
@@ -92,6 +93,7 @@ export class MachineScreen {
     this.winField = h("div", { class: "winfield", "aria-live": "polite" }, h("span", { class: "win-label", text: t("win") }), h("b", { class: "win-value", text: "0" }), h("span", { class: "win-note" }));
 
     this.betValue = h("b", { class: "bet-value", text: "0" });
+    this.betLabel = h("span", { class: "bet-label", text: t("bet") });
     this.betMinus = h("button", { type: "button", class: "round-btn", "aria-label": t("betDown") }, icon("minus"));
     this.betPlus = h("button", { type: "button", class: "round-btn", "aria-label": t("betUp") }, icon("plus"));
     this.maxBtn = h("button", { type: "button", class: "pill-btn", text: t("maxBet") });
@@ -99,15 +101,15 @@ export class MachineScreen {
     this.turboBtn = h("button", { type: "button", class: "pill-btn toggle", "aria-pressed": "false" }, icon("turbo", 18), h("span", { text: t("turbo") }));
     this.autoBtn = h("button", { type: "button", class: "pill-btn" }, icon("auto", 18), h("span", { class: "auto-label", text: t("auto") }));
     const controls = h("footer", { class: "controls" },
-      h("div", { class: "bet-box" }, h("span", { class: "bet-label", text: t("bet") }), h("div", { class: "bet-row" }, this.betMinus, this.betValue, this.betPlus), this.maxBtn),
-      this.spinBtn,
-      h("div", { class: "side-box" }, this.turboBtn, this.autoBtn));
+      h("div", { class: "bet-box" }, this.betMinus, h("div", { class: "bet-mid" }, this.betLabel, this.betValue), this.betPlus),
+      h("div", { class: "pill-row" }, this.maxBtn, this.turboBtn, this.autoBtn),
+      this.spinBtn);
 
     this.el.append(top, jp, this.stage, this.meterEl, this.winField, controls);
   }
 
   observe() {
-    const apply = () => { const r = this.stage.getBoundingClientRect(); if (r.width > 0) this.reels.layout(r.width - 8, r.height - 8); };
+    const apply = () => { const r = this.stage.getBoundingClientRect(); if (r.width > 0) this.reels.layout(r.width - 8, r.height - 8 - HUD_STRIP); };
     this.ro = new ResizeObserver(apply);
     this.ro.observe(this.stage);
     apply();
@@ -146,6 +148,7 @@ export class MachineScreen {
     this.xpFill.style.width = Math.round(xp.fraction * 100) + "%";
     this.setBalance(app.profile.balance);
     this.betValue.textContent = fmt(app, this.bet);
+    this.refreshBetNote();
     this.refreshJackpots();
     if (cfg.meter) {
       const m = this.session.state.meter;
@@ -172,6 +175,15 @@ export class MachineScreen {
     }
   }
 
+  /** Under the bet: its name, or a warning when it is a large part of the balance (ECO-09). */
+  refreshBetNote() {
+    const { app, cfg } = this;
+    const risky = P.betIsRisky(app.game, cfg, this.bet, app.profile.balance);
+    this.betLabel.classList.toggle("risky", risky);
+    this.betLabel.textContent = risky ? this.t("betRisky", { pct: Math.min(999, Math.round((this.bet / Math.max(1, app.profile.balance)) * 100)) }) : this.t("bet");
+    this.betValue.classList.toggle("risky", risky);
+  }
+
   allowedBets() { return P.unlockedBets(this.cfg, P.playerLevel(this.app.game, this.app.profile)); }
 
   stepBet(dir) {
@@ -188,10 +200,10 @@ export class MachineScreen {
 
   maxBet() {
     if (!this.sm.accepts("bet")) return;
-    const allowed = this.allowedBets();
-    // Max Bet: the highest unlocked bet the balance can pay for
-    const affordable = allowed.filter((b) => b <= this.app.profile.balance);
-    this.setBet((affordable.length ? affordable : allowed).slice(-1)[0]);
+    // Max Bet: the highest unlocked bet within a small share of the balance (ECO-09), not the highest the balance can pay
+    const { bet, capped, share } = P.maxBetFor(this.app.game, this.cfg, this.app.profile);
+    this.setBet(bet);
+    if (capped) toast(this.app, this.t("maxBetCapped", { pct: Math.round(share * 100) }), "info", 3800);
   }
 
   setBet(b) {
@@ -218,7 +230,7 @@ export class MachineScreen {
     this.spinBtn.disabled = idle ? !canSpin : !["spinning", "stopping", "presenting"].includes(sm.state);
     this.spinBtn.classList.toggle("busy", !idle);
     this.spinBtn.setAttribute("aria-label", idle ? this.t("spin") : this.t("stopReels"));
-    this.autoBtn.querySelector(".auto-label").textContent = this.auto.active ? this.t("autoLeft", { n: this.auto.left }) : this.t("auto");
+    this.autoBtn.querySelector(".auto-label").textContent = this.auto.active ? this.t("autoLeft", { n: this.auto.left === Infinity ? "∞" : this.auto.left }) : this.t("auto");
     this.autoBtn.classList.toggle("on", this.auto.active);
     this.el.dataset.state = sm.state;
   }
@@ -351,6 +363,7 @@ export class MachineScreen {
     }
     this.round = this.round || { bet: this.bet, win: 0, features: 0, jackpots: [], freeSpinFeatures: 0 };
     this.checkAutoWin(this.round.win, this.round.bet);
+    this.checkAutoLimits();
     const events = P.recordRound(app.profile, app.game, cfg.id, cfg, this.round);
     app.persist();
     app.handleEvents(events);
@@ -363,6 +376,8 @@ export class MachineScreen {
     this.updateControls();
     this.startCycle();
     // what happens next: the player's queued tap, autoplay, or a low-balance offer
+    this.checkSessionLoss();
+    if (this.auto.active && this.reminderDue()) this.stopAuto(true); // an endless autoplay still gets its time check (FAIR-06)
     if (this.pendingSpin) { this.pendingSpin = false; if (session.canSpin(this.bet)) return this.startSpin(); }
     if (this.auto.active) return this.autoNext();
     if (app.profile.balance < this.cfg.betLevels[0]) this.lowBalance();
@@ -400,18 +415,23 @@ export class MachineScreen {
   chooseAuto() {
     if (!this.sm.accepts("autoplay")) return;
     const { app } = this;
-    let stopMult = 0;
-    const opts = app.game.autoplay.choices;
-    const sel = h("select", { class: "select", "aria-label": this.t("stopOnWin") }, app.game.autoplay.bigWinMultiples.map((m) => h("option", { value: m, text: m ? this.t("stopOnWinX", { x: m }) : this.t("stopOnWinOff") })));
+    const cfgA = app.game.autoplay;
+    let stopMult = 0, lossPct = this.lastLossPct ?? 0;
+    const sel = h("select", { class: "select", "aria-label": this.t("stopOnWin") }, cfgA.bigWinMultiples.map((m) => h("option", { value: m, text: m ? this.t("stopOnWinX", { x: m }) : this.t("stopOnWinOff") })));
     sel.onchange = () => (stopMult = Number(sel.value));
-    const body = h("div", { class: "auto-modal" }, h("p", { text: this.t("autoNote") }), h("div", { class: "chips" }, opts.map((n) => h("button", {
-      type: "button", class: "chip", text: String(n), onclick: () => { m.close(); this.startAuto(n, stopMult); },
-    }))), h("label", { class: "field" }, h("span", { text: this.t("stopOnWin") }), sel));
+    const loss = h("select", { class: "select", "aria-label": this.t("stopOnLoss") }, (cfgA.lossLimits || [0]).map((p) => h("option", { value: p, selected: p === lossPct, text: p ? this.t("stopOnLossX", { pct: p }) : this.t("stopOnWinOff") })));
+    loss.onchange = () => (lossPct = Number(loss.value));
+    const go = (n) => { m.close(); this.lastLossPct = lossPct; this.startAuto(n, stopMult, lossPct); };
+    const chips = cfgA.choices.map((n) => h("button", { type: "button", class: "chip", text: String(n), onclick: () => go(n) }));
+    if (cfgA.infinite) chips.push(h("button", { type: "button", class: "chip chip-inf", text: "∞", "aria-label": this.t("autoInfinite"), onclick: () => go(Infinity) }));
+    const body = h("div", { class: "auto-modal" }, h("p", { text: this.t("autoNote") }), h("div", { class: "chips" }, chips),
+      h("label", { class: "field" }, h("span", {}, h("b", { text: this.t("stopOnWin") })), sel),
+      h("label", { class: "field" }, h("span", {}, h("b", { text: this.t("stopOnLoss") }), h("small", { text: this.t("stopOnLoss.note") })), loss));
     const m = openModal(app, { title: this.t("autoplay"), body });
   }
 
-  startAuto(n, stopMult) {
-    this.auto = { active: true, left: n, stopMult };
+  startAuto(n, stopMult, lossPct = 0) {
+    this.auto = { active: true, left: n, stopMult, lossPct, startBalance: this.app.profile.balance };
     this.updateControls();
     this.autoNext();
   }
@@ -442,6 +462,33 @@ export class MachineScreen {
   checkAutoWin(win, bet) {
     const a = this.auto;
     if (a.active && a.stopMult && win >= a.stopMult * bet) this.stopAuto();
+  }
+
+  /** Autoplay with a loss limit stops once the balance has fallen by that share of what it was when autoplay started. */
+  checkAutoLimits() {
+    const a = this.auto;
+    if (!a.active || !a.lossPct) return;
+    if (a.startBalance - this.app.profile.balance >= (a.startBalance * a.lossPct) / 100) {
+      this.stopAuto(true);
+      toast(this.app, this.t("autoLossStop", { pct: a.lossPct }), "info", 4200);
+    }
+  }
+
+  /** Once a session, when the net loss since it began passes economy.sessionLossWarn of the starting balance (ECO-09). */
+  checkSessionLoss() {
+    const { app } = this, p = app.profile, ss = app.sessionStart, share = (app.game.economy && app.game.economy.sessionLossWarn) || 0;
+    if (!share || app.lossWarned) return;
+    const lost = (p.totals.wagered - p.totals.won) - (ss.wagered - ss.won);   // coins lost since the session began
+    if (ss.balance > 0 && lost >= share * ss.balance) {
+      app.lossWarned = true;
+      this.stopAuto(true);
+      toast(app, this.t("lossWarn", { pct: Math.round(share * 100), n: fmt(app, lost) }), "info", 6000);
+    }
+  }
+
+  reminderDue() {
+    const mins = this.app.profile.settings.reminderMinutes;
+    return !!mins && Date.now() - this.app.remindedAt >= mins * 60000;
   }
 
   checkReminder() {

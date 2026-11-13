@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-export const SLOTS = join(ROOT, "games", "slots");
+export const SLOTS = join(ROOT, "games", "crystal-reels");
 export const MACHINE_IDS = ["crystal-fortune", "neon-tumble"];
 export const loadJson = (rel) => JSON.parse(readFileSync(join(SLOTS, rel), "utf8"));
 export const loadMachine = (id) => loadJson(`machines/${id}.json`);

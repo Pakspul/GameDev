@@ -51,11 +51,12 @@ Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each
 
 - [ ] Play on a real phone: 60 fps during spins and big wins, spin-to-movement latency under 100 ms, start-up under 3 s (see "Not verified here" in [docs/SLOTS.md](docs/SLOTS.md))
 - [ ] Listen to the synthesised music loops and feel the haptics; tune or replace them
-- [ ] Decide on final theme and art for the first machine (symbols are drawn in code in `games/slots/src/ui/art.js`)
+- [ ] Decide on final theme and art for the first machine (symbols are drawn in code in `games/crystal-reels/src/ui/art.js`)
 - [ ] Before releasing a changed machine config: `npm run slots:verify` (10 million spins per machine)
 - [ ] Store listing: play-money statement and the "simulated gambling" content rating (text in [docs/SLOTS.md](docs/SLOTS.md))
 - [ ] Add the new game to [PRIVACY.md](PRIVACY.md)'s list once the app is built (it stores progress locally and nothing else)
-- [ ] Optional: a cooldown on the free refill (`refill.cooldownMinutes` in `games/slots/data/game.json`; the specification default is 10)
+- [ ] Check the taller reels and the new controls on a real phone (5 reels at up to 1.5× tall cells, the three pills under the bet)
+- [ ] Optional: a cooldown on the free refill (`refill.cooldownMinutes` in `games/crystal-reels/data/game.json`; the specification default is 10)
 
 ## Wallbreaker (see [docs/WALLBREAKER.md](docs/WALLBREAKER.md))
 
