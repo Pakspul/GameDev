@@ -120,6 +120,7 @@ export const CONFIG = deepFreeze({
     settleCoins: 10, settleImpulse: 0.06,
     coinsAfter: 2,            // still stalled this many cycles later → free coins at the back
     freeCoins: 3,
+    freeCoinsBehind: 1,       // ...dropped this far behind the usual drop spot, so they land on the pusher and not in its path
     prizeCycles: 5,           // a prize that hasn't moved for this many cycles gets a small sideways push
     prizeMoved: 0.05,
     prizeImpulse: 0.5,

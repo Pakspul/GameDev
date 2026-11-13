@@ -10,15 +10,15 @@
     "preview": "npm run build && node scripts/serve.mjs --dist",
     "test": "node tests/puzzles.mjs && node tests/economy.mjs && node tests/unscrew.mjs && npm run test:slots && npm run test:wallbreaker && npm run test:coin-dozer && npm run build -- --experimental && node tests/smoke.mjs && node tests/slots/e2e.mjs && node tests/wallbreaker/e2e.mjs && node tests/coin-dozer/e2e.mjs",
     "fonts": "node scripts/vendor-fonts.mjs",
-    "test:slots": "node scripts/slots-validate.mjs && node --test tests/slots/*.test.mjs && node scripts/slots-sim.mjs --check",
+    "test:slots": "node scripts/slots-validate.mjs && node scripts/run-tests.mjs tests/slots && node scripts/slots-sim.mjs --check",
     "slots:sim": "node scripts/slots-sim.mjs",
     "slots:validate": "node scripts/slots-validate.mjs",
     "slots:verify": "node scripts/slots-sim.mjs --verify",
     "unscrew:models": "node scripts/unscrew-models.mjs",
-    "test:wallbreaker": "node --test tests/wallbreaker/*.test.mjs",
+    "test:wallbreaker": "node scripts/run-tests.mjs tests/wallbreaker",
     "wallbreaker:puzzles": "node scripts/wallbreaker-puzzles.mjs",
     "wallbreaker:sim": "node scripts/wallbreaker-sim.mjs",
-    "test:coin-dozer": "node --test tests/coin-dozer/*.test.mjs",
+    "test:coin-dozer": "node scripts/run-tests.mjs tests/coin-dozer",
     "coin-dozer:sim": "node scripts/coin-dozer-sim.mjs"
   },
   "devDependencies": {

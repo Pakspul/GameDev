@@ -442,7 +442,7 @@ export class Machine {
       const B = this.cfg.board;
       for (let i = 0; i < A.freeCoins; i++) {
         if (this.board.type === "pins") this.slots.push(["coin", this.rng.pick(this.cfg.pinWall.slots) + this.rng.range(-0.2, 0.2), 0]);   // through the wall, like any coin
-        else this.spawnCoin("coin", this.rng.range(-B.width / 2 + 0.8, B.width / 2 - 0.8), B.dropHeight + i * 0.4, B.dropZ);
+        else this.spawnCoin("coin", this.rng.range(-B.width / 2 + 0.8, B.width / 2 - 0.8), B.dropHeight + i * 0.4, B.dropZ - A.freeCoinsBehind);
       }
       this.antiStallLog.push([this.board.cycles, 2]);
       this.stall = 0; this.stallStage = 0;
