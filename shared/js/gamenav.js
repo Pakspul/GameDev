@@ -26,7 +26,7 @@
 //   { icon: "theme", label: "Theme", value: "dark", options: [{ value, label }], onChoose(v) {} }
 //   { icon: "help", label: "How to play", html: "<p>…</p>" }                  folds open in place
 //   { heading: "Settings" }      "-" (a line)      GameNav.language() (the shared language switch)
-// "Back to arcade" is always at the bottom.
+// "Keep screen on" (Platform.keepAwake, on by default) and "Back to arcade" are always at the bottom.
 (function () {
   "use strict";
 
@@ -37,6 +37,8 @@
       "nav.menu": "Menu",
       "nav.close": "Close menu",
       "nav.language": "Language",
+      "nav.awake": "Keep screen on",
+      "nav.awakeNote": "Stops your phone from going to sleep while you play",
     },
     nl: {
       "nav.arcade": "Terug naar de arcade",
@@ -44,6 +46,8 @@
       "nav.menu": "Menu",
       "nav.close": "Menu sluiten",
       "nav.language": "Taal",
+      "nav.awake": "Scherm aan houden",
+      "nav.awakeNote": "Je telefoon gaat niet in slaapstand terwijl je speelt",
     },
   });
   var t = I18n.t;
@@ -58,6 +62,7 @@
     sound: '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.4"/><path d="M12 17h.01"/>',
     theme: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/>',
+    awake: '<rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 18h2"/><circle cx="12" cy="10" r="2"/><path d="M12 5.5v.8M12 13.7v.8M7.5 10h.8M15.7 10h.8"/>',
     fullscreen: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
     shop: '<path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
     view: '<circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22"/>',
@@ -118,6 +123,19 @@
     var arcade = el("button", "gnav-item", labelHtml({ icon: "home", label: t("nav.arcade") }));
     arcade.type = "button";
     arcade.addEventListener("click", function () { close(home); });
+    // Every game gets the keep-screen-on switch here (the keeping itself is Platform.keepAwake's job).
+    var awake = window.Platform && Platform.keepAwake && Platform.keepAwake.supported ? Platform.keepAwake : null;
+    var awakeRow = null;
+    if (awake) {
+      awakeRow = el("button", "gnav-item", labelHtml({ icon: "awake", label: t("nav.awake"), note: t("nav.awakeNote") }) + '<span class="gnav-switch"></span>');
+      awakeRow.type = "button";
+      awakeRow.setAttribute("role", "switch");
+      awakeRow.addEventListener("click", function () {
+        awake.set(!awake.enabled());
+        awakeRow.setAttribute("aria-checked", String(awake.enabled()));
+      });
+      foot.appendChild(awakeRow);
+    }
     foot.appendChild(arcade);
     document.body.appendChild(drawer);
 
@@ -181,6 +199,7 @@
     function open() {
       if (drawer.open) return;
       render();
+      if (awakeRow) awakeRow.setAttribute("aria-checked", String(awake.enabled()));
       if (opts.onOpen) opts.onOpen();
       drawer.showModal();
       drawer.scrollTop = 0;

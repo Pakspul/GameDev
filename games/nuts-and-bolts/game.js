@@ -1218,7 +1218,6 @@ function NBCore() {
   }
   stage.addEventListener("pointerdown", e => {
     if (e.button && e.button !== 0) return;
-    requestWake();
     const r = stage.getBoundingClientRect();
     const i = pickBolt(e.clientX - r.left, e.clientY - r.top);
     if (i >= 0) tapBolt(i);
@@ -1248,12 +1247,6 @@ function NBCore() {
   }
   document.addEventListener("fullscreenchange", () => nav.refresh());
   document.addEventListener("webkitfullscreenchange", () => nav.refresh());
-
-  let wakeLock = null;
-  async function requestWake() {
-    if (wakeLock || !navigator.wakeLock || document.visibilityState !== "visible") return;
-    try { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => (wakeLock = null)); } catch (e) {}
-  }
 
   // ---------------------------------------------------------------- menu
   // The workshop is the lobby (shared/js/gamelobby.js): today's puzzle, the four difficulties as tabs, one

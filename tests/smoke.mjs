@@ -6,7 +6,7 @@
 //   - ANY request to the internet (the app must work in airplane mode)
 //   - a game that doesn't render a canvas
 //   - a missing translation (every page runs once per language; see shared/js/i18n.js)
-//   - a game without the shared back button and menu (shared/js/gamenav.js)
+//   - a game without the shared back button and menu (shared/js/gamenav.js), or without its keep-screen-on switch
 // Screenshots land in test-results/ so you can eyeball every game in a few seconds.
 //
 //   npm test            tests dist/ (run `npm run build` first; `npm test` does it for you)
@@ -109,6 +109,9 @@ for (const lang of LANGS) for (const { name, path } of pages) {
     if (!nav.back) problems.push("no back button (top left, shared/js/gamenav.js)");
     if (!nav.menu) problems.push("no menu button (top right, shared/js/gamenav.js)");
     else if (!nav.opens) problems.push("the menu button doesn't open the menu drawer");
+    if (nav.menu && nav.awake === false) problems.push("no keep-screen-on switch in the menu drawer (shared/js/gamenav.js)");
+    if (nav.awake && !nav.awakeOn) problems.push("keep screen on isn't on by default");
+    if (nav.awake && !nav.awakeOff) problems.push("the keep-screen-on switch doesn't switch off and remember it");
     // A tap in the middle of the screen: whatever it hits, it must not throw.
     await page.touchscreen.tap(206, 460);
     await page.waitForTimeout(600);
