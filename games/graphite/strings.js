@@ -28,7 +28,7 @@ I18n.add({
     "set.timer": "Show timer",
     "set.timer.note": "Your time is always recorded. This only hides the clock while you play.",
     "set.autodot": "Auto-dots (Star Battle)",
-    "set.autodot.note": "Placing a star puts dots on the cells around it.",
+    "set.autodot.note": "Placing a star puts dots in its row, its column and the cells around it.",
     "set.sound": "Sounds",
     "set.sound.note": "A soft pencil tick, and a chime when you solve a puzzle.",
 
@@ -69,7 +69,7 @@ I18n.add({
     "stars.rule.1": "Every row, every column and every coloured region holds the same number of stars: one, or two on Expert.",
     "stars.rule.2": "Stars never touch each other, not even at a corner.",
     "stars.rule.3": "Tap once for a dot (\"no star here\"), twice for a star, three times to clear. Drag from a dot to dot many cells at once.",
-    "stars.rule.4": "Turn on <b>Auto-dots</b> to mark the cells around every star you place.",
+    "stars.rule.4": "Turn on <b>Auto-dots</b> to mark the row, column and surrounding cells of every star you place.",
     "stars.rule.5": "Every puzzle has exactly one solution.",
 
     "calcudoku.name": "Calcudoku",
@@ -177,7 +177,7 @@ I18n.add({
     "set.timer": "Timer tonen",
     "set.timer.note": "Je tijd wordt altijd bijgehouden. Dit verbergt alleen de klok tijdens het spelen.",
     "set.autodot": "Auto-stippen (Star Battle)",
-    "set.autodot.note": "Een geplaatste ster zet stippen in de vakjes eromheen.",
+    "set.autodot.note": "Een geplaatste ster zet stippen in de rij, de kolom en de vakjes eromheen.",
     "set.sound": "Geluiden",
     "set.sound.note": "Een zacht potloodtikje, en een belletje als je een puzzel oplost.",
 
@@ -218,7 +218,7 @@ I18n.add({
     "stars.rule.1": "Elke rij, elke kolom en elk gekleurd gebied bevat evenveel sterren: één, of twee op Expert.",
     "stars.rule.2": "Sterren raken elkaar nooit, ook niet schuin.",
     "stars.rule.3": "Tik één keer voor een stip (\"hier geen ster\"), twee keer voor een ster, drie keer om te wissen. Sleep vanaf een stip om veel vakjes tegelijk te stippen.",
-    "stars.rule.4": "Zet <b>Auto-stippen</b> aan om de vakjes rond elke geplaatste ster te markeren.",
+    "stars.rule.4": "Zet <b>Auto-stippen</b> aan om de rij, kolom en omliggende vakjes van elke geplaatste ster te markeren.",
     "stars.rule.5": "Elke puzzel heeft precies één oplossing.",
 
     "calcudoku.name": "Calcudoku",

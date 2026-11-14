@@ -19,6 +19,11 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-14
+
+**Done**
+- Graphite, Star Battle: **Auto-dots now also dot the star's whole row and column**, not only the cells around it (existing stars and dots are left alone, and one undo removes the star with its dots). The setting note and rules text say so, in English and Dutch.
+
 ## 2026-11-13
 
 **Done**

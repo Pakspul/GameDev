@@ -685,10 +685,13 @@ function cycleTakuzu(i) {
 function autodot(act, i) {
   if (!store.settings.autodot) return;
   const n = G.p.n, r = (i / n) | 0, c = i % n;
-  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+  const dot = (rr, cc) => { if (G.cells[rr * n + cc] === 0) setCell(act, rr * n + cc, 1); };
+  // the rest of the row and column
+  for (let k = 0; k < n; k++) { if (k !== c) dot(r, k); if (k !== r) dot(k, c); }
+  // the cells touching the star diagonally (orthogonal ones are already covered)
+  for (const dr of [-1, 1]) for (const dc of [-1, 1]) {
     const rr = r + dr, cc = c + dc;
-    if ((!dr && !dc) || rr < 0 || cc < 0 || rr >= n || cc >= n) continue;
-    if (G.cells[rr * n + cc] === 0) setCell(act, rr * n + cc, 1);
+    if (rr >= 0 && cc >= 0 && rr < n && cc < n) dot(rr, cc);
   }
 }
 
