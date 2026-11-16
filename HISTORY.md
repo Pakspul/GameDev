@@ -22,7 +22,7 @@ Template: copy this to the top for a new day
 ## 2026-11-16
 
 **Done**
-- **Inkfield** (working title), a new prototype: a territory game in the "draw a loop, claim the land" genre, against computer players, fully offline. Its own look: ink on paper, ink-blob heads with eyes. Leave your land, draw a trail, get home to claim everything inside; cross a trail and that player is out; win as the last one left. Three difficulties (5, 8 or 11 opponents). Experimental: in `npm run dev`, not in release builds. See [docs/INKFIELD.md](docs/INKFIELD.md).
+- **Inkfield** (working title), a new prototype: a territory game in the "draw a loop, claim the land" genre, against computer players, fully offline. Its own look: ink on paper, ink-blob heads with eyes. Leave your land, draw a trail, get home to claim everything inside; cross a trail and that player is out; win as the last one left. Three difficulties (5, 8 or 11 opponents). In the release builds (hub card marked "Prototype"), so it can be played on the phone. See [docs/INKFIELD.md](docs/INKFIELD.md).
   - Rules in `src/sim.js` on a 220 × 220 grid, capture by flood fill; bots in `src/bots.js` find their way home around their own trail (a breadth-first distance map plus short look-ahead with the real turning circle), which brought bots crashing into themselves down from about 60% of outs to about 20%.
   - The land is drawn smooth: a shader rounds the grid into a picture (only where it changed), and every frame cuts it crisply and adds a darker side for a bit of height.
   - `npm run test:inkfield`: rules and bot sanity tests; `npm run inkfield:sim` plays bots-only matches for tuning.

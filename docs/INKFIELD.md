@@ -2,7 +2,7 @@
 
 *Working title.* A territory game in the style of the "draw a loop, claim the land" genre (Splix.io, Paper.io): leave your land, draw a trail, get back home, and the trail plus everything it encloses is yours. Cross someone's trail and they're out. Win by being the last one on the board. All opponents are computer players, so it plays fully offline.
 
-**Status: prototype, experimental.** Playable in `npm run dev`, left out of release builds (`EXPERIMENTAL` in `scripts/build.mjs`). Its own name and look (ink on paper, ink-blob heads with eyes); only the genre's mechanics are shared with other games.
+**Status: prototype, in the release builds** (on the hub, the website and the app) so it can be played on a phone; the hub card says "Prototype". Its own name and look (ink on paper, ink-blob heads with eyes); only the genre's mechanics are shared with other games.
 
 ## Rules (as built)
 
