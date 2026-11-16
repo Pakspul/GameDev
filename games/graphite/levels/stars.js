@@ -212,5 +212,296 @@
     throw new Error("Star Battle generator gave up on " + seed);
   }
 
-  root.GraphiteStars = { TIERS, generate, solve };
+  // ---- hints: a small solver that reasons the way a person does ----
+  //
+  // Board values as in the game: 0 = open, 1 = dot (no star), 2 = star.
+  // A unit is a row (0..n-1), a column (n..2n-1) or a region (2n..3n-1).
+  //
+  // The hint looks for the easiest star to see, from simple to clever:
+  //   only     the unit has just enough free cells left (as the player sees the board)
+  //   basic    the same after crossing out cells that touch a star, and the rest of any
+  //            row, column or region that already has its stars
+  //   confined a region whose free cells all lie in one row (or column, or the other way
+  //            round) takes that row's star, so the rest of the row stays empty
+  //   squeeze  a star in some cells would leave a unit without room, so they stay empty
+  //   count    N regions that fit inside N rows take all those rows' stars (same idea as
+  //            confined, with more units at once)
+  //   trial    a star in some cells leads, after a few forced moves, to a unit without room
+  // One step is tried before two, and easy steps before harder ones. If that finds nothing,
+  // the easiest kind of step is applied everywhere and the search goes round again. The hint
+  // explains the steps the star relied on (up to four, and says so when there were more).
+  // Returns null when none of this finds a star; the game then falls back to the solution.
+  function hintCtx(n, k, lab) {
+    const units = [];
+    for (let r = 0; r < n; r++) { const a = []; for (let c = 0; c < n; c++) a.push(r * n + c); units.push(a); }
+    for (let c = 0; c < n; c++) { const a = []; for (let r = 0; r < n; r++) a.push(r * n + c); units.push(a); }
+    const regs = [];
+    for (let g = 0; g < n; g++) regs.push([]);
+    for (let i = 0; i < n * n; i++) regs[lab[i]].push(i);
+    return { n, k, lab, units: units.concat(regs) };
+  }
+  const UNIT_TYPES = ["row", "column", "region"];
+  const unitType = (ctx, u) => UNIT_TYPES[(u / ctx.n) | 0];
+  const unitsOf = (ctx, i) => [(i / ctx.n) | 0, ctx.n + (i % ctx.n), 2 * ctx.n + ctx.lab[i]];
+  const touching = (n, a, b) => a !== b && Math.abs(((a / n) | 0) - ((b / n) | 0)) <= 1 && Math.abs((a % n) - (b % n)) <= 1;
+  function neighbours8(n, i) {
+    const r = (i / n) | 0, c = i % n, out = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const rr = r + dr, cc = c + dc;
+      if ((dr || dc) && rr >= 0 && cc >= 0 && rr < n && cc < n) out.push(rr * n + cc);
+    }
+    return out;
+  }
+  function needOf(ctx, g, u) { let s = 0; for (const i of ctx.units[u]) if (g[i] === 2) s++; return ctx.k - s; }
+  function openOf(ctx, g, u) { return ctx.units[u].filter((i) => g[i] === 0); }
+  /** Every way to put `need` non-touching stars on the open cells (need is 1 or 2). */
+  function placements(n, open, need) {
+    const out = [];
+    if (need === 1) for (const a of open) out.push([a]);
+    else if (need === 2) {
+      for (let x = 0; x < open.length; x++) for (let y = x + 1; y < open.length; y++) if (!touching(n, open[x], open[y])) out.push([open[x], open[y]]);
+    }
+    return out;
+  }
+  /** Units in the order a person would look at them: regions first, then rows, then columns. */
+  function unitOrder(ctx) {
+    const n = ctx.n, out = [];
+    for (let u = 2 * n; u < 3 * n; u++) out.push(u);
+    for (let u = 0; u < 2 * n; u++) out.push(u);
+    return out;
+  }
+
+  /** Cross out what's plainly impossible. why: Map cell -> reason ("touch" or "full"). */
+  function basicDots(ctx, g, why) {
+    const n = ctx.n;
+    for (let i = 0; i < n * n; i++) {
+      if (g[i] !== 2) continue;
+      for (const j of neighbours8(n, i)) if (g[j] === 0) { g[j] = 1; if (!why.has(j)) why.set(j, "touch"); }
+    }
+    for (let u = 0; u < 3 * n; u++) {
+      if (needOf(ctx, g, u) !== 0) continue;
+      for (const i of ctx.units[u]) if (g[i] === 0) { g[i] = 1; if (!why.has(i)) why.set(i, "full"); }
+    }
+  }
+
+  /** A star that is forced inside one unit. Prefers units the player has narrowed down most. */
+  function forcedStar(ctx, g, seen) {
+    let best = null;
+    for (const u of unitOrder(ctx)) {
+      const need = needOf(ctx, g, u);
+      if (need <= 0) continue;
+      const open = openOf(ctx, g, u);
+      const P = placements(ctx.n, open, need);
+      if (!P.length) continue;
+      const cell = open.find((c) => P.every((p) => p.indexOf(c) >= 0));
+      if (cell === undefined) continue;
+      // how many cells the player still has to rule out themselves
+      const left = ctx.units[u].filter((i) => seen[i] === 0).length;
+      if (!best || left < best.left) best = { u, cell, need, left, how: open.length === need ? (need === 1 ? "only" : "two") : "fit" };
+    }
+    return best;
+  }
+
+  /** Confined / count: a set of units whose free cells sit inside as many units of another kind. */
+  function confinedSteps(ctx, g, maxN) {
+    const n = ctx.n, out = [];
+    const need = [];
+    for (let u = 0; u < 3 * n; u++) need.push(needOf(ctx, g, u));
+    const famOf = (f, i) => unitsOf(ctx, i)[f];
+    for (const A of [2, 0, 1]) for (const B of [0, 1, 2]) {
+      if (A === B) continue;
+      const As = [];
+      for (let u = A * n; u < A * n + n; u++) if (need[u] > 0) As.push(u);
+      const pick = [];
+      (function go(start) {
+        if (pick.length) {
+          const inS = new Set(), cover = new Set();
+          let needS = 0;
+          for (const u of pick) { needS += need[u]; for (const i of ctx.units[u]) if (g[i] === 0) { inS.add(i); cover.add(famOf(B, i)); } }
+          let needC = 0;
+          for (const u of cover) needC += need[u];
+          if (needS === needC) {
+            const dots = [];
+            for (const u of cover) for (const i of ctx.units[u]) if (g[i] === 0 && !inS.has(i)) dots.push(i);
+            if (dots.length) out.push({ how: pick.length === 1 ? "confined" : "count", a: UNIT_TYPES[A], b: UNIT_TYPES[B], src: pick.slice(), cover: [...cover], dots, need: needS });
+          }
+        }
+        if (pick.length >= maxN) return;
+        for (let x = start; x < As.length; x++) { pick.push(As[x]); go(x + 1); pick.pop(); }
+      })(0);
+    }
+    out.sort((p, q) => p.src.length - q.src.length || p.dots.length - q.dots.length);
+    return out;
+  }
+
+  /** Squeeze: cells where a star would leave some unit without room. Grouped per victim unit. */
+  function squeezeSteps(ctx, g) {
+    const n = ctx.n, order = unitOrder(ctx), byVictim = new Map();
+    for (let x = 0; x < n * n; x++) {
+      if (g[x] !== 0) continue;
+      const h = g.slice();
+      h[x] = 2;
+      for (const j of neighbours8(n, x)) if (h[j] === 0) h[j] = 1;
+      for (const u of unitsOf(ctx, x)) if (needOf(ctx, h, u) === 0) for (const i of ctx.units[u]) if (h[i] === 0) h[i] = 1;
+      for (const u of order) {
+        const need = needOf(ctx, h, u);
+        if (need > 0 && !placements(n, openOf(ctx, h, u), need).length) {
+          if (!byVictim.has(u)) byVictim.set(u, []);
+          byVictim.get(u).push(x);
+          break;
+        }
+      }
+    }
+    const out = [];
+    for (const [u, xs] of byVictim) out.push({ how: "squeeze", a: unitType(ctx, u), src: [u], dots: xs, need: needOf(ctx, g, u) });
+    out.sort((p, q) => ctx.units[p.src[0]].length - ctx.units[q.src[0]].length);
+    return out;
+  }
+
+  /** Trial: cells where a star leads, after a few forced moves, to a unit without room. */
+  function trialSteps(ctx, g) {
+    const n = ctx.n, order = unitOrder(ctx), byVictim = new Map();
+    for (let x = 0; x < n * n; x++) {
+      if (g[x] !== 0) continue;
+      const h = g.slice();
+      h[x] = 2;
+      let victim = -1;
+      for (let round = 0; round < 3 * n && victim < 0; round++) {
+        basicDots(ctx, h, new Map());
+        let placed = false;
+        for (const u of order) {
+          const need = needOf(ctx, h, u);
+          if (need < 0) { victim = u; break; }
+          if (need === 0) continue;
+          const open = openOf(ctx, h, u), P = placements(n, open, need);
+          if (!P.length) { victim = u; break; }
+          const c = open.find((i) => P.every((p) => p.indexOf(i) >= 0));
+          if (c !== undefined) { h[c] = 2; placed = true; break; }
+        }
+        if (!placed) break;
+      }
+      if (victim < 0) continue;
+      if (!byVictim.has(victim)) byVictim.set(victim, []);
+      byVictim.get(victim).push(x);
+    }
+    const out = [];
+    for (const [u, xs] of byVictim) out.push({ how: "trial", a: unitType(ctx, u), src: [u], dots: xs });
+    out.sort((p, q) => q.dots.length - p.dots.length);
+    return out;
+  }
+
+  /**
+   * The easiest next star, with the reasoning behind it.
+   * Returns null, or { cell, how, unit, unitCells, need, basic, basicDots, steps, after, dots } where
+   *   how       "only" | "two" | "fit": why the star is forced inside its unit
+   *   basic     "touch" | "full" | "both" | null: plain eliminations the player hadn't marked
+   *             (basicDots: those cells)
+   *   steps     the clever steps that led here, in order: [{how, a, b, n, m, need, cells, dots}]
+   *             where cells are the step's units (to light up) and dots the cells it rules out
+   *   after     true when more steps were needed than the hint explains
+   *   dots      every cell to dot so the player can see the reasoning (all empty in the solution)
+   */
+  const MAX_EXPLAINED = 4;
+  function hint(n, k, lab, cells) {
+    const ctx = hintCtx(n, k, lab);
+    const g = cells.slice(), why = new Map();
+    // Walk back from the star: which dots did it rely on, and which steps made those dots?
+    // A step relies on the dots in its own units (the region that is confined, the region
+    // that gets squeezed), so those are followed too.
+    function finish(s, h, w, key) {
+      const dots = new Set(), basic = new Set(), used = [], queue = [];
+      let touch = false, full = false;
+      const visit = (u) => {
+        for (const c of ctx.units[u]) {
+          if (cells[c] !== 0 || h[c] !== 1) continue;
+          dots.add(c);
+          const r = w.get(c);
+          if (r === "touch") { touch = true; basic.add(c); }
+          else if (r === "full") { full = true; basic.add(c); }
+          else if (r && used.indexOf(r) < 0 && queue.indexOf(r) < 0) queue.push(r);
+        }
+      };
+      visit(s.u);
+      if (key && queue.indexOf(key) < 0) queue.push(key);
+      while (queue.length) {
+        const st = queue.shift();
+        used.push(st);
+        for (const d of st.dots) dots.add(d);
+        for (const u of st.src) visit(u);
+      }
+      used.sort((p, q) => p.depth - q.depth);
+      const told = used.slice(-MAX_EXPLAINED);
+      const cellsOf = (us) => [].concat(...us.map((u) => ctx.units[u]));
+      dots.delete(s.cell);
+      return {
+        cell: s.cell, how: s.how, unit: unitType(ctx, s.u), unitCells: ctx.units[s.u].slice(), need: s.need,
+        basic: touch && full ? "both" : touch ? "touch" : full ? "full" : null, basicDots: [...basic],
+        steps: told.map((st) => ({
+          how: st.how, a: st.a, b: st.b, n: st.src.length, m: st.cover ? st.cover.length : 0, need: st.need,
+          cells: cellsOf(st.src), dots: st.dots.slice(),
+        })),
+        after: used.length > told.length, dots: [...dots],
+        // how hard the explanation is to follow: steps, unexplained ones, and trials
+        cost: used.length + (used.length > told.length ? 4 : 0) + used.filter((st) => st.how === "trial").length * 1.5,
+      };
+    }
+    // Candidates: the first star the easy steps reach, and (if it comes first) one that needs
+    // a trial step. The one that is quicker to explain wins.
+    const cands = [];
+    const best = () => (cands.length ? cands.reduce((a, b) => (b.cost < a.cost ? b : a)) : null);
+    for (let depth = 0; depth < 80; depth++) {
+      basicDots(ctx, g, why);
+      const s = forcedStar(ctx, g, cells);
+      if (s) { cands.push(finish(s, g, why, null)); return best(); }
+      const conf = confinedSteps(ctx, g, 4);
+      const tierFns = [() => conf.filter((x) => x.how === "confined"), () => squeezeSteps(ctx, g), () => conf.filter((x) => x.how === "count"), () => trialSteps(ctx, g)];
+      const tiers = [];
+      const tier = (t) => {
+        if (!tiers[t]) { tiers[t] = tierFns[t](); for (const st of tiers[t]) st.depth = depth; }
+        return tiers[t];
+      };
+      const apply = (base, bw, st) => {
+        const h = base.slice(), w = new Map(bw);
+        for (const d of st.dots) { if (h[d] === 0) h[d] = 1; if (!w.has(d)) w.set(d, st); }
+        basicDots(ctx, h, w);
+        return { h, w };
+      };
+      // does one step on its own reveal a star?
+      const single = (t) => {
+        for (const st of tier(t)) {
+          const { h, w } = apply(g, why, st);
+          const s2 = forcedStar(ctx, h, cells);
+          if (s2) return finish(s2, h, w, st);
+        }
+        return null;
+      };
+      // or two easy steps (confined, squeeze), the second one seen after the first?
+      const pair = (maxT) => {
+        for (let t1 = 0; t1 <= maxT; t1++) for (const st1 of tier(t1)) {
+          const a1 = apply(g, why, st1);
+          const next = confinedSteps(ctx, a1.h, 1).concat(maxT ? squeezeSteps(ctx, a1.h) : []);
+          for (const st2 of next) {
+            st2.depth = depth + 0.5;
+            const { h, w } = apply(a1.h, a1.w, st2);
+            const s2 = forcedStar(ctx, h, cells);
+            if (s2) return finish(s2, h, w, st2);
+          }
+        }
+        return null;
+      };
+      const found = single(0) || pair(0) || single(1) || pair(1) || single(2);
+      if (found) { cands.push(found); return best(); }
+      if (!cands.length) { const tr = single(3); if (tr) cands.push(tr); }
+      // no: take every step of the easiest kind there is, and look again
+      let moved = false;
+      for (let t = 0; t < tierFns.length && !moved; t++) {
+        for (const st of tier(t)) for (const d of st.dots) { if (g[d] === 0) { g[d] = 1; if (!why.has(d)) why.set(d, st); } }
+        moved = tier(t).length > 0;
+      }
+      if (!moved) return best();
+    }
+    return best();
+  }
+
+  root.GraphiteStars = { TIERS, generate, solve, hint };
 })(typeof globalThis !== "undefined" ? globalThis : this);

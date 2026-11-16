@@ -247,6 +247,22 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); 
 .tool:active { background: var(--paper-2); }
 .tool:disabled { opacity: .35; }
 
+/* hint card (Star Battle): lies over the legend and the tools, so the board stays put */
+.hintcard {
+  position: absolute; z-index: 5; left: 50%; transform: translateX(-50%); width: min(calc(100% - 20px), 600px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px 10px;
+  box-shadow: 0 -8px 30px -16px rgba(0,0,0,.45); animation: hcrise .2s ease;
+}
+@keyframes hcrise { from { transform: translate(-50%, 14px); opacity: 0; } }
+.hintcard[hidden] { display: none; }
+.hintcard p { margin: 0 0 8px; font-size: .95rem; line-height: 1.4; }
+.hc-foot { display: flex; align-items: center; gap: 8px; }
+.hc-count { flex: 1; color: var(--muted); font-size: .8rem; font-weight: 700; }
+.hc-btn { padding: 8px 16px; border-radius: 99px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: .9rem; }
+.hc-btn.ghost { background: transparent; color: var(--muted); }
+.hc-btn[hidden] { display: none; }
+
 /* ---------- overlays ---------- */
 .overlay {
   position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px;

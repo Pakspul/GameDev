@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Checks Graphite's puzzle generators without a browser:
 //   1. every generated puzzle has exactly one solution, and it is the stored one;
-//   2. generation is deterministic: the same seed gives the same puzzle, forever.
+//   2. generation is deterministic: the same seed gives the same puzzle, forever;
+//   3. Star Battle's explained hints only ever point at real stars and dots (solving each
+//      puzzle from an empty board with hints alone).
 //
 // (2) matters because players' progress points at level numbers. If a fingerprint below
 // changes, every level of that type changed. Only accept that on purpose, together with
@@ -53,6 +55,19 @@ const checks = {
     if (sols.length !== 1) return "not unique";
     const want = p.solution.map((v, i) => (v ? i : -1)).filter((i) => i >= 0).join();
     if (sols[0].slice().sort((a, b) => a - b).join() !== want) return "wrong solution";
+    // hints, from an empty board to the end (when the solver finds nothing, the game gives the
+    // star from the solution; do the same here)
+    const cells = new Array(p.n * p.n).fill(0);
+    for (let guard = 0; guard < p.n * p.k; guard++) {
+      const i0 = cells.findIndex((v, i) => p.solution[i] && v !== 2);
+      if (i0 < 0) break;
+      const h = B.hint(p.n, p.k, p.regions, cells);
+      if (!h) { cells[i0] = 2; continue; }
+      if (!p.solution[h.cell]) return "hint points at a cell without a star";
+      if (h.dots.some((d) => p.solution[d])) return "hint dots a star";
+      cells[h.cell] = 2;
+      for (const d of h.dots) cells[d] = 1;
+    }
   },
   calcudoku(p) {
     const r = K.solve(p.n, p.cages, 2);

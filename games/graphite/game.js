@@ -179,7 +179,7 @@ function sfx(type) {
 function haptic() { if (window.Platform) Platform.haptic(8); }
 
 /* ---------- game state ---------- */
-// G = { kind, tier, level, date, slot, key, p, cells, notes, hints, elapsed, done, undo, sel, noteMode, flash, win }
+// G = { kind, tier, level, date, slot, key, p, cells, notes, hints, elapsed, done, undo, sel, noteMode, flash, hl, win }
 let G = null;
 let loadToken = 0;
 
@@ -239,7 +239,7 @@ async function startGame(opts) {
   canvas.style.visibility = "";
   G = {
     kind, tier, level, date, slot, key, p: state.p, cells: state.cells.slice(), notes: state.notes.slice(),
-    hints: state.hints || 0, elapsed: state.elapsed || 0, done: false, undo: [], sel: -1, noteMode: false, flash: null, win: null,
+    hints: state.hints || 0, elapsed: state.elapsed || 0, done: false, undo: [], sel: -1, noteMode: false, flash: null, hl: null, win: null,
   };
   if (KINDS[kind].input === "digits") G.sel = firstEmpty();
   buildControls();
@@ -319,7 +319,7 @@ function frame() {
   raf = 0;
   draw();
   const now = performance.now();
-  if ((G && G.flash && now < G.flash.until) || (G && G.win && now < G.win.until)) kick();
+  if ((G && G.flash && now < G.flash.until) || (G && G.win && now < G.win.until) || (G && G.hl)) kick();
 }
 
 function draw() {
@@ -596,6 +596,15 @@ function drawStars() {
 
 function drawOverlayEffects() {
   const now = performance.now();
+  if (G.hl) {
+    // the hint card's current page: its units lit up, its own cells blinking
+    ctx.fillStyle = colors.accent;
+    ctx.globalAlpha = 0.2;
+    for (const i of G.hl.cells) { const { x, y } = cellRect(i); ctx.fillRect(x, y, geo.cs + 0.5, geo.cs + 0.5); }
+    ctx.globalAlpha = 0.12 + 0.3 * (0.5 - 0.5 * Math.cos((now - G.hl.start) / 280));
+    for (const i of G.hl.pulse) { const { x, y } = cellRect(i); ctx.fillRect(x + 2, y + 2, geo.cs - 3.5, geo.cs - 3.5); }
+    ctx.globalAlpha = 1;
+  }
   if (G.flash && now < G.flash.until) {
     const { x, y } = cellRect(G.flash.cell);
     const t = (G.flash.until - now) / 900;
@@ -636,6 +645,7 @@ function commit(act, sound) {
 }
 function undo() {
   if (!G || G.done) return;
+  closeHintCard();
   const list = G.undo.pop();
   if (!list) return;
   for (const e of list) { G.cells[e.i] = e.c0; G.notes[e.i] = e.n0; }
@@ -702,6 +712,7 @@ canvas.addEventListener("pointerdown", (e) => {
   const i = cellAt(e.clientX, e.clientY);
   if (i < 0) return;
   kbdUsed = false;
+  closeHintCard();
   e.preventDefault();
   const input = KINDS[G.kind].input;
   if (input === "digits") { G.sel = i; draw(); updateControls(); return; }
@@ -850,6 +861,7 @@ function toast(text, ms) {
 }
 function hint() {
   if (!G || G.done) return;
+  closeHintCard();
   const p = G.p, n = p.n;
   // 1. a wrong entry is the most useful thing to point out
   for (let i = 0; i < n * n; i++) {
@@ -883,16 +895,7 @@ function hint() {
     }
     if (best >= 0) h = { cell: best, value: p.solution[best], text: _t(bestN === 1 ? "hint.calcuOnly" : "hint.calcuIs", { v: p.solution[best] }) };
   } else {
-    // the missing star in the row with the fewest open cells
-    let best = -1, bestOpen = 99;
-    for (let i = 0; i < n * n; i++) {
-      if (p.solution[i] !== 1 || G.cells[i] === 2) continue;
-      const r = (i / n) | 0;
-      let open = 0;
-      for (let c = 0; c < n; c++) if (G.cells[r * n + c] === 0) open++;
-      if (open < bestOpen) { best = i; bestOpen = open; }
-    }
-    if (best >= 0) h = { cell: best, value: 2, text: _t("hint.star") };
+    h = starsHint(p);
   }
   if (!h) {
     for (let i = 0; i < n * n; i++) {
@@ -904,14 +907,94 @@ function hint() {
   G.hints++;
   const act = begin();
   setCell(act, h.cell, h.value, 0);
-  if (p.kind === "stars") autodot(act, h.cell);
+  if (p.kind === "stars") { for (const d of h.dots || []) if (G.cells[d] === 0) setCell(act, d, 1); autodot(act, h.cell); }
   if (p.kind === "sudoku" || p.kind === "calcudoku") for (const j of peersOf(h.cell)) if (G.notes[j] & (1 << h.value)) setCell(act, j, G.cells[j], G.notes[j] & ~(1 << h.value));
   G.sel = h.cell;
   G.flash = { cell: h.cell, until: performance.now() + 1400, bad: false };
-  toast(h.text, 5200);
+  if (h.pages) showHintCard(h.pages);
+  else toast(h.text, 5200);
   commit(act, "tick");
   kick();
 }
+/** Star Battle: the easiest star to see, explained step by step so the player learns how. */
+function starsHint(p) {
+  const n = p.n, r = GraphiteStars.hint(n, p.k, p.regions, G.cells);
+  // the hint solver only reasons, so it can't be wrong; check against the solution anyway
+  if (r && p.solution[r.cell] === 1 && r.dots.every((i) => p.solution[i] !== 1)) {
+    return { cell: r.cell, value: 2, dots: r.dots, pages: starsHintPages(r, p.k) };
+  }
+  // nothing simple works: the missing star in the row with the fewest open cells
+  let best = -1, bestOpen = 99;
+  for (let i = 0; i < n * n; i++) {
+    if (p.solution[i] !== 1 || G.cells[i] === 2) continue;
+    const row = (i / n) | 0;
+    let open = 0;
+    for (let c = 0; c < n; c++) if (G.cells[row * n + c] === 0) open++;
+    if (open < bestOpen) { best = i; bestOpen = open; }
+  }
+  if (best < 0) return null;
+  const row = (best / n) | 0, cells = [];
+  for (let c = 0; c < n; c++) cells.push(row * n + c);
+  return { cell: best, value: 2, dots: [], pages: [{ text: _t("hint.deep", { unit: _t("unit.row") }), highlight: cells, pulse: [best] }] };
+}
+/**
+ * One page per idea: the plain eliminations, each clever step (steps of the same kind on
+ * the same kind of units share a page), and the star itself. Each page lights up the units
+ * it talks about and makes its own dots blink.
+ */
+function starsHintPages(r, k) {
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const end = { text: _t("end." + r.how, { unit: _t("unit." + r.unit) }), highlight: r.unitCells, pulse: [r.cell] };
+  const pages = [];
+  const groups = [];
+  for (const s of r.steps) {
+    const g = groups.find((x) => x.how === s.how && x.a === s.a && x.b === s.b && s.how !== "count");
+    if (g) g.list.push(s); else groups.push({ how: s.how, a: s.a, b: s.b, list: [s] });
+  }
+  if (r.basic) {
+    const text = _t("why." + r.basic, { k });
+    // with nothing clever in between, the plain reason and the star fit on one page
+    if (groups.length) pages.push({ text, highlight: [], pulse: r.basicDots });
+    else end.text = text + " " + end.text;
+  }
+  for (const g of groups) {
+    const s = g.list[0];
+    const v = { k, need: s.need, n: s.n, m: s.m, aType: s.a, a: _t("unit." + s.a), A: _t("hl." + s.a), As: _t("units." + s.a) };
+    v.Acap = cap(v.A);
+    if (s.b) Object.assign(v, { b: _t("unit." + s.b), bs: _t("units." + s.b), thatB: _t("that." + s.b) });
+    pages.push({
+      text: _t("why." + s.how + (g.list.length > 1 ? "N" : ""), v),
+      highlight: [].concat(...g.list.map((x) => x.cells)),
+      pulse: [].concat(...g.list.map((x) => x.dots)),
+    });
+  }
+  pages.push(end);
+  if (r.after) pages[0].text = _t("hint.after") + " " + pages[0].text;
+  return pages;
+}
+
+/* ---------- the hint card (Star Battle): the reasoning, one page at a time ---------- */
+let hintPages = null, hintPage = 0;
+function showHintCard(pages) { hintPages = pages; hintPage = 0; renderHintCard(); }
+function closeHintCard() { if (hintPages) { hintPages = null; renderHintCard(); } }
+function renderHintCard() {
+  const card = $("#hintCard");
+  if (!hintPages || !G) {
+    card.hidden = true;
+    if (G && G.hl) { G.hl = null; draw(); }
+    return;
+  }
+  const pg = hintPages[hintPage], last = hintPage === hintPages.length - 1;
+  $("#hcText").textContent = pg.text;
+  $("#hcCount").textContent = hintPages.length > 1 ? _t("hc.count", { i: hintPage + 1, n: hintPages.length }) : "";
+  $("#hcNext").textContent = _t(last ? "hc.ok" : "hc.next");
+  $("#hcClose").hidden = last;
+  card.hidden = false;
+  G.hl = { cells: pg.highlight, pulse: pg.pulse, start: performance.now() };
+  kick();
+}
+$("#hcNext").addEventListener("click", () => { if (hintPages && hintPage < hintPages.length - 1) { hintPage++; renderHintCard(); } else closeHintCard(); });
+$("#hcClose").addEventListener("click", closeHintCard);
 function sudokuHintText(r) {
   const v = { v: r.value, unit: _t("unit." + r.unit) };
   if (r.how === "hidden") return _t(r.after ? "hint.hiddenAfter" : "hint.hidden", v);
@@ -1037,6 +1120,7 @@ function leaveGame() {
   // open the level list on the page of the level just played
   if (G && !G.date) store.ui.page[G.kind + ":" + G.tier] = Math.floor((G.done ? G.level : G.level - 1) / PAGE);
   loadToken++;
+  closeHintCard();
   G = null;
   $("#overlay").hidden = true;
   $("#game").hidden = true;

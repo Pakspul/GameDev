@@ -19,6 +19,11 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-16
+
+**Done**
+- Graphite, Star Battle: **hints now explain why the star goes there**, so you learn the technique instead of just getting a star. A small solver in `levels/stars.js` looks for the easiest star to see, the way a person would: the only free cell left in a row, column or region; crossing out cells that touch a star; a region squeezed into one row ("confined"); a star that would leave a region without room ("squeeze"); N regions inside N rows ("counting"); and as a last resort "try it and see". It prefers one easy step over two, and two easy steps over a hard one. The reasoning shows in a card below the board, one page per step: the units it talks about light up, the dots that step adds blink, and the hint places those dots for you. English and Dutch. `tests/puzzles.mjs` now solves every test puzzle with hints alone and fails if a hint ever points at a wrong star or dot.
+
 ## 2026-11-14
 
 **Done**
