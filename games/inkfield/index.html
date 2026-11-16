@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#2b3441">
+<title>Inkfield</title>
+<link rel="stylesheet" href="../../shared/css/gamenav.css">
+<link rel="stylesheet" href="../../shared/css/gamelobby.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="state-menu">
+
+<canvas id="cv" data-i18n-attr="aria-label:scene"></canvas>
+<!-- Names above the heads; positioned every frame -->
+<div id="labels" aria-hidden="true"></div>
+
+<!-- Heads-up display while playing -->
+<header id="hud">
+  <div class="pills">
+    <div class="pill share" role="group" data-i18n-attr="aria-label:hud.share"><b id="share">0.00%</b><i><span id="shareBar"></span></i></div>
+    <div class="pill" role="group" data-i18n-attr="aria-label:hud.kills"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L19 5M14 5h5v5M5 5l5 5M14 14l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b id="kills">0</b></div>
+    <div class="pill" role="group" data-i18n-attr="aria-label:hud.left"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="4" fill="currentColor"/><circle cx="17" cy="11" r="3" fill="currentColor" opacity=".6"/><path d="M2 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5z" fill="currentColor"/></svg><b id="left">0</b></div>
+  </div>
+</header>
+<ol id="ranks" aria-live="off"></ol>
+<canvas id="mini" aria-hidden="true"></canvas>
+<div id="feed" role="status" aria-live="polite"></div>
+<div id="stick" aria-hidden="true"><div id="knob"></div></div>
+
+<!-- Start screen -->
+<section id="menu" class="overlay" aria-label="Inkfield">
+  <div class="card">
+    <div class="topline"><span class="tag" data-i18n="prototype"></span></div>
+    <h1>Inkfield</h1>
+    <p class="lead" data-i18n="lead"></p>
+    <div class="lobby" id="lobby"></div>
+    <details>
+      <summary data-i18n="how"></summary>
+      <ul class="how">
+        <li data-i18n-html="how.1"></li>
+        <li data-i18n-html="how.2"></li>
+        <li data-i18n-html="how.3"></li>
+        <li data-i18n-html="how.4"></li>
+        <li data-i18n-html="how.5"></li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<!-- Result -->
+<section id="result" class="overlay" data-i18n-attr="aria-label:result" hidden>
+  <div class="card narrow">
+    <h2 id="resultTitle"></h2>
+    <p id="resultText"></p>
+    <dl class="stats" id="resultStats"></dl>
+    <button type="button" class="primary" id="againBtn" data-i18n="again"></button>
+    <button type="button" class="secondary" id="resultMenuBtn" data-i18n="menu"></button>
+  </div>
+</section>
+
+<script src="../../shared/js/platform.js"></script>
+<script src="../../shared/js/i18n.js"></script>
+<script src="../../shared/js/gamenav.js"></script>
+<script src="../../shared/js/gamelobby.js"></script>
+<script src="strings.js"></script>
+<script src="../../shared/vendor/three/three.min.js"></script>
+<script type="module" src="game.js"></script>
+</body>
+</html>

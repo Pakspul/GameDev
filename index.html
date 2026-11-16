@@ -86,6 +86,8 @@ header p{margin:0;color:var(--muted);max-width:34em}
   --c-art:radial-gradient(circle at 82% 22%,#f4f6fa 0 13px,#9aa1ad 14px 16px,transparent 17px),radial-gradient(circle at 92% 40%,#ffd447 0 13px,#c48a12 14px 16px,transparent 17px),radial-gradient(circle at 74% 46%,#e7eaf0 0 13px,#9aa1ad 14px 16px,transparent 17px),radial-gradient(120% 90% at 90% 0%,rgba(255,207,77,.25),transparent 60%)}
 .g-camp{--c-bg:#2b2f36;--c-ink:#f4f5f7;--c-accent:#ffb347;--c-accent-ink:#2b1a00;--c-font:800 2.1rem/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--c-track:-.03em;
   --c-art:repeating-linear-gradient(90deg,transparent 0 26px,rgba(255,255,255,.07) 26px 40px) 0 72%/100% 4px no-repeat,radial-gradient(120% 90% at 90% 0%,rgba(255,179,71,.28),transparent 60%)}
+.g-ink{--c-bg:#f7f3ea;--c-ink:#1b1f27;--c-accent:#2f6fec;--c-accent-ink:#ffffff;--c-font:900 2.1rem/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--c-track:-.03em;
+  --c-art:radial-gradient(60% 55% at 92% 8%,#2f6fec 0 58%,transparent 59%),radial-gradient(40% 40% at 70% 0%,#e8504a 0 50%,transparent 51%),radial-gradient(35% 45% at 100% 45%,#3dbb6b 0 45%,transparent 46%)}
 details{margin-top:30px;border-top:1px solid var(--line);padding-top:18px}
 summary{cursor:pointer;font-weight:700}
 details p{color:var(--muted);max-width:40em}
@@ -197,6 +199,12 @@ dialog form button{font:inherit;font-weight:700;color:var(--bg);background:var(-
       <h2>Camper Crew</h2>
       <p data-i18n="camp.blurb"></p>
     </a>
+    <a class="card g-ink" href="games/inkfield/index.html">
+      <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
+      <div class="meta"><span>2D</span><span data-i18n="tag.arcade"></span><span data-i18n="tag.prototype"></span></div>
+      <h2>Inkfield</h2>
+      <p data-i18n="ink.blurb"></p>
+    </a>
   </nav>
 
   <details>
@@ -286,6 +294,7 @@ I18n.add({
     "wall.blurb": "Break the wall: seven modes, endless levels, a boss every tenth, and risky capsules you can catch or dodge.",
     "coin.blurb": "Drop coins, let the pusher shove the pile, and win whatever spills over the edge. Real physics, prizes to collect, never a coin for sale.",
     "camp.blurb": "You're the only crew on a self-driving camper. Steer, refuel, cook and patch your way to camp before sunset.",
+    "ink.blurb": "Draw loops to claim land, cut the others' trails, and be the last one on the board.",
     "hub.whyQ": "Why are there no ads?",
     "hub.why1": "Most \"free\" mobile games are built to sell your attention: an ad after every level, timers you can skip for money, and tracking you never agreed to. These games are made the other way round. They are free because they are free: no ads, no data collection, no paid shortcuts, and no internet connection needed.",
     "hub.why2": "The code is open, so anyone can check that promise, learn from it, or build on it.",
@@ -334,6 +343,7 @@ I18n.add({
     "coin.blurb": "Gooi munten, laat de schuif de stapel duwen en win alles wat over de rand valt. Echte natuurkunde, prijzen om te verzamelen, nooit een munt te koop.",
     "wall.blurb": "Breek de muur: zeven spelsoorten, eindeloze levels, elk tiende level een baas, en riskante capsules die je vangt of ontwijkt.",
     "camp.blurb": "Je bent de enige bemanning van een zelfrijdende camper. Stuur, tank, kook en repareer je een weg naar de camping voor zonsondergang.",
+    "ink.blurb": "Trek lussen om land te veroveren, snij de sporen van de anderen door en blijf als laatste over.",
     "hub.whyQ": "Waarom zijn er geen advertenties?",
     "hub.why1": "De meeste \"gratis\" mobiele spellen zijn gemaakt om je aandacht te verkopen: een advertentie na elk level, wachttijden die je met geld kunt overslaan, en tracking waar je nooit mee hebt ingestemd. Deze spellen zijn andersom gemaakt. Ze zijn gratis omdat ze gratis zijn: geen advertenties, geen dataverzameling, geen betaalde shortcuts en geen internetverbinding nodig.",
     "hub.why2": "De code is open, dus iedereen kan die belofte controleren, ervan leren of erop voortbouwen.",
