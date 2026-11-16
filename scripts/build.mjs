@@ -19,7 +19,7 @@ const gi = process.argv.indexOf("--game");
 const ONLY = gi > 0 ? process.argv[gi + 1] : null;
 // Playable in `npm run dev`, but left out of production builds (and their hub card removed)
 // until they're ready. Asking for one with --game still builds it.
-const EXPERIMENTAL = ["camper-crew", "inkfield"];
+const EXPERIMENTAL = ["camper-crew"];
 const HIDDEN = ONLY || process.argv.includes("--experimental") ? [] : EXPERIMENTAL;
 // staticwebapp.config.json is read by Azure Static Web Apps (MIME types, headers); harmless elsewhere.
 const GAMES = (await readdir(join(ROOT, "games"))).filter((g) => !HIDDEN.includes(g)).map((g) => `games/${g}`);

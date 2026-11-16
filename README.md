@@ -16,7 +16,7 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Crystal Reels** | Two slot machines with play money only: free spins, Hold & Spin, a pick bonus, jackpots, the same odds for everyone. See [docs/SLOTS.md](docs/SLOTS.md) |
 | **Wallbreaker** | A brick breaker with seven modes (Classic, Zen, Descent, Run, Daily, Puzzle, Time Attack), endless seeded levels, bosses, and risky capsules you catch or dodge. See [docs/WALLBREAKER.md](docs/WALLBREAKER.md) |
 | **Coin Dozer** | A coin pusher with real physics: drop coins, the pusher shoves the pile, win what spills over. Gems and figures to collect in four machine themes. See [docs/COIN-DOZER.md](docs/COIN-DOZER.md) |
-| **Inkfield** *(prototype, dev only)* | Draw loops to claim land, cut the others' trails, be the last one on the board (against computer players). See [docs/INKFIELD.md](docs/INKFIELD.md) |
+| **Inkfield** *(prototype)* | Draw loops to claim land, cut the others' trails, be the last one on the board (against computer players). See [docs/INKFIELD.md](docs/INKFIELD.md) |
 | **Camper Crew** *(prototype, dev only)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
 
 Jade Pavilion, Nuts & Bolts, Outbound, Unscrew, Coin Dozer and Camper Crew are built with [three.js](https://threejs.org) (Coin Dozer adds the [Rapier](https://rapier.rs) physics engine); Graphite and Wallbreaker are plain 2D canvas, and Crystal Reels is plain DOM and SVG with synthesised sound (no libraries, no assets). They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
@@ -35,7 +35,7 @@ npm run build      # assemble dist/ (what goes into the app)
 
 No build step is needed while developing: edit a file and refresh.
 
-Experimental games (listed in `EXPERIMENTAL` in [scripts/build.mjs](scripts/build.mjs), currently Camper Crew and Inkfield) are playable in `npm run dev` but left out of `dist/`, so they don't reach the website or the app. `npm run build -- --experimental` includes them; `npm test` does that so they stay tested.
+Experimental games (listed in `EXPERIMENTAL` in [scripts/build.mjs](scripts/build.mjs), currently Camper Crew) are playable in `npm run dev` but left out of `dist/`, so they don't reach the website or the app. `npm run build -- --experimental` includes them; `npm test` does that so they stay tested.
 
 ## Repository layout
 
