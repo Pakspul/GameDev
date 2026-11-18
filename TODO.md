@@ -35,6 +35,8 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] Camper Crew: tune or cut based on the playtest, *then* decide on art, sound and more troubles
 - [ ] Inkfield: playtest on the phone (speed, zoom, controls, match length); answer the open questions in [docs/INKFIELD.md](docs/INKFIELD.md)
 - [ ] Inkfield: pick the first add-ons (ideas in [docs/INKFIELD.md](docs/INKFIELD.md#ideas-for-later-add-ons)) and decide on the final name
+- [ ] Starflip: playtest on the phone (table speed, mission clock, is the wormhole too easy or hard, are banner and arrows enough without "How to play"); see [docs/STARFLIP.md](docs/STARFLIP.md#open-questions)
+- [ ] Starflip: decide on the final name, and when to drop the hub card's "New" tag
 - [ ] Coin Dozer: 4 checks in `tests/coin-dozer/e2e.mjs` fail (an overlay intercepts clicks)
 
 ## Release issues

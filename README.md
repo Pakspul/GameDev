@@ -16,10 +16,11 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Crystal Reels** | Two slot machines with play money only: free spins, Hold & Spin, a pick bonus, jackpots, the same odds for everyone. See [docs/SLOTS.md](docs/SLOTS.md) |
 | **Wallbreaker** | A brick breaker with seven modes (Classic, Zen, Descent, Run, Daily, Puzzle, Time Attack), endless seeded levels, bosses, and risky capsules you catch or dodge. See [docs/WALLBREAKER.md](docs/WALLBREAKER.md) |
 | **Coin Dozer** | A coin pusher with real physics: drop coins, the pusher shoves the pile, win what spills over. Gems and figures to collect in four machine themes. See [docs/COIN-DOZER.md](docs/COIN-DOZER.md) |
+| **Starflip** | Space pinball with clear missions: the banner says what to shoot, arrows show where. Finished missions open a wormhole to 30-second bonus tables. See [docs/STARFLIP.md](docs/STARFLIP.md) |
 | **Inkfield** *(prototype)* | Draw loops to claim land, cut the others' trails, be the last one on the board (against computer players). See [docs/INKFIELD.md](docs/INKFIELD.md) |
 | **Camper Crew** *(prototype, dev only)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
 
-Jade Pavilion, Nuts & Bolts, Outbound, Unscrew, Coin Dozer and Camper Crew are built with [three.js](https://threejs.org) (Coin Dozer adds the [Rapier](https://rapier.rs) physics engine); Graphite and Wallbreaker are plain 2D canvas, and Crystal Reels is plain DOM and SVG with synthesised sound (no libraries, no assets). They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
+Jade Pavilion, Nuts & Bolts, Outbound, Unscrew, Coin Dozer and Camper Crew are built with [three.js](https://threejs.org) (Coin Dozer adds the [Rapier](https://rapier.rs) physics engine); Graphite, Wallbreaker and Starflip are plain 2D canvas, and Crystal Reels is plain DOM and SVG with synthesised sound (no libraries, no assets). They all run in any modern browser, work fully offline, and are being packaged as one Android app (iPhone later).
 
 ## Quick start
 
@@ -57,6 +58,7 @@ docs/               guides
 - [docs/SLOTS.md](docs/SLOTS.md): Crystal Reels: how it is built, the maths simulator, fairness rules, requirement map
 - [docs/WALLBREAKER.md](docs/WALLBREAKER.md): Wallbreaker: the plan, how it is built, and where each acceptance criterion is tested
 - [docs/INKFIELD.md](docs/INKFIELD.md): Inkfield: the rules, how it is built, ideas for add-ons
+- [docs/STARFLIP.md](docs/STARFLIP.md): Starflip: how it plays, the missions and bonus tables, how it's built, and what to playtest
 - [docs/COIN-DOZER.md](docs/COIN-DOZER.md): Coin Dozer: the spec, how it is built, where it differs from the spec, and where each acceptance criterion is tested
 - [docs/ECONOMY.md](docs/ECONOMY.md): how coins, washers and points work in every game: prices in levels of effort, stars for playing without help
 - [TODO.md](TODO.md): what to do next, as a checklist
