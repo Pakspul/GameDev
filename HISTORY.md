@@ -19,6 +19,21 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-18
+
+**Done**
+- **Starflip** (working title), a new game: space pinball with **missions that say exactly what to shoot**, and **bonus tables** to score fast. In the release builds and on the hub (not experimental). See [docs/STARFLIP.md](docs/STARFLIP.md).
+  - The launch pad starts one of six missions (Liftoff, Asteroid Storm, Satellite Repair, Comet Chase, Black Hole Survey, First Contact). A banner above the table always says the current step ("Shoot the LEFT ORBIT", "Hit the BUMPERS 4/8") with the clock, and a gold arrow blinks at the shot.
+  - A finished mission opens the wormhole to one of three 30-second bonus tables (Asteroid Belt, Gravity Well, UFO Attack), where losing the ball costs nothing. Reached bonus tables can be played on their own from the start screen. All six missions bring the Mothership, a 3-ball multiball with jackpots.
+  - Plain 2D canvas with its own physics (`src/physics.js`, fixed 600 Hz, flippers move the ball with their real surface speed). Skill shot by plunger strength, lane change, multiplier, ball save, synthesised sound.
+  - `npm run test:starflip` (rules and physics in Node, including whole autoplayed games where no ball may leave the table) and `tests/starflip/e2e.mjs` (real touches in a phone browser), both in `npm test`. `npm run starflip:sim` plays whole games for tuning.
+
+**Decided**
+- A mission carries over to the next ball; only its clock can fail it. Losing a ball shouldn't also wipe the work put into a mission.
+
+**Next**
+- Playtest Starflip on the phone: speed, mission length, how easy the wormhole is (questions in [docs/STARFLIP.md](docs/STARFLIP.md#open-questions)).
+
 ## 2026-11-16
 
 **Done**

@@ -20,7 +20,8 @@ How the repository is organised, why, and how to improve it step by step without
 │   ├── unscrew/             models/ holds the 3D models: kit.js (building blocks), one file per category, order.js (level order); dev/inspector.js is the model inspector (?models, left out of builds)
 │   ├── graphite/            levels/ holds one generator per puzzle type; worker.js runs them off the main thread
 │   ├── wallbreaker/         src/ holds the engine, generator, modes, economy (config.js has every number), renderer and save
-│   └── coin-dozer/          src/ holds the physics board (Rapier), the machine's rules, economy, themes, renderer and save; config.js has every number
+│   ├── coin-dozer/          src/ holds the physics board (Rapier), the machine's rules, economy, themes, renderer and save; config.js has every number
+│   └── starflip/            src/ holds its own pinball physics, the tables and missions as data, the rules, renderer and sounds; config.js has every number
 ├── shared/                  Things every game uses, kept in exactly one place
 │   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md), gamenav.js (back button and menu), gamelobby.js (a game's own menu)
 │   ├── css/                 gamenav.css, gamelobby.css: the neutral look of those, which each game restyles
@@ -69,6 +70,7 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Wallbreaker | English + Dutch | ~3,300 (ES modules) | 2D canvas, frame loop only while a level is played | `wallbreaker.save` | Brick breaker, seven modes on one engine (`src/engine.js`, fixed 120 Hz, swept collision); seeded levels; its own economy in `src/config.js`; service worker for offline install. See [WALLBREAKER.md](WALLBREAKER.md) |
 | Coin Dozer | English + Dutch | ~2,900 (ES modules) | three.js r128 + Rapier physics, instanced coins; nothing runs while paused or hidden | `coin-dozer.save` | Coin pusher: fixed 60 Hz physics, seeded board, prizes and bonus events; its own economy in `src/config.js`; service worker for offline install. See [COIN-DOZER.md](COIN-DOZER.md) |
 | Crystal Reels | English + Dutch | ~6,000 (ES modules) | DOM + SVG, no canvas except particles; frame loop only while something moves | `honest-arcade.slots.save.0/1` | Slot machines with play money; maths engine + simulator in `games/crystal-reels/src/engine`, see [SLOTS.md](SLOTS.md) |
+| Starflip | English + Dutch | ~2,200 (ES modules) | 2D canvas, a cached layer per table; frame loop only while playing | `starflip.v1` | Pinball with missions and bonus tables; its own physics in `src/physics.js` (fixed 600 Hz), rules in `src/rules.js`. See [STARFLIP.md](STARFLIP.md) |
 | Inkfield | English + Dutch | ~1,500 (ES modules) | three.js r128, top-down; land smoothed on the GPU only where it changed | `inkfield.v1` | Territory game against computer players; rules in `src/sim.js` (fixed 60 Hz, grids), bots in `src/bots.js`. Prototype. See [INKFIELD.md](INKFIELD.md) |
 | Camper Crew | English + Dutch | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
 
