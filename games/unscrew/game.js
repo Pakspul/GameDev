@@ -167,17 +167,39 @@ const sfx={unscrew(){for(let i=0;i<4;i++)tick(i*0.06,0.28,2600+i*400);tone(420,0
   win(){[523,659,784,1046].forEach((f,i)=>tone(f,0.24,'triangle',0.11,i*0.09))},fail(){[440,370,311,262].forEach((f,i)=>tone(f,0.3,'sawtooth',0.04,i*0.12))}};
 
 /* --- three setup --- */
+// Lighting balance. The studio environment gives soft light from every side and the reflections; the sun adds shape and shadows
+const LOOK={env:0.45,hemi:0.2,sun:0.9,rim:0.15};
+// A photo studio as a scene, after three.js's RoomEnvironment (MIT): a grey room lit by glowing panels, warm on the sun's
+// side and cool on the other. PMREMGenerator blurs it once at startup into light and reflections for every material
+function studioScene(k){const sc=new THREE.Scene(),g=new THREE.BoxGeometry();g.deleteAttribute('uv');
+  const room=new THREE.Mesh(g,new THREE.MeshStandardMaterial({side:THREE.BackSide,color:srgb('#c9c4bd')}));room.position.set(-0.757,13.219,0.717);room.scale.set(31.713,28.305,28.591);sc.add(room);
+  const lamp=new THREE.PointLight(0xffffff,5*k,28,2);lamp.position.set(0.418,16.199,0.3);sc.add(lamp);
+  const boxMat=new THREE.MeshStandardMaterial();
+  for(const[p,s,r]of[[[-10.906,2.009,1.846],[2.328,7.905,4.651],-0.244],[[-5.607,-0.754,-0.758],[1.97,1.534,3.955],-0.4],[[6.167,0.857,7.803],[3.927,6.285,3.687],-0.4],
+    [[-2.017,0.018,6.124],[2.002,4.566,2.064],-0.4],[[2.291,-0.756,-2.621],[1.546,1.552,1.496],-0.4],[[-2.193,-0.369,-5.547],[3.875,3.487,2.986],-0.4]]){
+    const b=new THREE.Mesh(g,boxMat);b.position.set(...p);b.scale.set(...s);b.rotation.y=r;sc.add(b)}
+  const panel=(hex,i,p,s)=>{const m=new THREE.MeshBasicMaterial({color:new THREE.Color(hex).multiplyScalar(i*k)}),pn=new THREE.Mesh(g,m);pn.position.set(...p);pn.scale.set(...s);sc.add(pn)};
+  panel('#fff3e3',50,[-16.116,14.37,8.208],[0.1,2.428,2.739]);panel('#fff3e3',50,[-16.109,18.021,-8.207],[0.1,2.425,2.751]);
+  panel('#e6f0ff',17,[14.904,12.198,-1.832],[0.15,4.265,6.331]);panel('#fff8ee',43,[-0.462,8.89,14.52],[4.38,5.441,0.088]);
+  panel('#e6f0ff',20,[3.235,11.486,-12.541],[2.5,2,0.1]);panel('#ffffff',100,[0,20,0],[1,0.1,1]);
+  return sc}
 const canvas=$('#c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.setClearColor(0x000000,0);
 const scene=new THREE.Scene();
+const pmrem=new THREE.PMREMGenerator(renderer);
 const persp=new THREE.PerspectiveCamera(34,1,0.1,300),ortho=new THREE.OrthographicCamera(-5,5,5,-5,1,100);
 let camera=persp;
-const hemi=new THREE.HemisphereLight(srgb('#eef6ff'),srgb('#c8b28c'),0.82);scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xffffff,0.95);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-0.0006;sun.shadow.normalBias=0.02;scene.add(sun,sun.target);
-const rim=new THREE.DirectionalLight(srgb('#dbe8ff'),0.32);scene.add(rim);
+const hemi=new THREE.HemisphereLight(srgb('#eef6ff'),srgb('#c8b28c'),LOOK.hemi);scene.add(hemi);
+const sun=new THREE.DirectionalLight(srgb('#fff4e6'),LOOK.sun);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-0.0006;sun.shadow.normalBias=0.02;scene.add(sun,sun.target);
+const rim=new THREE.DirectionalLight(srgb('#dbe8ff'),LOOK.rim);scene.add(rim);
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.ShadowMaterial({opacity:0.16}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+// Builds the studio environment from LOOK (once at startup). Materials made before a later call keep the old one
+function applyLook(){if(scene.environment)scene.environment.dispose();const st=studioScene(LOOK.env);scene.environment=pmrem.fromScene(st,0.04).texture;
+  st.traverse(o=>{if(o.isMesh){o.material.dispose();o.geometry.dispose()}});lightLevels(false)}
+function lightLevels(is2){sun.intensity=LOOK.sun*(is2?0.8:1);hemi.intensity=LOOK.hemi*(is2?1.1:1);rim.intensity=LOOK.rim}
+applyLook();
 
 function mergeGeos(gs){const a=gs.map(g=>g.index?g.toNonIndexed():g);let n=0;a.forEach(g=>n+=g.attributes.position.count);
   const pos=new Float32Array(n*3),nor=new Float32Array(n*3);let o=0;a.forEach(g=>{pos.set(g.attributes.position.array,o*3);nor.set(g.attributes.normal.array,o*3);o+=g.attributes.position.count});
@@ -210,7 +232,7 @@ function spawnScrews(lv){const meshes=lv.parts.filter(p=>!p.static).map(p=>p.ray
 function setCurrent(lv){if(CUR){scene.remove(CUR.group);disposeTree(CUR.group)}anims=[];CUR=lv;if(!lv)return;scene.add(lv.group);
   const is2=lv.mode==='2d',c=lv.center,R=lv.radius;ground.visible=!is2;
   const dir=is2?V(-0.45,1,-0.6).normalize():V(-0.55,1,0.7).normalize();
-  sun.position.copy(c).addScaledVector(dir,R*3);sun.target.position.copy(c);sun.intensity=is2?0.75:0.95;hemi.intensity=is2?0.9:0.82;
+  sun.position.copy(c).addScaledVector(dir,R*3);sun.target.position.copy(c);lightLevels(is2);
   const sc=sun.shadow.camera;sc.left=-R*1.2;sc.right=R*1.2;sc.top=R*1.2;sc.bottom=-R*1.2;sc.near=0.5;sc.far=R*7;sc.updateProjectionMatrix();
   rim.position.copy(c).add(V(4,3,-8));orbit.target.copy(c)}
 

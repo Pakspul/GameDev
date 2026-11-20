@@ -33,7 +33,7 @@ games/unscrew/models/
 
 | Model | Status | Idea / what to unscrew |
 |---|---|---|
-| Bedroom | ✅ | Bed, wardrobe, shelves with books, desk and chair, rug, toys |
+| Bedroom | ✅ | A pastel room whose props snap to the wall panels: lockers with pearls, a window between pleated curtains, a desk with a bunny-eared computer and a stack of books, a bed with a quilted duvet, gingham pillow and heart cushion, a nightstand with a lamp, a low dresser under a poster, an open bookcase with a piggy bank, a cat asleep in its basket on a round rug, a suitcase, a plant and a pipe outside |
 | Kitchen | ✅ | A run of units along the back wall, each as wide as two wall panels: base cabinets (two doors with knob plates, a counter, a cutting board and a bowl on it), a stove (an oven door with a window plate, a hob over one burner, a pan and a lid), upper units with handle plates, a hood and a fridge; a table with a runner and a centrepiece, chairs, a rug and a pan rail |
 | Living room | | Sofa (cushions as cover plates), TV cabinet, bookcase, lamp, plant |
 | Workshop | | Workbench, a tool wall with screwed-on tools, shelves with boxes |
@@ -145,6 +145,9 @@ The building blocks are in [`models/kit.js`](../games/unscrew/models/kit.js). Re
 | `deck`, `pad`, static `box` | The ground the model stands on. Static parts never get screws |
 | `fenceLine`, `props` | A fence between two points; crates, barrels, trees and bushes on given spots |
 | `decor(part,mesh)` | A purely visual mesh attached to a part (eyes, handles, water). It has no screws and doesn't block anything |
+| `reskin(part,geo)`, `deco(part,geo,colour,x,y,z)` | Give a part any look while its screws and rays still see the plain box or cylinder it was made with: a quilt, curtains, a cat. `deco` is a one-line `decor` |
+| `puffGeo`, `quiltGeo`, `pleatGeo`, `shelfGeo`, `heartGeo`, `ell` | Looks for `reskin` and `deco`: a cushion, a quilted duvet, pleated curtains, an open shelf unit, a heart, an ellipsoid |
+| `beads(part,points,r,colours)`, `boxSet(part,list)`, `sag(a,b,dip,n)`, `canvasTex(w,h,draw)` | Many beads or boxes in one draw call (garlands, books, keys), the points of a hanging string, and a texture drawn in code (gingham, a screen, a poster) |
 
 ### 2. Know the rules of the screws
 

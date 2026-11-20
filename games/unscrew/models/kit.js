@@ -30,7 +30,7 @@ const FACES={
   '+z':{n:[0,0,1],u:[1,0,0],v:[0,1,0],L:['w','h'],half:'d'},'-z':{n:[0,0,-1],u:[-1,0,0],v:[0,1,0],L:['w','h'],half:'d'}};
 let BLD=null;
 const PROXY_MAT=new THREE.MeshBasicMaterial({visible:false});PROXY_MAT.userData.shared=true;
-function partMat(hex,o={}){const m=new THREE.MeshStandardMaterial({roughness:.7,metalness:0,...o});m.color.copy(srgb(hex));return m}
+function partMat(hex,o={}){const m=new THREE.MeshStandardMaterial({roughness:.55,metalness:0,...o});m.color.copy(srgb(hex));return m}
 function roundRectShape(w,h,r){const s=new THREE.Shape(),x=-w/2,y=-h/2;r=Math.max(0.001,Math.min(r,w/2-0.0005,h/2-0.0005));
   s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.absarc(x+w-r,y+r,r,-Math.PI/2,0,false);s.lineTo(x+w,y+h-r);s.absarc(x+w-r,y+h-r,r,0,Math.PI/2,false);
   s.lineTo(x+r,y+h);s.absarc(x+r,y+h-r,r,Math.PI/2,Math.PI,false);s.lineTo(x,y+r);s.absarc(x+r,y+r,r,Math.PI,1.5*Math.PI,false);return s}
@@ -39,7 +39,7 @@ function roundPolyShape(vs,r){const s=new THREE.Shape(),n=vs.length;const P=i=>v
   const o0=toward(P(0),P(1),r);s.moveTo(o0[0],o0[1]);
   for(let i=1;i<=n;i++){const v=P(i),a=toward(v,P(i-1),r),b=toward(v,P(i+1),r);s.lineTo(a[0],a[1]);s.quadraticCurveTo(v[0],v[1],b[0],b[1])}return s}
 function roundedBoxGeo(w,h,d,r){r=Math.min(r,w*0.3,h*0.3,d*0.3);const iw=w-2*r,ih=h-2*r;
-  const g=new THREE.ExtrudeGeometry(roundRectShape(iw,ih,Math.min(r,iw/2*0.9,ih/2*0.9)),{depth:Math.max(0.001,d-2*r),bevelEnabled:true,bevelThickness:r,bevelSize:r,bevelSegments:2,curveSegments:3});
+  const g=new THREE.ExtrudeGeometry(roundRectShape(iw,ih,Math.min(r,iw/2*0.9,ih/2*0.9)),{depth:Math.max(0.001,d-2*r),bevelEnabled:true,bevelThickness:r,bevelSize:r,bevelSegments:3,curveSegments:4});
   g.translate(0,0,-(d-2*r)/2);return g}
 function addPart(geo,color,pos,quat,o={}){
   const mesh=new THREE.Mesh(geo,partMat(color,o.mat||{}));mesh.position.copy(pos);mesh.quaternion.copy(quat||Q());
@@ -55,7 +55,7 @@ function faceSlot(p,f,a,b,force=false){const fr=faceFrame(p,f);addSlot(p,fr.n.cl
 function axisOffs(L){if(L>=2.4){const e=L/2-0.4;return[-e,0,e]}if(L>=1.0){const e=L/2-0.33;return[-e,e]}return[0]}
 function gridSlots(p,f){const fr=faceFrame(p,f);for(const a of axisOffs(fr.Lu))for(const b of axisOffs(fr.Lv))faceSlot(p,f,a,b)}
 function box(w,h,d,color,pos,quat,o={}){
-  const p=addPart(roundedBoxGeo(w,h,d,o.r??Math.min(0.06,Math.min(w,h,d)*0.3)),color,pos,quat,{...o,proxy:new THREE.BoxGeometry(w,h,d)});p.box={w,h,d};
+  const p=addPart(roundedBoxGeo(w,h,d,o.r??Math.min(0.09,Math.min(w,h,d)*0.3)),color,pos,quat,{...o,proxy:new THREE.BoxGeometry(w,h,d)});p.box={w,h,d};
   if(!o.static){(o.faces??['+x','-x','+y','+z','-z']).forEach(f=>gridSlots(p,f))}return p}
 // a box lying on face f of host; gap 0 = flush (a hidden anchor screw under it), gap>0 = resting on cladding
 function onFace(host,f,a,b,cw,ch,cd,color,o={}){
@@ -127,6 +127,46 @@ function props(R,cx,spots,y0){
       if(cx>0.5)cyl(0.36,0.14,'#a8744a',V(px,y0+1.07,pz),Q(),{side:false})}
     else if(kind==='tree'){cyl(0.3,1.7,'#8a5a3b',V(px,y0+0.85,pz),Q(),{sideN:3});blob(1.0,'#6cbf6a',V(px,y0+2.45,pz),R,6);if(cx>0.4)blob(0.66,'#86d07a',V(px+0.5,y0+3.15,pz-0.2),R,4)}
     else{blob(0.62,'#79c46f',V(px,y0+0.5,pz),R,4);if(cx>0.5)blob(0.45,'#9ad88a',V(px+0.55,y0+0.38,pz+0.2),R,3)}}}
+
+/* ----- prop looks ----- */
+// A part keeps the plain box or cylinder it was made with as its screw proxy (what screws and rays see),
+// so its look can be any shape: a quilt, pleated curtains, a cat. reskin() swaps the look; deco() and friends add decoration
+function reskin(p,geo,mat){p.mesh.geometry.dispose();p.mesh.geometry=geo;
+  if(mat){if(mat.map)p.mesh.material.color.set(0xffffff);Object.assign(p.mesh.material,mat);p.mesh.material.needsUpdate=true}return p}
+function deco(p,geo,hex,x=0,y=0,z=0,o={}){const m=new THREE.Mesh(geo,partMat(hex,o.mat));m.position.set(x,y,z);
+  if(o.rot)m.rotation.set(...o.rot);if(o.scale)m.scale.set(...o.scale);m.castShadow=o.shadow!==false;m.receiveShadow=true;p.mesh.add(m);return m}
+const ell=(rx,ry,rz,s=20)=>new THREE.SphereGeometry(1,s,Math.round(s*0.7)).scale(rx,ry,rz);
+function mergeGeo(gs){const a=gs.map(g=>g.index?g.toNonIndexed():g);let n=0;a.forEach(g=>n+=g.attributes.position.count);const out=new THREE.BufferGeometry();
+  for(const k of['position','normal','uv']){if(!a.every(g=>g.attributes[k]))continue;const sz=a[0].attributes[k].itemSize,arr=new Float32Array(n*sz);let o=0;
+    a.forEach(g=>{arr.set(g.attributes[k].array,o*sz);o+=g.attributes[k].count});out.setAttribute(k,new THREE.BufferAttribute(arr,sz))}
+  new Set([...gs,...a]).forEach(g=>g.dispose());return out}
+// a cushion: a sphere pushed out towards a box (e<1 is boxier); uv is a top-down projection, so a pattern lies flat on it
+function puffGeo(w,h,d,e=0.5,ey=0.7){const g=new THREE.SphereGeometry(1,28,18),p=g.attributes.position,uv=g.attributes.uv,f=(v,k)=>Math.sign(v)*Math.pow(Math.abs(v),k);
+  for(let i=0;i<p.count;i++){const x=f(p.getX(i),e),y=f(p.getY(i),ey),z=f(p.getZ(i),e);p.setXYZ(i,x*w/2,y*h/2,z*d/2);uv.setXY(i,x/2+0.5,0.5-z/2)}
+  g.computeVertexNormals();return g}
+// a quilted duvet: a slab under a grid of cushions
+function quiltGeo(w,h,d,nx,nz){const cw=w/nx,cd=d/nz,gs=[new THREE.BoxGeometry(w-0.06,h*0.55,d-0.06).translate(0,-h*0.2,0)];
+  for(let i=0;i<nx;i++)for(let j=0;j<nz;j++)gs.push(puffGeo(cw+0.03,h,cd+0.03,0.55,0.8).translate(-w/2+cw*(i+0.5),0,-d/2+cd*(j+0.5)));return mergeGeo(gs)}
+// a pleated curtain: a row of vertical folds
+function pleatGeo(w,h,d){const n=Math.max(3,Math.round(w/0.11)),r=w/n*0.62,gs=[];
+  for(let i=0;i<n;i++)gs.push(new THREE.CylinderGeometry(r,r*1.1,h,10).translate(-w/2+w/n*(i+0.5),0,(i%2?-1:1)*Math.max(0,d/2-r)*0.6));return mergeGeo(gs)}
+// an open shelf unit, open towards +x, with n compartments
+function shelfGeo(w,h,d,n,t=0.06){const B=(a,b,c,x,y,z)=>new THREE.BoxGeometry(a,b,c).translate(x,y,z);
+  const gs=[B(t,h,d,-w/2+t/2,0,0),B(w,t,d,0,h/2-t/2,0),B(w,t,d,0,-h/2+t/2,0),B(w,h,t,0,0,d/2-t/2),B(w,h,t,0,0,-d/2+t/2)];
+  for(let i=1;i<n;i++)gs.push(B(w-t,t,d-2*t,t/2,-h/2+h*i/n,0));return mergeGeo(gs)}
+function heartGeo(s,t){const sh=new THREE.Shape(),k=s;sh.moveTo(0,-0.5*k);sh.bezierCurveTo(-0.15*k,-0.35*k,-0.55*k,-0.1*k,-0.5*k,0.15*k);sh.bezierCurveTo(-0.45*k,0.45*k,-0.1*k,0.5*k,0,0.25*k);
+  sh.bezierCurveTo(0.1*k,0.5*k,0.45*k,0.45*k,0.5*k,0.15*k);sh.bezierCurveTo(0.55*k,-0.1*k,0.15*k,-0.35*k,0,-0.5*k);
+  const g=new THREE.ExtrudeGeometry(sh,{depth:t*0.4,bevelEnabled:true,bevelThickness:t*0.3,bevelSize:t*0.3,bevelSegments:4,curveSegments:16});g.center();return g}
+// many small things in one draw call: beads ({x,y,z} points) and boxes ({x,y,z,w,h,d,ry,c})
+function beads(p,pts,r,cols){const im=new THREE.InstancedMesh(new THREE.SphereGeometry(r,10,8),partMat('#ffffff',{roughness:0.3}),pts.length),m=new THREE.Matrix4(),c=new THREE.Color();
+  pts.forEach((q,i)=>{m.makeTranslation(q.x,q.y,q.z);im.setMatrixAt(i,m);im.setColorAt(i,c.set(cols[i%cols.length]).convertSRGBToLinear())});im.castShadow=true;p.mesh.add(im);return im}
+function boxSet(p,list){const im=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),partMat('#ffffff'),list.length),m=new THREE.Matrix4(),c=new THREE.Color(),q=new THREE.Quaternion();
+  list.forEach((b,i)=>{m.compose(V(b.x,b.y,b.z),q.setFromEuler(new THREE.Euler(0,b.ry||0,b.rz||0)),V(b.w,b.h,b.d));im.setMatrixAt(i,m);im.setColorAt(i,c.set(b.c).convertSRGBToLinear())});
+  im.castShadow=true;im.receiveShadow=true;p.mesh.add(im);return im}
+// points along a hanging string from a to b that dips by dip in the middle
+function sag(a,b,dip,n){const out=[];for(let i=0;i<=n;i++){const t=i/n;out.push(a.clone().lerp(b,t).add(V(0,-dip*4*t*(1-t),0)))}return out}
+function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t}
 
 /* ----- registry ----- */
 // Every category file registers its models here. models/order.js then fixes their order for the level picker.

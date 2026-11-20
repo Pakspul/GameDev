@@ -19,6 +19,22 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-20
+
+**Done**
+- **Unscrew looks more polished** (issue U-3), after feedback with screenshots of a commercial screw game:
+  - Lighting: a studio environment built in code gives soft light from every side and reflections (`studioScene()` and `LOOK` in `games/unscrew/game.js`). Parts are a bit glossier and rounder. Every model benefits; the effect is modest.
+  - A new **pastel bedroom** replaces the old one: lockers with pearls, pleated curtains, a desk with a bunny-eared computer, a bed with a quilted duvet and gingham pillow, a nightstand lamp, a dresser under a poster, a bookcase with a piggy bank, a cat in its basket on a round rug, a suitcase, a plant and a pipe outside. Props snap to the wall panels. It keeps 96–98% of its parts (the old one 70–81%, see U-2).
+  - New look helpers in `games/unscrew/models/kit.js` (`reskin`, `deco`, `puffGeo`, `quiltGeo`, `pleatGeo`, `beads`, `boxSet`, `canvasTex`): a part keeps a plain box or cylinder for its screws, so its look can be anything. Documented in [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md).
+
+**Decided**
+- No filmic (ACES) tone mapping: it made the colours grey.
+- Unscrew stays procedural for now. **Blender** for a few hero props (the cat, plush toys) is an option, not a decision: the pros, the cons and a suggested test are in U-3.
+
+**Next**
+- Bedroom variants: more themes and a random prop per spot, so every bedroom looks different (U-3).
+- Decide on Blender after a one-prop test (U-3).
+
 ## 2026-11-18
 
 **Done**

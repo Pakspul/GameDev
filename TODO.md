@@ -24,6 +24,7 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] Colour-blind check: can Unscrew's screws and boxes be told apart without colour?
 - [ ] Unscrew: more 3D models, one category at a time (issue U-1; catalogue and recipe in [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md)). Vehicles and industry first
 - [ ] Unscrew: older models silently lose parts (issue U-2)
+- [ ] Unscrew: a more polished look (issue U-3). Lighting and a pastel bedroom are done; next are bedroom themes and variants, then decide whether some props come from Blender
 - [ ] Battery: pause rendering when nothing moves or the app is in the background
 - [ ] Optional cleanup: remove the `window.claude` leftovers from the artifact days
 - [ ] Graphite: play every type and tier on the phone. Are the tiers well spaced? Is Star Battle Expert (10×10, 2 stars) quick enough to generate on an older phone?
