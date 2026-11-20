@@ -65,14 +65,14 @@ This builds `dist/`, opens the hub and every game in a headless phone-sized brow
 npm run dev
 ```
 
-Open http://localhost:8080. Press **F12 → device toolbar** (Ctrl+Shift+M) to simulate a phone screen and touch. Edit a file, refresh, and you see the change.
+Open http://localhost:8787. Press **F12 → device toolbar** (Ctrl+Shift+M) to simulate a phone screen and touch. Edit a file, refresh, and you see the change.
 
 ### Rung 2: your own phone, over Wi-Fi (no install needed)
 
 `npm run dev` also prints a line like:
 
 ```
-  On your phone:     http://192.168.1.23:8080/   (same Wi-Fi)
+  On your phone:     http://192.168.1.23:8787/   (same Wi-Fi)
 ```
 
 Open that address in Chrome on your phone. You're now playing your latest code on real hardware: real touch, real GPU, real screen notch.
@@ -100,10 +100,10 @@ It installs a debug build on your USB-connected phone (or an emulator). With liv
 
 ```bash
 npm run dev                                               # terminal 1
-npx cap run android -l --host 192.168.1.23 --port 8080   # terminal 2: your computer's IP
+npx cap run android -l --host 192.168.1.23 --port 8787   # terminal 2: your computer's IP
 ```
 
-The app now loads from your dev server; save a file and it reloads on the phone. (Over USB without Wi-Fi: `npx cap run android -l --host localhost --port 8080 --forwardPorts 8080:8080`.)
+The app now loads from your dev server; save a file and it reloads on the phone. (Over USB without Wi-Fi: `npx cap run android -l --host localhost --port 8787 --forwardPorts 8787:8787`.)
 
 ### Rung 6: real testers through Google Play
 

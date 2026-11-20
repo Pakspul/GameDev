@@ -16,7 +16,7 @@ Two machines ship, so every engine feature is reachable in play:
 ## Running it
 
 ```bash
-npm run dev                  # http://localhost:8080/games/crystal-reels/index.html   (add ?debug=1 for the debug menu)
+npm run dev                  # http://localhost:8787/games/crystal-reels/index.html   (add ?debug=1 for the debug menu)
 npm run test:slots           # validate configs, unit tests, 1M-spin check of every machine
 node tests/slots/e2e.mjs     # play it in a headless phone browser (needs Playwright, see the README)
 npm run slots:sim            # the math simulator, see below

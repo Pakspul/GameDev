@@ -205,7 +205,7 @@ Adding a model reshuffles which model each 3D level number shows. Saves don't st
 
 ### 5. Check it
 
-While building, keep the **model inspector** open: run `npm run dev` and open `http://localhost:8080/games/unscrew/index.html?models` (or `?models=giraffe` to start on one model). It shows one model at a time, at any difficulty, level and variant (variant 0 is exactly what that level shows in a run), and refreshing the page keeps your choice, so edit, refresh and look. It shows:
+While building, keep the **model inspector** open: run `npm run dev` and open `http://localhost:8787/games/unscrew/index.html?models` (or `?models=giraffe` to start on one model). It shows one model at a time, at any difficulty, level and variant (variant 0 is exactly what that level shows in a run), and refreshing the page keeps your choice, so edit, refresh and look. It shows:
 
 - **Dropped parts** as red ghosts: the parts `finalize()` gave no screw. Tap one for its shape, size and position.
 - **Unused slots** as grey stubs, and **anchors lost** in red: slots that didn't become a screw (an anchor is the hidden slot under a cover that should hold it).

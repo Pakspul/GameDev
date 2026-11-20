@@ -27,7 +27,7 @@ Jade Pavilion, Nuts & Bolts, Outbound, Unscrew, Coin Dozer and Camper Crew are b
 You need [Node.js](https://nodejs.org) 22 or newer.
 
 ```bash
-npm run dev        # play at http://localhost:8080 — and on your phone via the printed Wi-Fi address
+npm run dev        # play at http://localhost:8787 — and on your phone via the printed Wi-Fi address
 npm install        # once, for the tests
 npx playwright install chromium   # once
 npm test           # puzzle generators, slot maths and rules, Wallbreaker's rules, build, open every game in a headless phone browser, play the slots, Wallbreaker and Coin Dozer end to end

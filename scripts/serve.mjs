@@ -24,7 +24,7 @@ const TYPES = {
 const BLOCKED = ["node_modules", ".git", "android", "ios", "scripts", "tests"];
 
 /** Starts the static server; resolves with the http.Server once listening. Also used by the smoke test. */
-export function startServer({ dir = ROOT, port = 8080, host = "0.0.0.0" } = {}) {
+export function startServer({ dir = ROOT, port = 8787, host = "0.0.0.0" } = {}) {
   const server = createServer(async (req, res) => {
     try {
       let path = decodeURIComponent(new URL(req.url, "http://x").pathname);
@@ -47,7 +47,7 @@ export function startServer({ dir = ROOT, port = 8080, host = "0.0.0.0" } = {}) 
 // Run directly (npm run dev): start on PORT and print the URLs to open.
 if (process.argv[1] && fileURLToPath(import.meta.url) === normalize(process.argv[1])) {
   const DIR = process.argv.includes("--dist") ? join(ROOT, "dist") : ROOT;
-  const PORT = Number(process.env.PORT) || 8080;
+  const PORT = Number(process.env.PORT) || 8787;
   await startServer({ dir: DIR, port: PORT });
   const lan = Object.values(networkInterfaces()).flat().filter((i) => i && i.family === "IPv4" && !i.internal).map((i) => i.address);
   console.log(`\nServing ${DIR === ROOT ? "source" : "dist/"} — Ctrl+C to stop\n`);
