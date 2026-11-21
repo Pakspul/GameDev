@@ -1280,7 +1280,24 @@ function NBCore() {
         last: next, next: onLevel(menuDiff, current.level) ? current.level : next,
         stars: n => eco.best[menuDiff + ":" + n] || 0,
         onPick: n => playFromMenu(menuDiff, n),
-      }));
+      }),
+      perfectRow());
+  }
+  // Under the levels: the lowest cleared level of this difficulty still short of 3 stars, or a quiet note
+  // when every cleared one has all three. Nothing before the first clear. A replay only pays for new stars.
+  function perfectRow() {
+    const done = [];
+    for (const key in eco.best) {
+      const [d, n] = key.split(":");
+      if (d === menuDiff && eco.best[key] > 0) done.push(+n);
+    }
+    if (!done.length) return "";
+    const n = done.sort((a, b) => a - b).find(k => eco.best[menuDiff + ":" + k] < 3);
+    if (!n) { const p = document.createElement("p"); p.className = "perfect-note"; p.textContent = _t("perfect.all"); return p; }
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn steel perfect-btn"; b.textContent = _t("perfect.replay", { n, max: 3 });
+    b.onclick = () => playFromMenu(menuDiff, n);
+    return b;
   }
   function openMenu() {
     menuDiff = current.diff;

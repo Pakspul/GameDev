@@ -116,6 +116,9 @@ button.bal { min-height: 40px; padding: 6px 12px; border-radius: 99px; border: 1
 .lobby .lob-go { font-weight: 900; box-shadow: 0 4px 0 #b59700; }
 .lobby .lob-go:active { transform: translateY(2px); box-shadow: 0 2px 0 #b59700; }
 .lobby .lob-daily.done .lob-go { box-shadow: none; }
+/* Under the levels: back to the lowest cleared level still short of 3 stars. */
+.lobby .perfect-btn { width: 100%; }
+.lobby .perfect-note { font-size: .82rem; }
 .lob-tab { --c: #fff; position: relative; overflow: hidden; }
 .lob-tab::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
 .lob-tab small { color: var(--c); opacity: 1; font-weight: 800; }

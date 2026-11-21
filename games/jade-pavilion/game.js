@@ -406,8 +406,19 @@ function renderMenu(){
     GameLobby.play({eyebrow:d.name,title:_t('level',{n:next}),text:d.desc,action:{label:_t('play'),onClick:()=>playFromMenu(menuSel,next)},
       more:[inGame&&{label:_t('resume'),sub:`${G.d.name} · ${G.daily?prettyDate(G.dateStr):_t('lv',{n:G.level})} · ${_t('tilesLeft',{n:aliveCount()})}`,onClick:()=>{Sfx.ensure();closeOverlays();}}],
       stats:[[st.length,_t('lobby.cleared')],[st.reduce((a,b)=>a+b,0),_t('lobby.stars')],[st.filter(x=>x===3).length,_t('lobby.perfect')]]}),
-    GameLobby.levels({last:p.unlocked,stars:n=>p.stars[n]||0,onPick:n=>playFromMenu(menuSel,n)}));
+    GameLobby.levels({last:p.unlocked,stars:n=>p.stars[n]||0,onPick:n=>playFromMenu(menuSel,n)}),
+    perfectRow(p));
   $('#lobby .lob-play .lob-go').setAttribute('data-autofocus','');
+}
+// Under the levels: the lowest cleared level of this table still short of 3 stars, or a quiet note when
+// every cleared level has all three. Nothing before the first clear.
+function perfectRow(p){
+  const done=Object.keys(p.stars).map(Number).filter(n=>p.stars[n]>0).sort((a,b)=>a-b);
+  if(!done.length)return '';
+  const n=done.find(k=>p.stars[k]<3);
+  if(!n){const e=document.createElement('p');e.className='perfect-note';e.textContent=_t('perfect.all');return e;}
+  const b=document.createElement('button');b.type='button';b.className='perfect-btn';b.textContent=_t('perfect.replay',{n,max:3});
+  b.onclick=()=>playFromMenu(menuSel,n);return b;
 }
 function openMenu(){renderMenu();openOverlay('menu');}
 // A level that's already dealt and untouched behind the menu is simply shown; anything else is dealt anew.

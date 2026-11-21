@@ -93,6 +93,10 @@ svg { display: block; }
 .lvl.next .n { color: var(--accent); }
 .lvl.locked { opacity: 0.4; cursor: default; background: transparent; }
 .lvl.locked .n { font-weight: 600; color: var(--muted); }
+/* Under the levels: back to the lowest cleared level still short of 3 stars. */
+.perfect-btn { background: var(--surface); }
+.perfect-btn:hover { border-color: var(--accent); }
+.perfect-note { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
 
 .foot { display: flex; flex-direction: column; gap: 16px; border-top: 1px solid var(--line); padding-top: 20px; }
 details.rules summary { cursor: pointer; font-weight: 600; }

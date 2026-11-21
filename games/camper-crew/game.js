@@ -1180,7 +1180,20 @@
         action: { label: _t("drive"), onClick: function () { drive(menuRoad); } },
         stats: [[stars.length, _t("lobby.cleared")], [stars.reduce(function (a, b) { return a + b; }, 0), _t("lobby.stars")], [stars.filter(function (s) { return s === 3; }).length, _t("lobby.perfect")]],
       }),
-      GameLobby.levels({ title: _t("roads"), last: save.unlocked, next: menuRoad, stars: function (n) { return save.best[n] || 0; }, onPick: drive }));
+      GameLobby.levels({ title: _t("roads"), last: save.unlocked, next: menuRoad, stars: function (n) { return save.best[n] || 0; }, onPick: drive }),
+      perfectionButton());
+  }
+  // Under the roads: one tap to the lowest driven road still short of 3 stars, or a quiet note when every
+  // driven road has all three. Nothing at all before the first road is driven.
+  function perfectionButton() {
+    var driven = Object.keys(save.best).map(Number).filter(function (n) { return save.best[n] > 0; }).sort(function (a, b) { return a - b; });
+    if (!driven.length) return "";
+    var n = driven.filter(function (k) { return save.best[k] < 3; })[0];
+    if (!n) { var note = document.createElement("p"); note.className = "perfect-note"; note.textContent = _t("perfect.all"); return note; }
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "secondary perfect-btn"; b.textContent = _t("perfect.replay", { n: n, max: 3 });
+    b.onclick = function () { drive(n); };
+    return b;
   }
   $("retryBtn").onclick = function () { startRoad(G.n); setState("play"); };
   $("nextBtn").onclick = function () { menuRoad = G.n + 1; startRoad(G.n + 1); setState("play"); };

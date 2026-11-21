@@ -394,6 +394,9 @@ img{max-width:100%}
   .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--brass-lo); }
   .btn.steel:active { box-shadow: 0 1px 0 var(--steel-lo); }
   .btn.small { flex: none; height: 38px; padding: 0 16px; font-size: 16px; border-radius: 12px; box-shadow: 0 4px 0 var(--brass-lo); }
+  /* Under the levels in the workshop: back to the lowest cleared level still short of 3 stars. */
+  .btn.perfect-btn { flex: none; width: 100%; height: auto; min-height: 46px; padding: 8px 16px; font-size: 18px; }
+  .perfect-note { margin: 0; text-align: center; color: var(--muted); font-size: 14px; }
   details.howto { border-top: 1px solid var(--panel-line); padding-top: 12px; }
   details.howto summary { cursor: pointer; font-weight: 700; color: var(--ink); font-size: 15px; }
   details.howto p { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: var(--muted); }

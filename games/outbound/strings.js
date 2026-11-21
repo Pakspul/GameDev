@@ -186,6 +186,8 @@ I18n.add({
     "lvl.stars": (v) => `Level ${v.n}, ${v.s === 1 ? "1 star" : v.s + " stars"}`,
     "lvl.next": "Level {n}, next to play",
     "lvl": "Level {n}",
+    "perfect.replay": "Replay level {n} for {max} stars",
+    "perfect.all": "★ Every level you've cleared here has 3 stars",
   },
   nl: {
     "levels": "Levels",
@@ -372,6 +374,8 @@ I18n.add({
     "lvl.stars": (v) => `Level ${v.n}, ${v.s === 1 ? "1 ster" : v.s + " sterren"}`,
     "lvl.next": "Level {n}, volgende",
     "lvl": "Level {n}",
+    "perfect.replay": "Speel level {n} opnieuw voor {max} sterren",
+    "perfect.all": "★ Elk level dat je hier uitspeelde heeft 3 sterren",
   },
 });
 I18n.apply();

@@ -1442,6 +1442,7 @@ const Home = {
       b.innerHTML = ic + "<span>" + label + "</span>";
       b.onclick = () => { Store.settings.mode = b.dataset.mode; Store.saveSettings(); this.page = -1; this.render(); if (Store.settings.mode !== "flat") loadThree().catch(() => {}); };
     }
+    $("#perfectBtn").onclick = (e) => Game.start(Store.curTier(), +e.currentTarget.dataset.lv);
     $("#grid").addEventListener("click", (e) => {
       const b = e.target.closest(".lvl");
       if (!b || b.classList.contains("locked")) return;
@@ -1495,9 +1496,20 @@ const Home = {
       '<span><b class="num">' + stars + "</b>" + _t("stat.stars", { n: done * 3 }) + "</span>" +
       '<span><b class="num">' + perfect + "</b>" + _t("stat.perfect") + "</span>";
     this.renderGrid();
+    this.renderPerfect();
     this.renderSettings();
     this.renderPoints();
     this.renderDaily();
+  },
+  // Under the levels: the lowest cleared level of this tier still short of 3 stars (a skipped level counts,
+  // at 1 star), or a quiet note when every cleared one has all three. Nothing before the first clear.
+  renderPerfect() {
+    const cur = Store.curTier(), p = Store.data.tiers[cur] || {};
+    const done = Object.keys(p).map(Number).filter((lv) => p[lv] > 0).sort((a, b) => a - b);
+    const lv = done.find((k) => p[k] < 3), btn = $("#perfectBtn");
+    btn.hidden = !lv;
+    $("#perfectNote").hidden = !done.length || !!lv;
+    if (lv) { btn.dataset.lv = lv; btn.textContent = _t("perfect.replay", { n: lv, max: 3 }); }
   },
   renderGrid() {
     const cur = Store.curTier(), next = Store.unlocked(cur);

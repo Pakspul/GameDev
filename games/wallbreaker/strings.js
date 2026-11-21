@@ -37,6 +37,10 @@
     "lobby.dailyPays": "+{n} credits for your first clear",
     "lobby.checkpoints": "Classic carries your lives from level to level, so a new game starts from level 1 or a checkpoint (every {n}th level).",
     "lobby.walls": "Walls",
+    "perfect.replay": "Replay level {n} for {max} stars",
+    "perfect.replayPuzzle": "Replay puzzle {n} for {max} stars",
+    "perfect.all": "★ Every level you've cleared here has 3 stars",
+    "perfect.allPuzzle": "★ Every puzzle you've cleared has 3 stars",
 
     "hud.level": "Level {n}",
     "hud.zen": "Zen · {n}",
@@ -297,6 +301,10 @@
     "lobby.dailyPays": "+{n} credits als je hem vandaag voor het eerst haalt",
     "lobby.checkpoints": "In Klassiek neem je je levens mee van level naar level. Een nieuw spel begint daarom bij level 1 of bij een checkpoint (elk {n}e level).",
     "lobby.walls": "Muren",
+    "perfect.replay": "Speel level {n} opnieuw voor {max} sterren",
+    "perfect.replayPuzzle": "Speel puzzel {n} opnieuw voor {max} sterren",
+    "perfect.all": "★ Elk level dat je hier uitspeelde heeft 3 sterren",
+    "perfect.allPuzzle": "★ Elke puzzel die je oploste heeft 3 sterren",
 
     "hud.level": "Level {n}",
     "hud.zen": "Zen · {n}",

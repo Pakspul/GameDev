@@ -278,7 +278,21 @@ function levelParts(mode) {
       },
     }),
     mode === "classic" && reached > CP ? h("p", { class: "fine" }, _t("lobby.checkpoints", { n: CP })) : null,
+    // Classic carries lives and restarts only from a checkpoint, so it can't jump back to any level.
+    mode === "classic" ? null : perfectRow(Object.keys(save[mode].stars).map(Number), (k) => save[mode].stars[k] || 0, "", (k) => playLevel(mode, k)),
   ];
+}
+
+/** Under the levels of Zen, Descent and Puzzle: one tap to the lowest cleared level still short of 3 stars,
+ *  or a quiet note when every cleared one has all three. Nothing before the first clear.
+ *  `kind` picks the texts: "" for levels, "Puzzle" for puzzles. */
+function perfectRow(numbers, starsOf, kind, go) {
+  const done = numbers.filter((k) => starsOf(k) > 0).sort((a, b) => a - b);
+  if (!done.length) return null;
+  const k = done.find((n) => starsOf(n) < 3);
+  if (k == null) return h("p", { class: "fine center perfect-note" }, _t("perfect.all" + kind));
+  return h("button", { type: "button", class: "secondary perfect-btn", onclick: () => { sound.unlock(); sound.play("click"); go(k); } },
+    _t("perfect.replay" + kind, { n: k, max: 3 }));
 }
 
 function puzzleOpen(i) { return i < 3 || (save.puzzle.stars[PUZZLES[i - 1].name] || 0) > 0; }
@@ -298,6 +312,7 @@ function puzzleParts() {
       aria: (k) => _t("puz.aria", { n: k, s: st(k - 1) }),
       onPick: (k) => playLevel("puzzle", 0, { index: k - 1 }),
     }),
+    perfectRow(PUZZLES.map((p, i) => i + 1), (k) => st(k - 1), "Puzzle", (k) => playLevel("puzzle", 0, { index: k - 1 })),
   ];
 }
 
