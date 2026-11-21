@@ -22,6 +22,9 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [x] "Back to arcade" button in four games: see **Release issues**, item 1 (now in every game: back top left, menu top right, issue H-1)
 - [x] Language work for Unscrew, per the decision above
 - [ ] Colour-blind check: can Unscrew's screws and boxes be told apart without colour?
+- [ ] Loopline: playtest both modes on the phone and tune the difficulty (`params()` in `games/loopline/src/levels.js`, see [docs/LOOPLINE.md](docs/LOOPLINE.md))
+- [ ] Loopline: colour-blind check (a symbol per colour on movers and cells?)
+- [ ] Loopline V2: 3D modes (Orbit, Diorama)
 - [ ] Unscrew: more 3D models, one category at a time (issue U-1; catalogue and recipe in [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md)). Vehicles and industry first
 - [ ] Unscrew: older models silently lose parts (issue U-2)
 - [ ] Unscrew: a more polished look (issue U-3). Lighting and a pastel bedroom are done; next are bedroom themes and variants, then decide whether some props come from Blender
