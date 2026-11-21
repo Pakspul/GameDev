@@ -5,6 +5,9 @@ export const CONFIG = {
   spacing: 2,        // track steps between two movers on the loop
   belt: 4,           // at most this many movers on the loop (or waiting to get on) at once
   launchTween: 0.3,  // seconds from the yard or a bay to the loop's entrance
+  orbit: {
+    lapSeconds: 3.4, // Orbit: one lap round the sculpture
+  },
   depot: {
     tick: 0.075,     // seconds per tray the loop turns
     transit: 7,      // ticks a bus takes from the car park to its dock

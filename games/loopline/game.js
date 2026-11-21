@@ -9,6 +9,7 @@ import { CONFIG } from "./src/config.js";
 import { makeLevel, newGame, MODES, DIFFS } from "./src/levels.js";
 import { solve } from "./src/solver.js";
 import { Renderer } from "./src/render.js";
+import { Renderer3D } from "./src/render3d.js";
 import { Sound } from "./src/audio.js";
 
 const _t = I18n.t;
@@ -31,16 +32,31 @@ let mode = MODES.includes(save.mode) ? save.mode : "depot";
 let diff = DIFFS.includes(save.diff) ? save.diff : "easy";
 let levelN = 1, game = null, helps = 0, total = 1;
 let raf = 0, last = 0, acc = 0, endAt = -1, endKind = "", wantHint = false;
-const streak = new Map();
+const streak = new Map(), popAt = new Map();
 const sound = new Sound();
 sound.on = save.sound;
-const R = new Renderer($("cv"));
+// Depot and Critters draw on the 2D canvas; Orbit adds a 3D view under it (made the first time it's needed).
+const R2 = new Renderer($("cv"));
+let R3 = null, R = R2;
+/** The renderer for the current mode. */
+function pickRenderer() {
+  let want = R2;
+  if (mode === "orbit") {
+    if (!R3) {
+      try { R3 = new Renderer3D($("cv"), $("gl")); }
+      catch (e) { console.warn("Orbit needs WebGL", e); toast(_t("toast.no3d")); setMode("critters"); return pickRenderer(); }
+    }
+    want = R3;
+  }
+  if (want !== R) { R = want; R.resize(); }
+}
 const now = () => performance.now() / 1000;
 function haptic(ms) { if (save.haptics) Platform.haptic(ms); }
 
 // ---- A level ------------------------------------------------------------------------------------------------
 function loadLevel(n) {
   levelN = n;
+  pickRenderer();
   game = newGame(makeLevel(mode, diff, n));
   total = game.remaining;
   helps = 0; acc = 0; endAt = -1; endKind = ""; wantHint = false;
@@ -52,7 +68,7 @@ function loadLevel(n) {
   updateHud();
   redraw();
 }
-const tickDT = () => (game.kind === "depot" ? CONFIG.depot.tick : CONFIG.lapSeconds / game.L);
+const tickDT = () => (game.kind === "depot" ? CONFIG.depot.tick : (game.kind === "orbit" ? CONFIG.orbit.lapSeconds : CONFIG.lapSeconds) / game.L);
 
 function showTip() {
   const key = `tip.${mode}.${levelN}`;
@@ -80,9 +96,12 @@ function drain() {
   for (const e of game.events) {
     if (e.type === "launch") { R.onLaunch(e.m, e, t); streak.set(e.m, 0); }
     else if (e.type === "take") {
+      R.onTake(e.m, e.cell, t, e.pos);
+      // Orbit pops a whole column at once: one pop sound per critter per step.
+      if (game.kind === "orbit" && popAt.get(e.m) === game.ticks) continue;
+      popAt.set(e.m, game.ticks);
       const k = streak.get(e.m) || 0;
       streak.set(e.m, k + 1);
-      R.onTake(e.m, e.cell, t, R.trackPoint(e.pos));
       sound.pop(k);
     } else if (e.type === "board") {
       const k = streak.get(e.m) || 0;
@@ -163,7 +182,7 @@ function undo() {
 function hint() {
   if (game.status !== "play") return;
   if (!game.idle) { wantHint = true; return; }
-  const sol = solve(game, { budget: 30000 });
+  const sol = solve(game, { budget: game.kind === "orbit" ? 4000 : 30000 });
   if (!sol || !sol.length) { toast(_t("toast.noHint")); return; }
   helps++;
   R.showHint(sol[0], now());
@@ -173,11 +192,19 @@ function hint() {
 // ---- Input --------------------------------------------------------------------------------------------------
 $("cv").addEventListener("pointerdown", (e) => {
   sound.unlock();
-  if (state !== "play" || game.status !== "play") return;
-  const r = $("cv").getBoundingClientRect();
-  const h = R.hit(e.clientX - r.left, e.clientY - r.top);
+  if (state !== "play") return;
+  const r = $("cv").getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const h = game.status === "play" ? R.hit(x, y) : null;
   if (h) send(h.m);
+  else if (R.beginDrag) { R.beginDrag(x, y); $("cv").setPointerCapture?.(e.pointerId); kick(); } // Orbit: turn the view
 });
+$("cv").addEventListener("pointermove", (e) => {
+  if (!R.moveDrag) return;
+  const r = $("cv").getBoundingClientRect();
+  if (R.moveDrag(e.clientX - r.left, e.clientY - r.top)) kick();
+});
+for (const ev of ["pointerup", "pointercancel"]) $("cv").addEventListener(ev, () => { if (R.endDrag && R.endDrag()) kick(); });
+$("cv").addEventListener("wheel", (e) => { if (state === "play" && R.wheel) { e.preventDefault(); R.wheel(e.deltaY); kick(); } }, { passive: false });
 $("undoBtn").addEventListener("click", () => { sound.unlock(); if (state === "play") undo(); });
 $("hintBtn").addEventListener("click", () => { sound.unlock(); if (state === "play") hint(); });
 $("restartBtn").addEventListener("click", () => { sound.unlock(); if (state === "play") start(levelN); });
@@ -228,7 +255,7 @@ function finish() {
     p.stars[levelN] = Math.max(p.stars[levelN] || 0, stars);
     writeSave();
     $("resultStars").innerHTML = [0, 1, 2].map((i) => STAR.replace("{c}", i < stars ? "on" : "")).join("");
-    $("resultTitle").textContent = _t("res.win");
+    $("resultTitle").textContent = _t(I18n.has("res.win." + mode) ? "res.win." + mode : "res.win");
     $("resultText").textContent = _t("res.winText." + mode);
     $("resultNote").textContent = stars < 3 ? _t("res.helps") : "";
     main.textContent = _t("next"); main.onclick = () => start(levelN + 1);
@@ -251,6 +278,7 @@ function finish() {
 // The start screen is the lobby (shared/js/gamelobby.js): the two modes, the difficulty, one big Play, every level.
 const ICON = {
   depot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="3"/><path d="M3 11h18M8 5v6M13 5v6"/><circle cx="7.5" cy="18.5" r="1.8" fill="currentColor"/><circle cx="16.5" cy="18.5" r="1.8" fill="currentColor"/></svg>',
+  orbit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 4v8l-7 4-7-4V7z"/><path d="M5 7l7 4 7-4M12 11v8"/><ellipse cx="12" cy="12" rx="11" ry="4" stroke-width="1.6" transform="rotate(-18 12 12)"/></svg>',
   critters: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="13" r="8"/><circle cx="6.5" cy="5.5" r="2"/><circle cx="17.5" cy="5.5" r="2"/><circle cx="9.3" cy="11.5" r="1.3" fill="currentColor"/><circle cx="14.7" cy="11.5" r="1.3" fill="currentColor"/></svg>',
 };
 function refreshMenu() {
@@ -307,7 +335,7 @@ function placeNav() {
 }
 
 document.addEventListener("visibilitychange", () => { if (document.hidden && state === "play") setState("pause"); });
-addEventListener("resize", () => { layoutCanvas(); R.resize(); redraw(); });
+addEventListener("resize", () => { if (!game) return; layoutCanvas(); R.resize(); redraw(); });
 // The canvas draws numbers in the game's font: draw again once it has loaded.
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => redraw());
 
@@ -317,12 +345,12 @@ refreshMenu();
 setState("menu");
 showBehind();
 window.Loopline = {
-  get game() { return game; }, get state() { return state; }, get mode() { return mode; }, get diff() { return diff; }, get level() { return levelN; },
+  get game() { return game; }, get state() { return state; }, get yaw() { return R.yaw; }, get mode() { return mode; }, get diff() { return diff; }, get level() { return levelN; },
   start, send, undo, hint,
   setMode(m) { setMode(m); refreshMenu(); showBehind(); },
   setDiff(d) { setDiff(d); refreshMenu(); showBehind(); },
   solve: () => solve(game),
   point: (m) => R.yardPoint(m), bayPoint: (b) => R.bayPoint(b),
   /** Where the board and the yard ended up, for the layout check in the tests. */
-  layoutInfo: () => ({ cs: R.cs, bottom: R.yard.y + R.yard.h + (mode === "depot" ? 10 : 6), left: Math.min(R.yard.x, R.px - R.ringOut), right: Math.max(R.yard.x + R.yard.w, R.px + R.pw + R.ringOut) }),
+  layoutInfo: () => mode === "orbit" ? { view: R.view, slots: R.slots, yard: R.yard, H: innerHeight, W: innerWidth } : ({ cs: R.cs, bottom: R.yard.y + R.yard.h + (mode === "depot" ? 10 : 6), left: Math.min(R.yard.x, R.px - R.ringOut), right: Math.max(R.yard.x + R.yard.w, R.px + R.pw + R.ringOut) }),
 };

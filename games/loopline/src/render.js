@@ -331,8 +331,8 @@ export class Renderer {
     pts.push(this.entrance());
     this.tweens.set(m, { pts, t0: now, dur: 0.3 });
   }
-  onTake(m, cell, now, at) {
-    const color = colorOf(this.game.color(m));
+  onTake(m, cell, now, pos) {
+    const at = this.trackPoint(pos), color = colorOf(this.game.color(m));
     const [cx, cy] = this.cellPoint(cell);
     this.ghosts.set(cell, { until: now + 0.12, color: this.game.color(m) });
     this.fx.push({ kind: "pellet", x0: at[0], y0: at[1], x: cx, y: cy, t0: now, dur: 0.12, color });
@@ -718,3 +718,6 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 }
+
+// Shared with the 3D renderer (render3d.js), which draws Orbit's bays and lanes in the same style.
+export { UI, CRITTER, HIDDEN, FONT, shade, colorOf, sprite, blit, label, rr, along, ease, lerp, clamp };

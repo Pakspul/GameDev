@@ -8,6 +8,8 @@ import { Game, makeTrack, takeAlong, lap, YARD, BAY, DONE } from "../../games/lo
 import { Depot, feedsOf, ringShape, DRIVING, DOCKED } from "../../games/loopline/src/depot.js";
 import { makeLevel, replay, newGame, params, MODES, DIFFS } from "../../games/loopline/src/levels.js";
 import { solve } from "../../games/loopline/src/solver.js";
+import { Orbit, look3, lap3 } from "../../games/loopline/src/orbit.js";
+import { SCULPTS, sculptFor, countOf } from "../../games/loopline/src/sculptures.js";
 
 const R = 1, B = 2, Y = 3;
 const cellsOf = (rows) => Uint8Array.from(rows.join("").split("").map(Number));
@@ -210,11 +212,64 @@ test("depot: a bus leaves the car park only when nothing stands in front of its 
   assert.equal(g.status, "won");
 });
 
+// ---- Orbit (Critters in 3D) -----------------------------------------------------------------------------
+/** An Orbit level from layers (bottom first), each rows of digits (back row first). */
+function orbit(layers, movers, extra = {}) {
+  const h = layers.length, d = layers[0].length, w = layers[0][0].length;
+  return { mode: "orbit", w, h, d, cells: cellsOf(layers.flat()), movers: movers.map(([color, cap]) => ({ color, cap })), bays: 2, belt: 4, spacing: 2, lanes: [movers.map((_, i) => i)], ...extra };
+}
+
+test("orbit: one step looks in on every layer, bottom first, and pops the first block it sees if it has its colour", () => {
+  // 2 wide, 1 deep, 3 high; looking along a row from the left.
+  const cells = cellsOf(["11", "21", "01"]);
+  const got = [];
+  assert.equal(look3(cells, [0, 1], 3, 2, R, 9, got), 2, "layer 0 and layer 2 (past the gap); blue hides layer 1");
+  assert.deepEqual(got, [0, 5]);
+  assert.deepEqual([...cells], [0, R, B, R, 0, 0]);
+  assert.equal(look3(cellsOf(["11", "11"]), [0, 1], 2, 2, R, 1), 1, "no more than it has room for");
+});
+
+test("orbit: a lap peels the outside; what was inside shows for later", () => {
+  // One layer, 3 × 3, a blue block in the middle under red.
+  const g = new Orbit(orbit([["111", "121", "111"]], [[R, 8], [B, 1]]));
+  assert.equal(g.L, 4 + 2 * 3 + 2 * 3);
+  assert.equal(lap3(g.cells.slice(), g.track, 1, 9, B, 9), 0, "blue can't be seen yet");
+  play(g, 0);
+  assert.equal(g.left[0], 0, "red took all eight it could see");
+  assert.equal(g.where[0], 4, "done");
+  assert.equal(g.lapFrom(B, 1), 1, "now blue shows");
+  play(g, 1);
+  assert.equal(g.status, "won");
+});
+
+test("orbit: no free bay loses, and undo brings it back", () => {
+  const g = new Orbit(orbit([["12"], ["12"]], [[R, 4], [R, 4], [B, 2]], { bays: 1 }));
+  play(g, 0);
+  assert.equal(g.where[0], BAY, "red took two of four: it parks");
+  play(g, 1);
+  assert.equal(g.status, "lost");
+  assert.ok(g.undo());
+  assert.equal(g.status, "play");
+  assert.ok(g.clone() instanceof Orbit, "the solver's copies follow Orbit's rules");
+});
+
+test("orbit: every sculpture has a thousand blocks or more on Easy, more on Medium and Hard", () => {
+  for (const def of SCULPTS) assert.ok(countOf(sculptFor(def, 1000)) >= 900, def.id);
+  for (const [diff, min] of [["easy", 900], ["medium", 1900], ["hard", 3000]]) {
+    for (let n = 1; n <= 30; n++) {
+      const L = makeLevel("orbit", diff, n), blocks = countOf(L);
+      assert.ok(blocks >= min, `orbit ${diff} ${n}: ${blocks} blocks`);
+    }
+  }
+});
+
 // ---- Levels ----------------------------------------------------------------------------------------------
 test("difficulty: Hard has fewer bays and docks than Easy", () => {
   assert.ok(params("critters", "hard", 1).bays < params("critters", "easy", 1).bays);
   assert.ok(params("depot", "hard", 1).docks < params("depot", "easy", 1).docks);
   assert.ok(params("depot", "hard", 1).density < params("depot", "easy", 1).density);
+  assert.ok(params("orbit", "hard", 1).bays < params("orbit", "easy", 1).bays);
+  assert.ok(params("orbit", "hard", 1).target > params("orbit", "easy", 1).target);
 });
 
 test("every level up to 30 of every track is solvable with its own solution, and the solver finds one", () => {
@@ -247,6 +302,9 @@ test("levels stay the same levels (saved stars point at them)", () => {
     "critters:easy": ["8d5ceb05", "74b8ea80", "d849cec1", "22607ff5"],
     "critters:medium": ["46a3cda8", "325166e7", "a06015bc", "8c55f97"],
     "critters:hard": ["42078370", "4cab8bb9", "dff4520c", "e1b4dea1"],
+    "orbit:easy": ["7372c912", "e5f4b590", "74c8fc89", "c66a3ab2"],
+    "orbit:medium": ["59764221", "804fc585", "253d1cd1", "2f8e335e"],
+    "orbit:hard": ["1791b93e", "d9b4dc25", "ccb65f4", "d96e7dd3"],
   };
   const got = {};
   for (const mode of MODES) for (const diff of DIFFS) got[`${mode}:${diff}`] = [1, 2, 10, 25].map((n) => fp(makeLevel(mode, diff, n)));

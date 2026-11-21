@@ -1,11 +1,12 @@
 # Loopline
 
-A colour-clearing puzzle in a chunky pixel style. A pixel picture sits inside a loop, and you clear it colour by colour. **The order you send things in is the puzzle.** Two modes, each with three difficulty tracks (Easy, Medium, Hard):
+A colour-clearing puzzle in a chunky pixel style. A pixel picture (or, in Orbit, a voxel sculpture) sits inside a loop, and you clear it colour by colour. **The order you send things in is the puzzle.** Three modes, each with three difficulty tracks (Easy, Medium, Hard):
 
 | Mode | What rides the loop | What you send | The yard |
 |---|---|---|---|
 | **Depot** | the picture's **pixels**, on trays | **buses** to one **stop**, where pixels of their colour get on | a jammed **car park**: a bus can only leave if nothing stands in front of its nose |
 | **Critters** | **critters** | critters, which pop **blocks** of their colour | **lanes**: only the front critter of a lane can go; on harder tracks the ones behind keep their colour secret ("?") |
+| **Orbit** | **critters**, round a **3D voxel sculpture** of 1,000 to 4,900 blocks | critters, which pop blocks of their colour on **every layer** | lanes, as in Critters |
 
 The genre is sometimes called "pixel shooter" or "bus jam" in the stores. Loopline is our own take on it: our own pictures, sprites, rules and level generator.
 
@@ -31,7 +32,28 @@ Rules in `src/engine.js`.
 4. If a critter comes back with pops left and **every bay is full**, the level is lost. If nothing that can go can pop a block and no lane critter can be parked, it's stuck (also lost).
 5. Up to **4 critters** ride at once, two steps apart; the one in front acts first.
 
-## Both modes
+## Orbit: Critters in 3D
+
+Rules in `src/orbit.js` (a subclass of Critters' `Game`); everything not listed here is Critters'.
+
+1. A **sculpture** of w × h × d blocks (h is the height) stands on a turntable. The loop runs round its **footprint** (w × d), exactly like Critters' track round a picture.
+2. At each step along a side a critter looks straight in on **every layer at once**, bottom to top. On each layer it pops the **first block it sees** if that has its colour, while it has pops left. So one step can pop a whole column of blocks.
+3. Sculptures are solid: peeling the outside shows the inside (a planet's crust, mantle and core; an apple's flesh and pips; a geode's quartz and amethyst; a cake's layers).
+4. **Drag** anywhere outside the bays and lanes to turn the view (the mouse wheel zooms). Turning only changes the view, never the rules.
+
+**Sculptures** (`src/sculptures.js`) are shapes in maths, not drawn grids, so each can be built at any size: `sculptFor()` takes the smallest grid that gives at least the target number of blocks. A `body()` gives the inside, an optional `skin()` the outermost blocks (sprinkles, eyes, stickers). 22 drawn ones (thin, tall ones like the snowman and the rocket only on Easy, because they stay small), then endless seeded ones: layered candy, worlds, rock strata and totems. Their order and shapes are part of every Orbit level, like the pictures are for the other modes.
+
+| | Easy | Medium | Hard |
+|---|---|---|---|
+| Blocks (grows every 4 levels) | ~1,000–1,800 | ~2,100–3,200 | ~3,400–4,900 |
+| Critter sizes (pops) | 40–90 | 56–120 | 70–150 |
+| Bays | 5 | 3 | 3 (every 4th: 2) |
+| Lanes | 4 (3 on levels 1–2) | 5 | 5 |
+| Hidden colours | no | from level 10 | yes |
+
+Random tapping wins about 98% / 57% / 51% (levels 1–30). A level has 20–50 critters. Each critter aims for a random size in its range, so a lap that could take hundreds of blocks of one colour stops somewhere along the way. Hints use the same solver with a smaller budget (a few milliseconds per hint).
+
+## All modes
 
 - **Undo is free and unlimited.** So are hints: the hint button runs the solver from the current position and rings the mover to send next. Restart is in the toolbar too.
 - **Stars:** 3 when cleared without undo or hints, 2 with up to two, 1 otherwise. Restarting a level resets the count.
@@ -80,7 +102,10 @@ games/loopline/
   src/pictures.js                      drawn pictures (small and LARGE) and the seeded picture makers
   src/levels.js                        level generator and difficulty (see above)
   src/solver.js                        depth-first search over whole sends, for hints and tests, for both modes
+  src/orbit.js                         Orbit's rules: Critters' engine, looking in on every layer
+  src/sculptures.js                    Orbit's voxel sculptures (shapes in maths, any size) and the seeded makers
   src/render.js                        2D canvas: voxel pixels, rails, pixel-sprite critters and buses, effects
+  src/render3d.js                      Orbit: three.js view (instanced blocks, voxel critters, drag to turn), and the flat bays and lanes on the 2D canvas
   src/audio.js                         synthesised sounds
 ```
 
@@ -101,7 +126,8 @@ games/loopline/
 
 ## V2 ideas
 
-- **3D (Orbit):** a voxel sculpture on a turntable, movers orbit it and peel layers; what's exposed depends on the side. **Diorama:** Depot as a little 3D town.
+- **Diorama:** Depot as a little 3D town (Orbit, the 3D Critters, is done).
+- Orbit: tap a block to see which colours could reach it; a slow turntable spin while idle (costs battery).
 - A picture album: every cleared picture collected.
 - More yard twists: linked pairs that leave together, mystery buses, layered cells, a VIP dock.
 - A daily level.

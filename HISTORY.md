@@ -44,8 +44,20 @@ Template: copy this to the top for a new day
 - Depot: one stop where pixels get on, with pixels looping and fed in from both sides (the playtester's own sketch), instead of buses driving round the picture.
 - Difficulty as separate tracks the player picks, not badges inside one track.
 
+- **Loopline: Orbit, Critters in 3D** (see [docs/LOOPLINE.md](docs/LOOPLINE.md)):
+  - A third mode: a **voxel sculpture** of 1,000 to 4,900 blocks on a turntable, with the loop round its footprint. A critter looks in on **every layer at once** at each step and pops the first block it sees per layer. Peeling the outside shows what's inside: a planet's core, an apple's flesh, a geode's crystals.
+  - 22 sculptures made from shapes in code (`src/sculptures.js`), each buildable at any size: about 1,000 blocks on Easy, 2,100+ on Medium, 3,400+ on Hard, then endless seeded ones (candy, worlds, rock strata, totems).
+  - Rules in `src/orbit.js` (Critters' engine, in 3D); levels built and replayed like Critters, with critters of 40 to 150 pops.
+  - Drawn with three.js (`src/render3d.js`): one instanced mesh for all blocks, voxel critters that face the sculpture, popped blocks fly to their critter, drag to turn the view. Bays and lanes stay flat and tappable under the view.
+  - Tests: Orbit rules, every sculpture's size, levels 1-30 of all three Orbit tracks solvable (Depot and Critters levels unchanged), e2e with a tap, a drag, undo, a hint and a win.
+
+**Decided**
+- Orbit is a third mode of Loopline, not a new game: same lobby, HUD, toolbar, saves and rules.
+- One pop per layer per step (not one per step): with 1,000+ blocks, one at a time would take hundreds of laps.
+
 **Next**
 - Playtest Loopline on the phone and tune `params()`.
+- Orbit on a real phone: frame rate on big Hard sculptures, and is it clear which side shows which colours?
 
 ## 2026-11-20
 

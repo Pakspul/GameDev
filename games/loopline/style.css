@@ -39,7 +39,10 @@ body::before {
   background-size: 16px 16px;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
-#cv { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; }
+#cv { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; touch-action: none; }
+/* Orbit's 3D view, under the 2D canvas (which draws its bays and lanes); render3d.js sets its top and height. */
+#gl { position: fixed; left: 0; top: 0; width: 100%; height: 50%; display: none; z-index: 1; pointer-events: none; }
+body.mode-orbit #gl { display: block; }
 .display { font-family: var(--display); font-weight: 400; }
 /* Outlined display text, like the numbers on the board. */
 .outlined, .pill, .logo, .card h2, .tool .cap, .chip {
@@ -156,7 +159,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* The lobby in this game's look. */
 .lob-choice button, .lob-tab, .lob-card, .lob-lvl { border: 3px solid var(--ink-dark) !important; box-shadow: 0 4px 0 var(--ink-dark); }
-.lob-choice button { background: var(--panel); }
+.lob-choice button { background: var(--panel); padding: 8px 6px; gap: 6px; }
+/* Three modes: on a phone, the icon over the name so the names fit. */
+@media (max-width: 520px) {
+  .lob-choice button { flex-direction: column; text-align: center; gap: 2px; }
+  .lob-choice .lob-txt { align-items: center; }
+}
 .lob-choice button[aria-checked="true"] { background: linear-gradient(#5866d6, #4250bf); }
 .lob-tab { background: var(--panel); min-width: 96px; }
 .lob-tab b { font-family: var(--display); font-weight: 400; font-size: 1.05rem; }

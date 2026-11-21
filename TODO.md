@@ -25,7 +25,9 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [x] Loopline: Easy / Medium / Hard tracks, Depot as a bus stop with looping pixels, a pixel-art look
 - [ ] Loopline: playtest both modes and all three difficulties on the phone and tune `params()` (`games/loopline/src/levels.js`, see [docs/LOOPLINE.md](docs/LOOPLINE.md)); Critters Medium may be too easy
 - [ ] Loopline: colour-blind check (a symbol per colour on movers and cells?)
-- [ ] Loopline V2: 3D modes (Orbit, Diorama)
+- [x] Loopline: Orbit, Critters in 3D with voxel sculptures of 1,000+ blocks
+- [ ] Loopline: playtest Orbit on a phone (frame rate on Hard, readability of the sides, critters per level)
+- [ ] Loopline V2: Depot in 3D (Diorama)
 - [ ] Unscrew: more 3D models, one category at a time (issue U-1; catalogue and recipe in [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md)). Vehicles and industry first
 - [ ] Unscrew: older models silently lose parts (issue U-2)
 - [ ] Unscrew: a more polished look (issue U-3). Lighting and a pastel bedroom are done; next are bedroom themes and variants, then decide whether some props come from Blender

@@ -19,9 +19,11 @@ import { Rng, hashSeed } from "./rng.js";
 import { Game, makeTrack, lap, carCells, carPath } from "./engine.js";
 import { Depot, trayCount } from "./depot.js";
 import { DRAWN, LARGE, artOf, fromArt, madePicture } from "./pictures.js";
+import { Orbit, lap3 } from "./orbit.js";
+import { sculptById, sculptFor, madeSculpture } from "./sculptures.js";
 import { CONFIG } from "./config.js";
 
-export const MODES = ["depot", "critters"];
+export const MODES = ["depot", "critters", "orbit"];
 export const DIFFS = ["easy", "medium", "hard"];
 
 // The drawn pictures, in the order each track meets them.
@@ -37,6 +39,15 @@ const ORDER = {
     hard: ["rocket2", "fox", "ladybug", "whale", "robot", "owl", "frog", "balloon", "snail", "penguin", "strawberry", "cupcake"],
   },
 };
+// Orbit's sculptures, in the order each track meets them (thin, tall ones only on Easy: they stay small).
+const SCULPT_ORDER = {
+  easy: ["jawbreaker", "apple", "mushroom", "cube", "snowman", "pumpkin", "donut", "watermelon", "cake", "rocket", "planet", "duck",
+    "icecream", "tree", "lighthouse", "fish", "penguin", "house", "owl", "robot", "geode", "saturn"],
+  medium: ["planet", "cake", "pumpkin", "owl", "house", "geode", "duck", "penguin", "saturn", "robot", "donut", "apple", "mushroom",
+    "watermelon", "cube", "tree", "jawbreaker"],
+  hard: ["geode", "house", "owl", "cube", "duck", "pumpkin", "watermelon", "mushroom", "apple", "cake", "penguin", "donut", "planet",
+    "robot", "jawbreaker"],
+};
 const BY_ID = Object.fromEntries([...DRAWN.map((d) => [d.id, d.art]), ...LARGE.map((d) => [d.id, artOf(d)])]);
 
 /** How hard level n of a track is. */
@@ -45,6 +56,20 @@ export function params(mode, diff, n) {
   const tight = D === 2 && n % 4 === 0; // every 4th Hard level has one bay or dock fewer
   const sizes = [[10, 12], [13, 15], [15, 18]][D];
   const base = { D, size: Math.min(sizes[1], sizes[0] + Math.floor((n - 1) / 8)) };
+  if (mode === "orbit") {
+    return {
+      D,
+      // About this many blocks, growing a little every few levels.
+      target: [1000, 2100, 3400][D] + Math.min(8, Math.floor((n - 1) / 4)) * [60, 100, 140][D],
+      bays: [5, 3, 3][D] - (tight ? 1 : 0),
+      open: [1, 2, 2][D],
+      keep: [0.15, 0.45, 0.55][D],
+      minCap: [40, 56, 70][D],
+      maxCap: [90, 120, 150][D],
+      lanes: n <= 2 && D === 0 ? 3 : [4, 5, 5][D],
+      hidden: D === 2 || (D === 1 && n >= 10),
+    };
+  }
   if (mode === "depot") {
     return {
       ...base,
@@ -66,6 +91,12 @@ export function params(mode, diff, n) {
     lanes: n <= 2 && D === 0 ? 2 : [3, 4, 4][D],
     hidden: D === 2 || (D === 1 && n >= 12), // only the front critter of a lane shows its colour
   };
+}
+
+function sculptureFor(diff, n, rng, P) {
+  const order = SCULPT_ORDER[diff];
+  if (n <= order.length) return sculptFor(sculptById(order[n - 1]), P.target);
+  return madeSculpture(rng, n - order.length - 1 + P.D, P.target);
 }
 
 function pictureFor(mode, diff, n, rng, P) {
@@ -106,6 +137,58 @@ function constructCritters(pic, P, rng) {
     mv.open = got === pick.t && mv.total < P.maxCap - 2 && count(mv.color) > 0 && others < P.open && rng.chance(keep);
   }
   return { movers: movers.map((mv) => ({ color: mv.color, cap: mv.total })), solution };
+}
+
+// ---- Orbit ------------------------------------------------------------------------------------------------
+/** Like Critters, in 3D: the critters and a solution. Each critter gets a size it aims for (minCap to
+ *  maxCap), so a lap that could take hundreds of blocks of one colour stops somewhere along the way. */
+function constructOrbit(sc, P, rng) {
+  const track = makeTrack(sc.w, sc.d), plane = sc.w * sc.d;
+  const cells = sc.cells.slice();
+  const colors = [...new Set(cells)].filter(Boolean).sort((a, b) => a - b);
+  const left = new Map(colors.map((c) => [c, 0]));
+  for (const v of cells) if (v) left.set(v, left.get(v) + 1);
+  let remaining = cells.reduce((a, v) => a + (v ? 1 : 0), 0);
+  const movers = [], solution = [];
+  for (let guard = 0; remaining > 0 && guard < 2000; guard++) {
+    const opts = [];
+    for (const c of colors) {
+      if (!left.get(c)) continue;
+      const t = lap3(cells.slice(), track, sc.h, plane, c, Infinity);
+      if (t) opts.push({ c, t, w: Math.pow(Math.min(t, P.maxCap), 1.5) });
+    }
+    let r = rng.float() * opts.reduce((a, o) => a + o.w, 0), pick = opts[0];
+    for (const o of opts) { if ((r -= o.w) <= 0) { pick = o; break; } }
+    let m = movers.findIndex((mv) => mv.open && mv.color === pick.c);
+    if (m < 0) {
+      m = movers.length;
+      // The last critter of a colour takes what is left of it, if that fits.
+      const aim = P.minCap + rng.int(P.maxCap - P.minCap + 1);
+      movers.push({ color: pick.c, total: 0, open: false, aim: left.get(pick.c) <= P.maxCap ? left.get(pick.c) : aim });
+    }
+    const mv = movers[m];
+    const got = lap3(cells, track, sc.h, plane, mv.color, Math.min(pick.t, mv.aim - mv.total));
+    mv.total += got;
+    left.set(mv.color, left.get(mv.color) - got);
+    remaining -= got;
+    solution.push(m);
+    const others = movers.filter((x) => x.open && x !== mv).length;
+    const keep = P.keep + (P.keep && mv.total < P.maxCap / 3 ? 0.3 : 0);
+    mv.open = mv.total < mv.aim && left.get(mv.color) > 0 && (got === pick.t ? others < P.open && rng.chance(keep) : false);
+    if (mv.total < mv.aim && !mv.open) mv.aim = mv.total; // it goes home with what it has
+  }
+  return { movers: movers.map((mv) => ({ color: mv.color, cap: mv.total })), solution };
+}
+
+/** Lanes for critters in the order they first go: each lane keeps that order. */
+function laneUp(order, nLanes, rng) {
+  const lanes = Array.from({ length: Math.min(nLanes, order.length) }, () => []);
+  for (const m of order) {
+    const min = Math.min(...lanes.map((l) => l.length));
+    const ok = lanes.map((l, i) => i).filter((i) => lanes[i].length <= min + 1);
+    lanes[ok[rng.int(ok.length)]].push(m);
+  }
+  return lanes;
 }
 
 // ---- Depot -------------------------------------------------------------------------------------------------
@@ -190,7 +273,9 @@ function park(order, movers, P, rng, grow) {
 
 // ---- Both --------------------------------------------------------------------------------------------------
 /** A fresh game of a level, in its mode's rules. */
-export function newGame(level, opts) { return level.mode === "depot" ? new Depot(level, opts) : new Game(level, opts); }
+export function newGame(level, opts) {
+  return level.mode === "depot" ? new Depot(level, opts) : level.mode === "orbit" ? new Orbit(level, opts) : new Game(level, opts);
+}
 
 /** Step 4: play a solution with the real rules. */
 export function replay(level, solution = level.solution) {
@@ -211,9 +296,18 @@ export function makeLevel(mode, diff, n) {
   const P = params(mode, diff, n);
   for (let attempt = 0; attempt < 40; attempt++) {
     const rng = new Rng(hashSeed(`${key}:${attempt}`));
-    const pic = pictureFor(mode, diff, n, rng, P);
+    const pic = mode === "orbit" ? null : pictureFor(mode, diff, n, rng, P);
     let level;
-    if (mode === "critters") {
+    if (mode === "orbit") {
+      const sc = sculptureFor(diff, n, rng, P);
+      const { movers, solution } = constructOrbit(sc, P, rng);
+      const order = [];
+      for (const m of solution) if (!order.includes(m)) order.push(m);
+      level = {
+        mode, diff, n, picture: sc.id, w: sc.w, h: sc.h, d: sc.d, cells: sc.cells, movers, solution,
+        bays: P.bays, belt: CONFIG.belt, spacing: CONFIG.spacing, hidden: P.hidden, lanes: laneUp(order, P.lanes, rng),
+      };
+    } else if (mode === "critters") {
       const { movers, solution } = constructCritters(pic, P, rng);
       const order = [];
       for (const m of solution) if (!order.includes(m)) order.push(m);

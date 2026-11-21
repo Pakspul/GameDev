@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Loopline end to end, in a headless phone-sized Chromium, through real taps: the lobby with its modes
 // and difficulties, a blocked bus, clearing a level in each mode by tapping the movers the solver
-// picks, the result screen and the saved progress, undo, hints, the toolbar and the menu drawer. Serves dist/ (run `npm run build` first;
+// picks (Orbit, the 3D mode, fast-forwarded up to the last tap), the result screen and the saved progress, undo, hints, the toolbar and the menu drawer. Serves dist/ (run `npm run build` first;
 // `npm test` does it), or the source with --src.
 //
 //   node tests/loopline/e2e.mjs [--src]
@@ -21,7 +21,8 @@ mkdirSync(OUT, { recursive: true });
 
 const server = await startServer({ dir: DIR, port: 0, host: "127.0.0.1" });
 const base = `http://127.0.0.1:${server.address().port}/games/loopline/index.html`;
-const browser = await chromium.launch();
+// SwiftShader: WebGL without a GPU, for Orbit's 3D view.
+const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const ctx = await browser.newContext({ ...devices["Pixel 7"] });
 const page = await ctx.newPage();
 page.setDefaultTimeout(8000);
@@ -62,8 +63,8 @@ async function clearLevel() {
 await page.goto(base);
 await page.waitForTimeout(500);
 
-await check("the start screen offers both modes, three difficulties and level 1", async () => {
-  ok((await page.locator(".lob-choice button").count()) === 2, "two modes");
+await check("the start screen offers three modes, three difficulties and level 1", async () => {
+  ok((await page.locator(".lob-choice button").count()) === 3, "Depot, Critters, Orbit");
   ok((await page.locator(".lob-choice button[aria-checked=true]").innerText()).includes("Depot"), "Depot first");
   ok((await page.locator(".lob-tabs .lob-tab").count()) === 3, "Easy, Medium, Hard");
   ok((await page.locator(".lob-tab[aria-selected=true]").innerText()).includes("Easy"), "Easy first");
@@ -182,6 +183,61 @@ await check("a lost level offers undo, which brings the game back", async () => 
   await page.waitForTimeout(150);
   ok((await ll(() => Loopline.game.status)) === "play", "undo after losing");
   ok((await ll(() => Loopline.state)) === "play", "back in the level");
+});
+
+await check("Orbit: a 3D sculpture of 1,000+ blocks, lanes and bays under it, a tap sends a critter", async () => {
+  await page.locator("#hud .gnav-back").click();
+  await page.waitForTimeout(250);
+  await ll(() => { Loopline.setMode("orbit"); Loopline.setDiff("easy"); });
+  await page.waitForTimeout(200);
+  ok((await page.locator(".lob-choice button[aria-checked=true]").innerText()).includes("Orbit"), "Orbit chosen");
+  await page.locator(".lob-play .lob-go").click();
+  await page.waitForTimeout(500);
+  ok(await ll(() => Loopline.game.kind === "orbit" && Loopline.game.remaining >= 1000), "an Orbit level of 1,000+ blocks");
+  ok(await page.locator("#gl").isVisible(), "the 3D view is on");
+  const L = await ll(() => Loopline.layoutInfo());
+  ok(L.view.y + L.view.h <= L.slots[0].y && L.slots[0].y + L.slots[0].s <= L.yard.y, "view, then bays, then lanes");
+  const toolsTop = await page.locator("#tools").evaluate((e) => e.getBoundingClientRect().top);
+  ok(L.yard.y + L.yard.h <= toolsTop, "the lanes clear the toolbar");
+  const before = await ll(() => Loopline.game.remaining);
+  const m = (await ll(() => Loopline.solve()))[0];
+  const [x, y] = await spot(m);
+  await page.touchscreen.tap(x, y);
+  await idle();
+  ok((await ll(() => Loopline.game.remaining)) < before, "the critter popped blocks");
+  await page.screenshot({ path: join(OUT, "loopline-orbit.png") });
+});
+
+await check("Orbit: dragging turns the view; undo and a hint work", async () => {
+  const yaw = await ll(() => Loopline.yaw);
+  await page.mouse.move(120, 300); await page.mouse.down(); await page.mouse.move(260, 280, { steps: 6 }); await page.mouse.up();
+  await page.waitForTimeout(200);
+  ok(Math.abs((await ll(() => Loopline.yaw)) - yaw) > 0.5, "the view turned");
+  await page.locator("#undoBtn").click();
+  await page.waitForTimeout(100);
+  ok(await ll(() => Loopline.game.history.length === 0), "undone");
+  await page.locator("#hintBtn").click();
+  await page.waitForTimeout(200);
+  ok(problems.length === 0, "no errors");
+});
+
+await check("Orbit: the last tap clears the sculpture, with three stars", async () => {
+  await ll(() => Loopline.start(1)); // a clean start: the undo and hint above cost stars
+  await page.waitForTimeout(200);
+  // Play all but the last send in the engine (a full level takes minutes of laps), then tap the last one.
+  const last = await ll(() => {
+    const g = Loopline.game, sol = Loopline.solve();
+    for (const m of sol.slice(0, -1)) { g.launch(m); g.settle(); }
+    g.events.length = 0;
+    return sol[sol.length - 1];
+  });
+  const [x, y] = await spot(last);
+  await page.touchscreen.tap(x, y);
+  await page.waitForSelector("#result:not([hidden])", { timeout: 20000 });
+  ok((await page.locator("#resultStars svg.on").count()) === 3, "three stars");
+  const saved = await ll(() => JSON.parse(localStorage.getItem("loopline.v2")));
+  ok(saved.progress["orbit:easy"].best === 1, "Orbit progress saved");
+  await page.screenshot({ path: join(OUT, "loopline-orbit-won.png") });
 });
 
 if (problems.length) { failures++; console.log("✗ no errors on the page\n    " + [...new Set(problems)].join("\n    ")); }
