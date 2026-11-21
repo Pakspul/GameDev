@@ -1,10 +1,12 @@
-// Loopline: the app shell. Taps, the tick loop, the HUD and toolbar, the lobby and the result screen,
-// sound and saving. The rules live in src/engine.js (Critters) and src/depot.js (Depot), the levels in
-// src/levels.js, hints come from src/solver.js, and src/render.js draws it all on one canvas.
+// Loopline: the app shell. Taps, the tick loop, the HUD and toolbar, coins and powers, the lobby and the
+// result screen, sound and saving. The rules live in src/engine.js (Critters), src/orbit.js (Orbit) and
+// src/depot.js (Depot), the levels in src/levels.js, hints come from src/solver.js, src/render.js and
+// src/render3d.js draw it all, and economy.js holds every price (rules: docs/ECONOMY.md).
 //
-// Saves under "loopline.v2" in localStorage: the chosen mode and difficulty, per mode and difficulty
-// the highest level cleared and the stars per level, and the sound and vibration switches.
-// (v1 had one track per mode with other levels; its stars would point at different puzzles.)
+// Saves under "loopline.v3" in localStorage: the chosen mode and difficulty, per mode and difficulty
+// the highest level cleared and the stars per level, the coins, and the sound and vibration switches.
+// (v2 had other Hard and Orbit levels; its Easy and Medium Depot and Critters progress is carried over.
+// v1 had one track per mode with other levels; it is ignored.)
 import { CONFIG } from "./src/config.js";
 import { makeLevel, newGame, MODES, DIFFS } from "./src/levels.js";
 import { solve } from "./src/solver.js";
@@ -16,10 +18,28 @@ const _t = I18n.t;
 const $ = (id) => document.getElementById(id);
 
 // ---- Saving -------------------------------------------------------------------------------------------------
-const SAVE_KEY = "loopline.v2";
+const SAVE_KEY = "loopline.v3";
+const tierOf = (m, d) => (m === "orbit" ? "orbit-" : "") + d;
 function loadSave() {
-  const fresh = { mode: "depot", diff: "easy", progress: {}, sound: true, haptics: true };
-  try { return Object.assign(fresh, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) { return fresh; }
+  const fresh = { mode: "depot", diff: "easy", progress: {}, coins: ECO.start, sound: true, haptics: true };
+  try {
+    const now = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (now) return Object.assign(fresh, now);
+    // From v2: Easy and Medium Depot and Critters are the same levels, so their stars stay, and pay
+    // what they would have paid. Hard and Orbit have new levels now.
+    const old = JSON.parse(localStorage.getItem("loopline.v2"));
+    if (old) {
+      const keep = {};
+      for (const k in old.progress || {}) {
+        const [m, d] = k.split(":");
+        if (m === "orbit" || d === "hard") continue;
+        keep[k] = old.progress[k];
+        for (const s of Object.values(keep[k].stars || {})) fresh.coins += ECO.levelPay(tierOf(m, d), s, 0);
+      }
+      return Object.assign(fresh, { mode: old.mode || fresh.mode, diff: old.diff || fresh.diff, sound: old.sound !== false, haptics: old.haptics !== false, progress: keep });
+    }
+  } catch (e) { /* storage blocked or broken: start fresh */ }
+  return fresh;
 }
 function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ } }
 const save = loadSave();
@@ -31,6 +51,9 @@ let state = "menu";   // menu | play | pause | over
 let mode = MODES.includes(save.mode) ? save.mode : "depot";
 let diff = DIFFS.includes(save.diff) ? save.diff : "easy";
 let levelN = 1, game = null, helps = 0, total = 1;
+// Coins and powers: uses of each item in this level (boosts get dearer), and the power that waits for
+// the next tap ("pick" or "zap"; paid when that send happens).
+let used = {}, armed = null;
 let raf = 0, last = 0, acc = 0, endAt = -1, endKind = "", wantHint = false;
 const streak = new Map(), popAt = new Map();
 const sound = new Sound();
@@ -60,12 +83,14 @@ function loadLevel(n) {
   game = newGame(makeLevel(mode, diff, n));
   total = game.remaining;
   helps = 0; acc = 0; endAt = -1; endKind = ""; wantHint = false;
+  used = {}; setArmed(null);
   streak.clear();
   showTip();
   R.tickDT = tickDT();
   layoutCanvas();
   R.setGame(game, mode);
   updateHud();
+  updateTools();
   redraw();
 }
 const tickDT = () => (game.kind === "depot" ? CONFIG.depot.tick : (game.kind === "orbit" ? CONFIG.orbit.lapSeconds : CONFIG.lapSeconds) / game.L);
@@ -84,8 +109,23 @@ function layoutCanvas() {
 }
 
 function send(m) {
-  const r = game.launch(m);
-  if (r === "ok") { sound.go(); drain(); kick(); return; }
+  const opt = {};
+  // An armed power goes with this send, unless it isn't needed (Pick on a critter that could go anyway).
+  let power = armed;
+  if (power === "pick" && game.free(m)) power = null;
+  if (power) {
+    const cost = price(power);
+    if (save.coins < cost) { setArmed(null); poor(cost); return; }
+    if (power === "pick") opt.any = true;
+    else if (game.kind === "depot") opt.magnet = true;
+    else opt.zap = true;
+    opt.power = { item: power, cost };
+  }
+  const r = game.launch(m, opt);
+  if (r === "ok") {
+    if (power) { spend(power); setArmed(null); }
+    sound.go(); drain(); kick(); return;
+  }
   if (r === "blocked") { R.shake(m, now()); sound.nope(); toast(_t("toast.blocked." + mode)); kick(); }
   else if (r === "full") { R.shake(m, now()); sound.nope(); toast(_t("toast.full." + mode)); kick(); }
 }
@@ -106,7 +146,8 @@ function drain() {
     } else if (e.type === "board") {
       const k = streak.get(e.m) || 0;
       streak.set(e.m, k + 1);
-      R.onBoard(e.m, e.cell, e.dock, t, R.ringPoint(game.stop));
+      // The Magnet pulls pixels from anywhere on the loop and out of the picture; the rest board at the stop.
+      R.onBoard(e.m, e.cell, e.dock, t, e.pic ? R.cellPoint(e.cell) : R.ringPoint(e.tray != null ? game.posOf(e.tray) : game.stop));
       sound.pop(k);
     } else if (e.type === "enter" && depot) R.onEnter(e.cell, t);
     else if (e.type === "dock") { sound.park(); haptic(6); }
@@ -158,6 +199,73 @@ function updateHud() {
   $("bar").style.width = p + "%";
   $("bar").parentElement.setAttribute("title", _t("hud.progress", { p }));
   $("undoBtn").disabled = !game.history.length;
+  $("coins").textContent = save.coins;
+}
+
+// ---- Coins and powers -------------------------------------------------------------------------------------
+// Prices follow the tier you're playing (economy.js): hints and Hard's undo cost half a level's pay, an
+// extra bay or a Pick two levels' (doubling with each use in a level), a Laser three. Paid when used.
+const tier = () => tierOf(mode, diff);
+const price = (item) => ECO.price(item, tier(), used[item] || 0);
+const undoCost = () => (diff === "hard" ? price("rewind") : 0);
+const coinSvg = '<svg viewBox="0 0 24 24" class="coin" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffcf3f" stroke="#191b33" stroke-width="2.2"/><circle cx="12" cy="12" r="6" fill="none" stroke="#d99a12" stroke-width="2"/></svg>';
+function poor(cost) { sound.nope(); toast(_t("toast.poor", { cost, n: save.coins })); }
+/** Pay for one use of an item now. Any help takes a star (docs/ECONOMY.md). */
+function spend(item) {
+  save.coins -= price(item);
+  used[item] = (used[item] || 0) + 1;
+  helps++;
+  writeSave();
+  updateHud(); updateTools();
+}
+function setArmed(p) {
+  armed = p;
+  R2.armed = p; if (R3) R3.armed = p;
+  document.body.dataset.armed = p || "";
+  updateTools();
+  if (game) kick();
+}
+/** A power button: the extra bay works at once; Pick and Laser wait for the next send. Tap again to put it away. */
+function power(item) {
+  if (state !== "play" || game.status !== "play") return;
+  if (armed === item) { setArmed(null); toast(_t("toast.off")); return; }
+  const cost = price(item);
+  if (save.coins < cost) { poor(cost); return; }
+  if (item === "bay") {
+    spend("bay");
+    game.addBay();
+    R.layout();
+    sound.park(); haptic(10);
+    toast(_t("toast.bay." + (mode === "depot" ? "depot" : "critters")));
+    redraw();
+    return;
+  }
+  setArmed(item);
+  sound.go();
+  toast(_t(`toast.${item}.${mode === "depot" ? "depot" : "critters"}`, { cost }));
+}
+function updateTools() {
+  if (!game) return;
+  const tag = (id, cost) => { const el = $(id); el.hidden = !cost; el.innerHTML = cost ? coinSvg + cost : ""; };
+  tag("undoCost", undoCost());
+  tag("hintCost", price("hint"));
+  for (const p of ["bay", "pick", "zap"]) {
+    const b = $(p + "Btn"), c = price(p);
+    tag(p + "Cost", c);
+    b.classList.toggle("armed", armed === p);
+    b.classList.toggle("short", save.coins < c && armed !== p);
+    b.setAttribute("aria-pressed", String(armed === p));
+  }
+  $("hintBtn").classList.toggle("short", save.coins < price("hint"));
+  $("undoBtn").classList.toggle("short", save.coins < undoCost());
+}
+/** The power names follow the mode: bays and critters, or docks and buses. */
+function labelTools() {
+  const k = mode === "depot" ? "depot" : "critters";
+  for (const p of ["bay", "pick", "zap"]) {
+    $(p + "Btn").querySelector(".cap").textContent = _t(`pw.${p}.${k}`);
+    $(p + "Btn").title = _t(`pw.${p}.${k}.tip`);
+  }
 }
 let toastTimer = 0;
 function toast(text) {
@@ -169,8 +277,20 @@ function toast(text) {
 }
 
 function undo() {
-  if (!game.undo()) { toast(_t("toast.nothingToUndo")); return; }
-  helps++;
+  if (!game.history.length) { toast(_t("toast.nothingToUndo")); return; }
+  // Hard: undo is the Rewind, and costs coins. Easy and Medium: free, and it still costs a star.
+  const cost = undoCost();
+  if (cost && save.coins < cost) { poor(cost); return; }
+  if (cost) spend("rewind"); else helps++;
+  game.undo();
+  // A power the undone send used is handed back.
+  if (game.undone) {
+    save.coins += game.undone.cost;
+    used[game.undone.item] = Math.max(0, (used[game.undone.item] || 0) - 1);
+    writeSave();
+    toast(_t("toast.refund", { cost: game.undone.cost }));
+  }
+  setArmed(null);
   sound.undo();
   R.clearFx();
   acc = 0; endAt = -1; endKind = ""; wantHint = false;
@@ -182,9 +302,12 @@ function undo() {
 function hint() {
   if (game.status !== "play") return;
   if (!game.idle) { wantHint = true; return; }
-  const sol = solve(game, { budget: game.kind === "orbit" ? 4000 : 30000 });
+  const cost = price("hint");
+  if (save.coins < cost) { poor(cost); return; }
+  // A hint that finds nothing costs nothing.
+  const sol = solve(game, { budget: game.kind === "orbit" ? 8000 : 30000, ms: 2500 });
   if (!sol || !sol.length) { toast(_t("toast.noHint")); return; }
-  helps++;
+  spend("hint");
   R.showHint(sol[0], now());
   kick();
 }
@@ -194,7 +317,7 @@ $("cv").addEventListener("pointerdown", (e) => {
   sound.unlock();
   if (state !== "play") return;
   const r = $("cv").getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  const h = game.status === "play" ? R.hit(x, y) : null;
+  const h = game.status === "play" ? R.hit(x, y, armed === "pick") : null;
   if (h) send(h.m);
   else if (R.beginDrag) { R.beginDrag(x, y); $("cv").setPointerCapture?.(e.pointerId); kick(); } // Orbit: turn the view
 });
@@ -208,6 +331,7 @@ $("cv").addEventListener("wheel", (e) => { if (state === "play" && R.wheel) { e.
 $("undoBtn").addEventListener("click", () => { sound.unlock(); if (state === "play") undo(); });
 $("hintBtn").addEventListener("click", () => { sound.unlock(); if (state === "play") hint(); });
 $("restartBtn").addEventListener("click", () => { sound.unlock(); if (state === "play") start(levelN); });
+for (const p of ["bay", "pick", "zap"]) $(p + "Btn").addEventListener("click", () => { sound.unlock(); power(p); });
 addEventListener("keydown", (e) => {
   if (state === "play" && (e.key === "z" || e.key === "Z" || e.key === "Backspace")) { e.preventDefault(); undo(); }
   else if (state === "play" && (e.key === "h" || e.key === "H")) hint();
@@ -230,6 +354,7 @@ function setMode(m) {
   mode = save.mode = m;
   writeSave();
   for (const x of MODES) document.body.classList.toggle("mode-" + x, x === m);
+  labelTools();
 }
 function setDiff(d) {
   diff = save.diff = d;
@@ -251,9 +376,13 @@ function finish() {
   if (kind === "won") {
     const stars = helps === 0 ? 3 : helps <= 2 ? 2 : 1;
     const p = prog();
+    // Coins for new stars only (a level you've perfected pays nothing again).
+    const pay = ECO.levelPay(tier(), stars, p.stars[levelN] || 0);
+    save.coins += pay;
     p.best = Math.max(p.best, levelN);
     p.stars[levelN] = Math.max(p.stars[levelN] || 0, stars);
     writeSave();
+    $("resultCoins").innerHTML = pay ? coinSvg + "+" + pay : "";
     $("resultStars").innerHTML = [0, 1, 2].map((i) => STAR.replace("{c}", i < stars ? "on" : "")).join("");
     $("resultTitle").textContent = _t(I18n.has("res.win." + mode) ? "res.win." + mode : "res.win");
     $("resultText").textContent = _t("res.winText." + mode);
@@ -263,11 +392,19 @@ function finish() {
     $("result").classList.remove("lost");
   } else {
     $("resultStars").innerHTML = "";
+    $("resultCoins").innerHTML = "";
     $("resultTitle").textContent = _t(kind === "stuck" ? "res.stuck" : "res.lost." + mode);
     $("resultText").textContent = kind === "stuck" ? _t("res.stuckText") : _t("res.lostText." + mode);
-    $("resultNote").textContent = "";
-    main.textContent = _t("undoLast"); main.onclick = undo;
-    alt.textContent = _t("again"); alt.onclick = () => start(levelN);
+    // Hard: undo costs coins. Without enough, trying again is the way on.
+    const cost = undoCost();
+    $("resultNote").textContent = diff === "hard" ? _t("res.hardUndo") : "";
+    if (cost <= save.coins) {
+      main.innerHTML = _t("undoLast") + (cost ? ` <span class="cost">${coinSvg}${cost}</span>` : ""); main.onclick = undo;
+      alt.textContent = _t("again"); alt.onclick = () => start(levelN);
+    } else {
+      main.textContent = _t("again"); main.onclick = () => start(levelN);
+      alt.textContent = _t("menu"); alt.onclick = toMenu;
+    }
     $("result").classList.add("lost");
   }
   $("tip").hidden = true;
@@ -301,7 +438,7 @@ function refreshMenu() {
       title: _t("hud.level", { n: next }),
       text: _t(`playText.${mode}.${diff}`),
       action: { label: _t("play"), onClick: () => start(next) },
-      stats: [[p.best, _t("st.cleared")], [stars, _t("st.stars")]],
+      stats: [[p.best, _t("st.cleared")], [stars, _t("st.stars")], [save.coins, _t("st.coins")]],
     }),
     GameLobby.levels({ last: next, stars: (n) => p.stars[n] || 0, onPick: start }),
   );
@@ -322,6 +459,7 @@ const nav = GameNav.create({
       { icon: "sound", label: _t("sound"), checked: save.sound, onToggle(on) { save.sound = sound.on = on; writeSave(); } },
       { icon: "tap", label: _t("haptics"), checked: save.haptics, onToggle(on) { save.haptics = on; writeSave(); } },
       { icon: "help", label: _t("how"), html: "<p><b>" + _t("mode." + mode) + "</b></p><ul>" + [1, 2, 3, 4].map((n) => "<li>" + _t(`how.${mode}.${n}`) + "</li>").join("") + "</ul>" },
+      { icon: "help", label: _t("powers"), html: "<p>" + _t("powers.intro") + "</p><ul>" + ["hint", "undo", "bay", "pick", "zap"].map((k) => "<li>" + _t(`powers.${k}.${mode === "depot" ? "depot" : "critters"}`) + "</li>").join("") + "</ul><p>" + _t("powers.prices") + "</p>" },
       state === "menu" && GameNav.language(),
     ];
   },
@@ -350,6 +488,8 @@ window.Loopline = {
   setMode(m) { setMode(m); refreshMenu(); showBehind(); },
   setDiff(d) { setDiff(d); refreshMenu(); showBehind(); },
   solve: () => solve(game),
+  get coins() { return save.coins; }, set coins(n) { save.coins = n; writeSave(); updateHud(); updateTools(); },
+  power, get armed() { return armed; },
   point: (m) => R.yardPoint(m), bayPoint: (b) => R.bayPoint(b),
   /** Where the board and the yard ended up, for the layout check in the tests. */
   layoutInfo: () => mode === "orbit" ? { view: R.view, slots: R.slots, yard: R.yard, H: innerHeight, W: innerWidth } : ({ cs: R.cs, bottom: R.yard.y + R.yard.h + (mode === "depot" ? 10 : 6), left: Math.min(R.yard.x, R.px - R.ringOut), right: Math.max(R.yard.x + R.yard.w, R.px + R.pw + R.ringOut) }),

@@ -22,6 +22,7 @@ import { DRAWN, LARGE, artOf, fromArt, madePicture } from "./pictures.js";
 import { Orbit, lap3 } from "./orbit.js";
 import { sculptById, sculptFor, madeSculpture } from "./sculptures.js";
 import { CONFIG } from "./config.js";
+import { playThrough } from "./judge.js";
 
 export const MODES = ["depot", "critters", "orbit"];
 export const DIFFS = ["easy", "medium", "hard"];
@@ -50,7 +51,11 @@ const SCULPT_ORDER = {
 };
 const BY_ID = Object.fromEntries([...DRAWN.map((d) => [d.id, d.art]), ...LARGE.map((d) => [d.id, artOf(d)])]);
 
-/** How hard level n of a track is. */
+// How hard level n of a track is. Besides the obvious numbers (bays, docks, sizes):
+//   bias: how the made solution picks its next colour, by how much of it shows (weight = shows^bias).
+//         1.5 follows the obvious move; Hard leans the other way, so the obvious send is often wrong.
+//   pick: Hard only, how many solvable candidates to make; the one the stand-in players (judge.js)
+//         do worst on is used.
 export function params(mode, diff, n) {
   const D = Math.max(0, DIFFS.indexOf(diff));
   const tight = D === 2 && n % 4 === 0; // every 4th Hard level has one bay or dock fewer
@@ -60,12 +65,13 @@ export function params(mode, diff, n) {
     return {
       D,
       // About this many blocks, growing a little every few levels.
-      target: [1000, 2100, 3400][D] + Math.min(8, Math.floor((n - 1) / 4)) * [60, 100, 140][D],
+      target: [10000, 12000, 14000][D] + Math.min(8, Math.floor((n - 1) / 4)) * [150, 200, 250][D],
       bays: [5, 3, 3][D] - (tight ? 1 : 0),
       open: [1, 2, 2][D],
       keep: [0.15, 0.45, 0.55][D],
-      minCap: [40, 56, 70][D],
-      maxCap: [90, 120, 150][D],
+      bias: [1.5, 1.5, -0.5][D],
+      minCap: [180, 220, 260][D],
+      maxCap: [420, 500, 580][D],
       lanes: n <= 2 && D === 0 ? 3 : [4, 5, 5][D],
       hidden: D === 2 || (D === 1 && n >= 10),
     };
@@ -80,14 +86,18 @@ export function params(mode, diff, n) {
       keep: [0.15, 0.4, 0.55][D],
       open: [1, 2, tight ? 1 : 2][D], // buses the made solution may keep waiting at a dock at once
       jam: [0.6, 1.2, 1.8][D], // how much the car park is packed in each other's way
+      bias: [1.5, 1.5, 0.5][D],
+      pick: [1, 1, 6][D],
     };
   }
   return {
     ...base,
-    bays: [5, 3, 3][D] - (tight || (D === 2 && n % 3 === 0) ? 1 : 0),
+    bays: [5, 3, 2][D],
     open: [1, 2, 2][D],
-    keep: [0.15, 0.5, 0.6][D],
-    maxCap: [12, 18, 24][D],
+    keep: [0.15, 0.5, 0.85][D],
+    maxCap: [12, 18, 30][D],
+    bias: [1.5, 1.5, -0.5][D],
+    pick: [1, 1, 8][D],
     lanes: n <= 2 && D === 0 ? 2 : [3, 4, 4][D],
     hidden: D === 2 || (D === 1 && n >= 12), // only the front critter of a lane shows its colour
   };
@@ -119,7 +129,7 @@ function constructCritters(pic, P, rng) {
     const opts = [];
     for (const c of colors) {
       const t = lap(cells.slice(), track, c, Infinity);
-      if (t) opts.push({ c, t, w: Math.pow(t, 1.5) });
+      if (t) opts.push({ c, t, w: Math.pow(t, P.bias) });
     }
     let r = rng.float() * opts.reduce((a, o) => a + o.w, 0), pick = opts[0];
     for (const o of opts) { if ((r -= o.w) <= 0) { pick = o; break; } }
@@ -155,7 +165,7 @@ function constructOrbit(sc, P, rng) {
     for (const c of colors) {
       if (!left.get(c)) continue;
       const t = lap3(cells.slice(), track, sc.h, plane, c, Infinity);
-      if (t) opts.push({ c, t, w: Math.pow(Math.min(t, P.maxCap), 1.5) });
+      if (t) opts.push({ c, t, w: Math.pow(Math.min(t, P.maxCap), P.bias) });
     }
     let r = rng.float() * opts.reduce((a, o) => a + o.w, 0), pick = opts[0];
     for (const o of opts) { if ((r -= o.w) <= 0) { pick = o; break; } }
@@ -206,7 +216,7 @@ function constructDepot(pic, P, rng) {
   for (let guard = 0; g.status === "play" && guard < 400; guard++) {
     // Colours riding the loop with no bus for them (the loop has stopped, so none has one).
     const opts = [];
-    for (let c = 1; c < g.onRing.length; c++) if (g.onRing[c] > 0) opts.push({ c, w: Math.pow(g.onRing[c], 1.5) });
+    for (let c = 1; c < g.onRing.length; c++) if (g.onRing[c] > 0) opts.push({ c, w: Math.pow(g.onRing[c], P.bias) });
     if (!opts.length) return null;
     let r = rng.float() * opts.reduce((a, o) => a + o.w, 0), pick = opts[0];
     for (const o of opts) { if ((r -= o.w) <= 0) { pick = o; break; } }
@@ -288,13 +298,23 @@ export function replay(level, solution = level.solution) {
   return g.status === "won";
 }
 
+/** How many of a few stand-in plays (one greedy, the rest greedy with slips) win the level. */
+function judge(level, key, plays = 3) {
+  let wins = 0;
+  for (let i = 0; i < plays; i++) wins += playThrough(newGame(level, { history: false }), new Rng(hashSeed(`${key}:judge:${i}`)), i === 0 ? 0 : 0.25) ? 1 : 0;
+  return wins;
+}
+
 const cache = new Map();
 /** Level n (1, 2, 3...) of a mode and difficulty. */
 export function makeLevel(mode, diff, n) {
   const key = `${mode}:${diff}:${n}`;
   if (cache.has(key)) return cache.get(key);
   const P = params(mode, diff, n);
-  for (let attempt = 0; attempt < 40; attempt++) {
+  // Hard: a few good candidates, and the one the stand-in players (judge.js) do worst on.
+  const want = P.pick || 1;
+  let best = null, bestScore = Infinity, found = 0;
+  for (let attempt = 0; attempt < 40 && found < want; attempt++) {
     const rng = new Rng(hashSeed(`${key}:${attempt}`));
     const pic = mode === "orbit" ? null : pictureFor(mode, diff, n, rng, P);
     let level;
@@ -333,8 +353,13 @@ export function makeLevel(mode, diff, n) {
       };
     }
     if (!replay(level)) continue;
-    cache.set(key, level);
-    return level;
+    found++;
+    if (want === 1) { best = level; break; }
+    const score = judge(level, key, P.judges);
+    if (score < bestScore) { best = level; bestScore = score; }
+    if (score === 0) break;
   }
-  throw new Error(`could not make ${mode} ${diff} level ${n}`);
+  if (!best) throw new Error(`could not make ${mode} ${diff} level ${n}`);
+  cache.set(key, best);
+  return best;
 }

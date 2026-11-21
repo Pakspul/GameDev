@@ -1,7 +1,7 @@
-// Loopline's rules (games/loopline/src/engine.js for Critters, src/depot.js for Depot) and levels
-// (src/levels.js), checked in Node: what a critter sees and takes, parking, losing, undo, lanes; the
-// depot's doors, stop, docks and car park; and that every level of every track can be solved and
-// stays the same level.
+// Loopline's rules (games/loopline/src/engine.js for Critters, src/orbit.js for Orbit, src/depot.js for
+// Depot) and levels (src/levels.js), checked in Node: what a critter sees and takes, parking, losing,
+// undo, lanes; the depot's doors, stop, docks and car park; the powers bought with coins; that Hard is
+// harder; and that every level of every track can be solved and stays the same level.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Game, makeTrack, takeAlong, lap, YARD, BAY, DONE } from "../../games/loopline/src/engine.js";
@@ -9,6 +9,8 @@ import { Depot, feedsOf, ringShape, DRIVING, DOCKED } from "../../games/loopline
 import { makeLevel, replay, newGame, params, MODES, DIFFS } from "../../games/loopline/src/levels.js";
 import { solve } from "../../games/loopline/src/solver.js";
 import { Orbit, look3, lap3 } from "../../games/loopline/src/orbit.js";
+import { playThrough } from "../../games/loopline/src/judge.js";
+import { Rng } from "../../games/loopline/src/rng.js";
 import { SCULPTS, sculptFor, countOf } from "../../games/loopline/src/sculptures.js";
 
 const R = 1, B = 2, Y = 3;
@@ -253,9 +255,9 @@ test("orbit: no free bay loses, and undo brings it back", () => {
   assert.ok(g.clone() instanceof Orbit, "the solver's copies follow Orbit's rules");
 });
 
-test("orbit: every sculpture has a thousand blocks or more on Easy, more on Medium and Hard", () => {
-  for (const def of SCULPTS) assert.ok(countOf(sculptFor(def, 1000)) >= 900, def.id);
-  for (const [diff, min] of [["easy", 900], ["medium", 1900], ["hard", 3000]]) {
+test("orbit: every sculpture has ten thousand blocks or more on Easy, more on Medium and Hard", () => {
+  for (const def of SCULPTS) assert.ok(countOf(sculptFor(def, 10000)) >= 10000, def.id);
+  for (const [diff, min] of [["easy", 10000], ["medium", 12000], ["hard", 14000]]) {
     for (let n = 1; n <= 30; n++) {
       const L = makeLevel("orbit", diff, n), blocks = countOf(L);
       assert.ok(blocks >= min, `orbit ${diff} ${n}: ${blocks} blocks`);
@@ -263,7 +265,80 @@ test("orbit: every sculpture has a thousand blocks or more on Easy, more on Medi
   }
 });
 
+// ---- Powers (bought with coins in the game) --------------------------------------------------------------
+test("powers: an extra bay stays for the rest of the level, undo included", () => {
+  const g = new Game(level(["11", "22"], [[B, 5], [B, 5], [R, 2], [R, 2]], { bays: 1 }));
+  play(g, 0);
+  g.addBay();
+  assert.equal(g.bays.length, 2);
+  play(g, 1);
+  assert.equal(g.status, "play", "the second blue critter parks in the extra bay instead of losing");
+  g.undo();
+  assert.equal(g.bays.length, 2, "undo doesn't take the bay away");
+  const d = new Depot(depot(["1122"], [[R, 3], [B, 3], [Y, 1]], { docks: 2 }));
+  d.settle(); d.launch(0); d.launch(1);
+  assert.equal(d.launch(2), "full");
+  d.addBay();
+  assert.equal(d.launch(2), "ok", "an extra dock");
+});
+
+test("powers: Pick sends any critter from a lane, and undo hands back what it cost", () => {
+  const g = new Game(level(["1"], [[B, 1], [R, 1]], { lanes: [[0, 1]], bays: 2 }));
+  assert.equal(g.launch(1), "blocked");
+  assert.equal(g.launch(1, { any: true, power: { item: "pick", cost: 40 } }), "ok");
+  g.settle();
+  assert.equal(g.status, "won");
+  assert.ok(g.undo());
+  assert.deepEqual(g.undone, { item: "pick", cost: 40 });
+  assert.deepEqual(g.lanes, [[0, 1]], "back in its place in the lane");
+  play(g, 0);
+  assert.ok(g.undo());
+  assert.equal(g.undone, null, "a plain send used no power");
+});
+
+test("powers: Laser pops its colour through other colours, for one lap", () => {
+  // Red behind blue on every side: a red critter sees nothing, a zapping one sees through.
+  const rows = ["222", "212", "222"];
+  const g = new Game(level(rows, [[R, 1], [B, 8]], { lanes: [[0], [1]], bays: 2 }));
+  g.launch(0, { zap: true });
+  g.settle();
+  assert.equal(g.where[0], DONE, "the red block in the middle is popped");
+  assert.equal(g.zap[0], 0, "only for that lap");
+  const o = new Orbit(orbit([["212"], ["212"]], [[R, 2], [B, 4]], { lanes: [[0], [1]] }));
+  o.launch(0, { zap: true });
+  o.settle();
+  assert.equal(o.left[0], 0, "Orbit: on every layer");
+});
+
+test("powers: Tow takes any bus out of the car park; Magnet fills a bus straight from the loop and the picture", () => {
+  const lot = { w: 2, h: 2, cars: [{ m: 0, x: 0, y: 0, len: 1, dir: "right" }, { m: 1, x: 1, y: 0, len: 1, dir: "down" }] };
+  const g = new Depot(depot(["1122"], [[R, 2], [B, 2]], { lot }));
+  g.settle();
+  assert.equal(g.launch(0), "blocked");
+  assert.equal(g.launch(0, { any: true }), "ok", "towed out past the blue bus");
+  // Six red pixels in a tall picture: most still wait inside when a magnet bus docks.
+  const m = new Depot(depot(["1", "1", "1", "1", "1", "1"], [[R, 6]], { ring: 12, transit: 1 }));
+  m.launch(0, { magnet: true });
+  m.tick();
+  assert.equal(m.where[0], 4, "full at once, and gone");
+  assert.equal(m.remaining, 0);
+  m.settle();
+  assert.equal(m.status, "won");
+});
+
 // ---- Levels ----------------------------------------------------------------------------------------------
+test("difficulty: the stand-in players (judge.js) win Hard levels much less often than Medium ones", () => {
+  for (const mode of ["depot", "critters"]) {
+    const rate = (diff) => {
+      let won = 0, n = 0;
+      for (let lv = 1; lv <= 12; lv++) for (let i = 0; i < 4; i++, n++) won += playThrough(newGame(makeLevel(mode, diff, lv), { history: false }), new Rng(lv * 31 + i), i ? 0.25 : 0);
+      return won / n;
+    };
+    const med = rate("medium"), hard = rate("hard");
+    assert.ok(hard < 0.65 && hard < med - 0.2, `${mode}: Medium ${(med * 100).toFixed(0)}%, Hard ${(hard * 100).toFixed(0)}%`);
+  }
+});
+
 test("difficulty: Hard has fewer bays and docks than Easy", () => {
   assert.ok(params("critters", "hard", 1).bays < params("critters", "easy", 1).bays);
   assert.ok(params("depot", "hard", 1).docks < params("depot", "easy", 1).docks);
@@ -281,10 +356,36 @@ test("every level up to 30 of every track is solvable with its own solution, and
     for (const c of L.cells) if (c) need.set(c, (need.get(c) || 0) + 1);
     for (const m of L.movers) have.set(m.color, (have.get(m.color) || 0) + m.cap);
     assert.deepEqual([...have].sort(), [...need].sort(), `${mode} ${diff} ${n}: capacities add up to the picture`);
-    if (n <= 15) {
-      const s = solve(newGame(L), { budget: 30000 });
+    // The solver on its own, without the shortcut of the made solution.
+    if (n <= 10) {
+      const s = solve(newGame(L), { budget: 30000, known: false });
       assert.ok(s && replay(L, s), `${mode} ${diff} ${n}: the solver finds a way`);
     }
+  }
+});
+
+test("hints: from a position off the made solution, the solver finds a way quickly", () => {
+  for (const [mode, diff, N] of [["critters", "hard", 12], ["depot", "hard", 12], ["orbit", "hard", 4]]) {
+    let found = 0, tried = 0;
+    for (let n = 1; n <= N; n++) {
+      const L = makeLevel(mode, diff, n), g = newGame(L, { history: false }), rng = new Rng(n);
+      g.settle();
+      // Two sends the made solution doesn't start with, if they don't lose.
+      for (let k = 0; k < 2 && g.status === "play"; k++) {
+        const r = g.ready().filter((m) => m !== L.solution[k]);
+        if (!r.length) break;
+        const s = g.snapshot();
+        g.launch(r[rng.int(r.length)]); g.settle();
+        if (g.status !== "play") { g.restore(s); break; }
+      }
+      // Random sends can make a Hard level unwinnable: only count positions a long search can win from.
+      if (mode !== "orbit" && !solve(g, { budget: 300000 })) continue;
+      const t = performance.now(), sol = solve(g, { budget: mode === "orbit" ? 8000 : 30000, ms: 2500 });
+      tried++;
+      if (sol) { found++; assert.equal((() => { const h = g.clone(); for (const m of sol) { h.launch(m); h.settle(); } return h.status; })(), "won", `${mode} ${diff} ${n}: the hint's way wins`); }
+      assert.ok(performance.now() - t < 3000, `${mode} ${diff} ${n}: a hint within the time limit`);
+    }
+    assert.ok(found >= tried - 1, `${mode} ${diff}: hints found ${found}/${tried}`);
   }
 });
 
@@ -298,15 +399,15 @@ test("levels stay the same levels (saved stars point at them)", () => {
   const want = {
     "depot:easy": ["aabe4b75", "66019d1c", "53e93992", "76119aa5"],
     "depot:medium": ["12371afd", "7da66449", "64535801", "8a6b4df4"],
-    "depot:hard": ["eef930b5", "cd62d557", "37a0173d", "abf3c7b2"],
+    "depot:hard": ["521ccff4", "e032dc7", "86c81c70", "1f4636ab"],
     "critters:easy": ["8d5ceb05", "74b8ea80", "d849cec1", "22607ff5"],
     "critters:medium": ["46a3cda8", "325166e7", "a06015bc", "8c55f97"],
-    "critters:hard": ["42078370", "4cab8bb9", "dff4520c", "e1b4dea1"],
-    "orbit:easy": ["7372c912", "e5f4b590", "74c8fc89", "c66a3ab2"],
-    "orbit:medium": ["59764221", "804fc585", "253d1cd1", "2f8e335e"],
-    "orbit:hard": ["1791b93e", "d9b4dc25", "ccb65f4", "d96e7dd3"],
+    "critters:hard": ["18443bb2", "dd8479fd", "1e6e6c56", "bf68121e"],
+    "orbit:easy": ["3b03779a", "2c47a3c7", "47f732f7", "e92ec0be"],
+    "orbit:medium": ["fb59ff2b", "d1ce73e0", "b20bafa1", "dee369ba"],
+    "orbit:hard": ["56ae8aad", "bda6458d", "a52e96a0", "9c24eade"],
   };
   const got = {};
   for (const mode of MODES) for (const diff of DIFFS) got[`${mode}:${diff}`] = [1, 2, 10, 25].map((n) => fp(makeLevel(mode, diff, n)));
-  assert.deepEqual(got, want, "if you changed the generator on purpose, bump the save key (loopline.v2) and update these");
+  assert.deepEqual(got, want, "if you changed the generator on purpose, bump the save key (loopline.v3) and update these");
 });

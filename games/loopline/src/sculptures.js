@@ -379,13 +379,19 @@ function crop(s) {
 
 export const countOf = (s) => s.cells.reduce((a, v) => a + (v ? 1 : 0), 0);
 
-/** The smallest grid size that gives a model at least `target` blocks (up to `maxN`). */
-export function sculptFor(def, target, maxN = 26) {
-  let best = null;
-  for (let N = 8; N <= maxN; N++) {
-    best = voxelize(def, N);
-    if (countOf(best) >= target) break;
-  }
+/** The smallest grid size that gives a model at least `target` blocks (up to `maxN`). A rough first
+ *  guess from a small grid (blocks grow with N³) saves building every size from 8 upwards. */
+const made = new Map();
+export function sculptFor(def, target, maxN = 64) {
+  const key = SCULPT_BY_ID[def.id] === def ? `${def.id}:${target}:${maxN}` : null;
+  if (key && made.has(key)) return made.get(key);
+  const at = (N) => voxelize(def, Math.max(8, Math.min(maxN, N)));
+  const c0 = countOf(at(16));
+  let N = Math.max(8, Math.min(maxN, Math.floor(16 * Math.cbrt(target / Math.max(1, c0))) - 1));
+  let best = at(N);
+  while (N > 8 && countOf(best) >= target) { const s = at(N - 1); if (countOf(s) < target) break; best = s; N--; }
+  while (N < maxN && countOf(best) < target) best = at(++N);
+  if (key) made.set(key, best);
   return best;
 }
 

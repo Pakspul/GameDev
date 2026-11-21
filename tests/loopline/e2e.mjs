@@ -109,7 +109,7 @@ await check("undo puts the last send back", async () => {
 await check("clearing Depot level 1 by tapping shows three stars and saves it", async () => {
   await clearLevel();
   ok((await page.locator("#resultStars svg.on").count()) === 3, "three stars without help");
-  const saved = await ll(() => JSON.parse(localStorage.getItem("loopline.v2")));
+  const saved = await ll(() => JSON.parse(localStorage.getItem("loopline.v3")));
   ok(saved.progress["depot:easy"].best === 1 && saved.progress["depot:easy"].stars[1] === 3, "progress saved");
   await page.screenshot({ path: join(OUT, "loopline-won.png") });
 });
@@ -185,7 +185,7 @@ await check("a lost level offers undo, which brings the game back", async () => 
   ok((await ll(() => Loopline.state)) === "play", "back in the level");
 });
 
-await check("Orbit: a 3D sculpture of 1,000+ blocks, lanes and bays under it, a tap sends a critter", async () => {
+await check("Orbit: a 3D sculpture of 10,000+ blocks, lanes and bays under it, a tap sends a critter", async () => {
   await page.locator("#hud .gnav-back").click();
   await page.waitForTimeout(250);
   await ll(() => { Loopline.setMode("orbit"); Loopline.setDiff("easy"); });
@@ -193,7 +193,7 @@ await check("Orbit: a 3D sculpture of 1,000+ blocks, lanes and bays under it, a 
   ok((await page.locator(".lob-choice button[aria-checked=true]").innerText()).includes("Orbit"), "Orbit chosen");
   await page.locator(".lob-play .lob-go").click();
   await page.waitForTimeout(500);
-  ok(await ll(() => Loopline.game.kind === "orbit" && Loopline.game.remaining >= 1000), "an Orbit level of 1,000+ blocks");
+  ok(await ll(() => Loopline.game.kind === "orbit" && Loopline.game.remaining >= 10000), "an Orbit level of 10,000+ blocks");
   ok(await page.locator("#gl").isVisible(), "the 3D view is on");
   const L = await ll(() => Loopline.layoutInfo());
   ok(L.view.y + L.view.h <= L.slots[0].y && L.slots[0].y + L.slots[0].s <= L.yard.y, "view, then bays, then lanes");
@@ -235,9 +235,56 @@ await check("Orbit: the last tap clears the sculpture, with three stars", async 
   await page.touchscreen.tap(x, y);
   await page.waitForSelector("#result:not([hidden])", { timeout: 20000 });
   ok((await page.locator("#resultStars svg.on").count()) === 3, "three stars");
-  const saved = await ll(() => JSON.parse(localStorage.getItem("loopline.v2")));
+  const saved = await ll(() => JSON.parse(localStorage.getItem("loopline.v3")));
   ok(saved.progress["orbit:easy"].best === 1, "Orbit progress saved");
   await page.screenshot({ path: join(OUT, "loopline-orbit-won.png") });
+});
+
+await check("Coins: clearing pays them, the HUD and the lobby show them", async () => {
+  ok((await page.locator("#resultCoins").innerText()).includes("+"), "the result says what it paid");
+  const coins = await ll(() => Loopline.coins);
+  await page.locator("#resultAlt").click();
+  await page.waitForTimeout(250);
+  ok((await page.locator(".lob-play").innerText()).includes(String(coins)), "the lobby shows the balance");
+});
+
+await check("Powers: +1 Bay adds a bay at once; Pick sends a critter from the back of a lane; undo hands its coins back", async () => {
+  await ll(() => { Loopline.coins = 1000; Loopline.setMode("critters"); Loopline.setDiff("medium"); Loopline.start(5); });
+  await page.waitForTimeout(300);
+  ok((await page.locator("#hud #coins").innerText()) === "1000", "the HUD shows the balance");
+  const bays = await ll(() => Loopline.game.bays.length);
+  await page.locator("#bayBtn").click();
+  await page.waitForTimeout(150);
+  ok((await ll(() => Loopline.game.bays.length)) === bays + 1, "one more bay");
+  ok((await ll(() => Loopline.coins)) === 930, "+1 Bay costs two Medium levels' pay (70)");
+  await page.locator("#pickBtn").click();
+  ok((await ll(() => Loopline.armed)) === "pick", "Pick waits for a tap");
+  ok((await ll(() => Loopline.coins)) === 930, "nothing paid yet");
+  const m = await ll(() => Loopline.game.lanes.find((l) => l.length > 1)[1]);
+  const [x, y] = await spot(m);
+  await page.touchscreen.tap(x, y);
+  await page.waitForTimeout(100);
+  ok((await ll((m) => Loopline.game.where[m], m)) !== 0, "the second critter of a lane went");
+  ok((await ll(() => Loopline.coins)) === 860 && (await ll(() => Loopline.armed)) === null, "paid when it went");
+  await idle();
+  await page.locator("#undoBtn").click();
+  await page.waitForTimeout(100);
+  ok((await ll((m) => Loopline.game.where[m], m)) === 0 && (await ll(() => Loopline.coins)) === 930, "undo puts it back and refunds Pick");
+  await page.screenshot({ path: join(OUT, "loopline-powers.png") });
+});
+
+await check("Hard: undo costs coins", async () => {
+  await ll(() => { Loopline.setDiff("hard"); Loopline.start(1); });
+  await page.waitForTimeout(300);
+  ok((await page.locator("#undoCost").innerText()).trim() === "30", "the price is on the button");
+  const m = (await ll(() => Loopline.solve()))[0];
+  const [x, y] = await spot(m);
+  await page.touchscreen.tap(x, y);
+  await idle();
+  const before = await ll(() => Loopline.coins);
+  await page.locator("#undoBtn").click();
+  await page.waitForTimeout(100);
+  ok((await ll(() => Loopline.coins)) === before - 30, "half a Hard level's pay");
 });
 
 if (problems.length) { failures++; console.log("✗ no errors on the page\n    " + [...new Set(problems)].join("\n    ")); }

@@ -55,9 +55,21 @@ Template: copy this to the top for a new day
 - Orbit is a third mode of Loopline, not a new game: same lobby, HUD, toolbar, saves and rules.
 - One pop per layer per step (not one per step): with 1,000+ blocks, one at a time would take hundreds of laps.
 
+- **Loopline: 10,000-block Orbit, a harder Hard, coins and powers** (see [docs/LOOPLINE.md](docs/LOOPLINE.md)):
+  - Orbit sculptures now have **10,000 to 16,000 blocks** (were 1,000–4,900), to see how phones cope. Critters pop 180–580; `sculptFor()` guesses the grid size from a small grid; up to 2,400 flying blocks.
+  - **Hard measured and retuned.** A greedy stand-in player (send whatever pops the most) won 83–94% of Hard levels in every mode, and undo was free. Now Hard's made solutions lean away from the obvious move (`bias`), Depot and Critters Hard keep the hardest of 6–8 solvable candidates (`src/judge.js`), Critters Hard has 2 bays, and **undo on Hard costs coins**. Greedy now wins 40% (Depot), 57% (Critters), 69% (Orbit). Easy and Medium Depot and Critters levels are unchanged.
+  - **Coins** (`games/loopline/economy.js`, shared rules in docs/ECONOMY.md): new stars pay, Orbit pays about twice the 2D modes. **Powers**: Hint, +1 Bay (+1 Dock), Pick (Tow: any bus out of the car park), Laser (pops through other colours; Depot: Magnet bus). Paid when used; undoing a send refunds its power.
+  - Solver: better move order, and a shortcut through the level's made solution, so hints on big Hard levels are quick (and capped at 2.5 s, free if they find nothing).
+  - Save key `loopline.v3`: v2's Easy and Medium Depot and Critters progress is kept, with the coins it would have earned; Hard and Orbit start over. Tests: powers, Hard vs Medium win rates, hints off the made path, e2e for coins, powers and paid undo.
+
+**Decided**
+- Hard's difficulty is measured with stand-in players, not random taps: random tapping never noticed that the obvious move always worked.
+- Undo costs coins on Hard only. Easy and Medium keep free undo.
+- Powers follow docs/ECONOMY.md (priced in levels of the tier, paid when used, never bought with money).
+
 **Next**
-- Playtest Loopline on the phone and tune `params()`.
-- Orbit on a real phone: frame rate on big Hard sculptures, and is it clear which side shows which colours?
+- Playtest Loopline on the phone and tune `params()`: is Hard hard now, and are the powers worth their price?
+- Orbit on a real phone with 10,000–16,000 blocks: frame rate, time to make a level, battery. Is it clear which side shows which colours?
 
 ## 2026-11-20
 

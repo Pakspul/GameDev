@@ -87,7 +87,7 @@ export class Renderer3D {
     this.board = new THREE.Group();
     this.scene.add(this.board);
     // Flying blocks: each popped block flies to the critter that took it.
-    this.flyMesh = new THREE.InstancedMesh(this.boxGeo, this.blockMat, 900);
+    this.flyMesh = new THREE.InstancedMesh(this.boxGeo, this.blockMat, 2400); // a 10,000-block sculpture pops whole columns at once
     this.flyMesh.count = 0;
     this.flyMesh.frustumCulled = false;
     this.flyMesh.setColorAt(0, new THREE.Color(1, 1, 1));
@@ -316,7 +316,7 @@ export class Renderer3D {
 
   // ---- Effects from the engine's events --------------------------------------------------------------------------
   onLaunch(m, e, now) {
-    const pts = e.from.bay != null ? [this.bayPoint(e.from.bay)] : [[this.yard.x + (e.from.lane + 0.5) * this.laneW, this.yard.y + 0.5 * this.rowH]];
+    const pts = e.from.bay != null ? [this.bayPoint(e.from.bay)] : [[this.yard.x + (e.from.lane + 0.5) * this.laneW, this.yard.y + (Math.min(e.from.row || 0, 2) + 0.5) * this.rowH]];
     this.tweens.set(m, { pts, t0: now, dur: 0.32, kind: "in" });
   }
   onTake(m, cell, now) {
@@ -350,6 +350,7 @@ export class Renderer3D {
   showHint(m, now) { this.hint = m; this.hintT0 = now; }
 
   busy(now) {
+    if (this.armed) return true; // a power waits for a tap: keep it pulsing
     if (this.drag || Math.abs(this.vYaw) > 0.00005) return true;
     if (this.flies.length || this.fx.some((f) => now < f.t0 + f.dur)) return true;
     for (const t of this.tweens.values()) if (now < t.t0 + t.dur) return true;
@@ -360,7 +361,8 @@ export class Renderer3D {
     return false;
   }
 
-  hit(x, y) {
+  /** `any` (the Pick power): any critter in a lane, not just the front one. */
+  hit(x, y, any = false) {
     const g = this.game;
     for (let b = 0; b < this.slots.length; b++) {
       const s = this.slots[b];
@@ -369,7 +371,13 @@ export class Renderer3D {
     const Y = this.yard;
     if (x < Y.x - 6 || x > Y.x + Y.w + 6 || y < Y.y - 8 || y > Y.y + Y.h + 8) return null;
     const k = clamp(Math.floor((x - Y.x) / this.laneW), 0, g.lanes.length - 1);
-    return g.lanes[k].length ? { m: g.lanes[k][0], lane: k } : null;
+    const lane = g.lanes[k], rows = Math.round(Y.h / this.rowH);
+    if (!lane.length) return null;
+    if (any) {
+      const i = clamp(Math.floor((y - Y.y) / this.rowH), 0, rows - 1);
+      if (i < lane.length && !(i === rows - 1 && lane.length > rows)) return { m: lane[i], lane: k };
+    }
+    return { m: lane[0], lane: k };
   }
 
   // ---- Critters in 3D --------------------------------------------------------------------------------------------
@@ -431,15 +439,17 @@ export class Renderer3D {
     const pop = now - md.popT < 0.12 ? 1.12 : 1;
     md.body.scale.set(pop, 2 - pop, pop);
     this.setTag(md, g.left[m] ? String(g.left[m]) : "✓");
+    md.beam.material.color.set(g.zap[m] ? 0xffe45c : colorOf(g.color(m))); // the Laser power: a gold beam
     // The beam: from the critter to the sculpture's side, as tall as the sculpture.
     const dist = Math.hypot(tx - x, tz - z), b = md.beam, fade = clamp(1 - (now - md.beamT) / 0.3, 0, 1);
     b.visible = fade > 0;
     if (fade > 0) {
-      const H = (g.h + 0.6) / this.S, L = dist / this.S + 0.2;
+      const reach = g.zap[m] ? Math.max(g.w, g.d) : dist; // a zapping critter's beam runs right through
+      const H = (g.h + 0.6) / this.S, L = reach / this.S + 0.2;
       b.scale.set(L, H, 1);
       b.position.set(Math.sin(face) * L / 2, H / 2, Math.cos(face) * L / 2);
       b.rotation.y = face - Math.PI / 2;
-      b.material.opacity = 0.55 * fade;
+      b.material.opacity = (g.zap[m] ? 0.8 : 0.55) * fade;
     }
   }
 
@@ -550,8 +560,15 @@ export class Renderer3D {
       for (let i = Math.min(lane.length, rows) - 1; i >= 0; i--) {
         const at = [Y.x + (k + 0.5) * c, Y.y + (i + 0.5) * this.rowH];
         if (i === rows - 1 && lane.length > rows) { label(ctx, "+" + (lane.length - rows + 1), at[0], at[1], 18); continue; }
-        this.drawCritter(lane[i], at, now, i === 0 ? "front" : "lane", g.level.hidden && i > 0);
+        this.drawCritter(lane[i], at, now, i === 0 || this.armed === "pick" ? "front" : "lane", g.level.hidden && i > 0 && this.armed !== "pick");
       }
+    }
+    if (this.armed === "pick") {
+      ctx.save();
+      ctx.globalAlpha = 0.65 + 0.35 * Math.sin(now * 6);
+      ctx.strokeStyle = UI.glow; ctx.lineWidth = 3; ctx.setLineDash([10, 7]); ctx.lineDashOffset = -now * 30;
+      ctx.beginPath(); rr(ctx, Y.x, Y.y - 10, Y.w, Y.h + 20, 18); ctx.stroke();
+      ctx.restore();
     }
   }
   /** A flat critter. where: front | lane | bay | fly (on its way to the loop; `to` is where it lands). */
@@ -573,6 +590,10 @@ export class Renderer3D {
     const size = (where === "bay" ? this.slots[0].s * 0.78 : where === "fly" ? this.moverSize : Math.min(this.laneW * 0.72, this.rowH * 0.92)) * big;
     ctx.save();
     ctx.translate(x, y);
+    if (this.armed === "zap" && (where === "front" || where === "bay")) {
+      ctx.globalAlpha = 0.55 + 0.3 * Math.sin(now * 10); ctx.fillStyle = UI.glow;
+      ctx.beginPath(); ctx.arc(0, 0, size * 0.62, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+    }
     blit(ctx, sprite(hidden ? "hid" : "crit", hidden ? HIDDEN : CRITTER, hex), size);
     label(ctx, text, 0, hidden ? 0 : size * 0.2, clamp(size * 0.38, 12, 22));
     if (where === "lane" && !hidden) { ctx.globalAlpha = 0.28; ctx.fillStyle = UI.panel; ctx.beginPath(); ctx.arc(0, 0, size * 0.56, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }

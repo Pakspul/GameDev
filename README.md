@@ -17,7 +17,7 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Wallbreaker** | A brick breaker with seven modes (Classic, Zen, Descent, Run, Daily, Puzzle, Time Attack), endless seeded levels, bosses, and risky capsules you catch or dodge. See [docs/WALLBREAKER.md](docs/WALLBREAKER.md) |
 | **Coin Dozer** | A coin pusher with real physics: drop coins, the pusher shoves the pile, win what spills over. Gems and figures to collect in four machine themes. See [docs/COIN-DOZER.md](docs/COIN-DOZER.md) |
 | **Starflip** | Space pinball with clear missions: the banner says what to shoot, arrows show where. Finished missions open a wormhole to 30-second bonus tables. See [docs/STARFLIP.md](docs/STARFLIP.md) |
-| **Loopline** *(new)* | Clear a pixel picture colour by colour: bring buses to the stop as pixels loop past (Depot), send critters round the loop (Critters), or peel a 3D voxel sculpture of 1,000+ blocks (Orbit). Easy, Medium and Hard tracks; every level is checked solvable. See [docs/LOOPLINE.md](docs/LOOPLINE.md) |
+| **Loopline** *(new)* | Clear a pixel picture colour by colour: bring buses to the stop as pixels loop past (Depot), send critters round the loop (Critters), or peel a 3D voxel sculpture of 10,000+ blocks (Orbit). Easy, Medium and Hard tracks, coins and powers (+1 Bay, Pick, Laser); every level is checked solvable. See [docs/LOOPLINE.md](docs/LOOPLINE.md) |
 | **Inkfield** *(prototype)* | Draw loops to claim land, cut the others' trails, be the last one on the board (against computer players). See [docs/INKFIELD.md](docs/INKFIELD.md) |
 | **Camper Crew** *(prototype, dev only)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
 

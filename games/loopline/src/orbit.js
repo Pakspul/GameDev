@@ -19,11 +19,22 @@ export function takeAlong3(cells, line, off, color) {
   return -1;
 }
 
+/** Like takeAlong3 for a zapping critter (the Laser power): the first block of its own colour. */
+export function takeColour3(cells, line, off, color) {
+  for (let i = 0; i < line.length; i++) {
+    if (cells[off + line[i]] !== color) continue;
+    cells[off + line[i]] = 0;
+    return off + line[i];
+  }
+  return -1;
+}
+
 /** What one step takes on every layer (up to `room`), bottom to top. Changes `cells`. */
-export function look3(cells, line, layers, plane, color, room, out) {
+export function look3(cells, line, layers, plane, color, room, out, zap = false) {
   let n = 0;
+  const take = zap ? takeColour3 : takeAlong3;
   for (let y = 0; y < layers && n < room; y++) {
-    const got = takeAlong3(cells, line, y * plane, color);
+    const got = take(cells, line, y * plane, color);
     if (got >= 0) { n++; if (out) out.push(got); }
   }
   return n;
@@ -58,7 +69,7 @@ export class Orbit extends Game {
       const t = this.track[b.pos];
       if (!t.line || this.left[b.m] === 0) continue;
       got.length = 0;
-      const n = look3(this.cells, t.line, this.h, this.plane, this.color(b.m), this.left[b.m], got);
+      const n = look3(this.cells, t.line, this.h, this.plane, this.color(b.m), this.left[b.m], got, this.zap[b.m] === 1);
       if (!n) continue;
       this.left[b.m] -= n;
       this.remaining -= n;

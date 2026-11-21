@@ -88,7 +88,7 @@ for (const g of games) {
   // The page must load the rules, then the game's numbers, then the game.
   const html = readFileSync(join(ROOT, "games", g, "index.html"), "utf8");
   const at = (src) => html.indexOf(`<script src="${src}"></script>`);
-  const a = at("../../shared/js/economy.js"), b = at("economy.js"), c = at("game.js");
+  const a = at("../../shared/js/economy.js"), b = at("economy.js"), c = html.search(/<script[^>]*src="game\.js"/); // classic or module
   if (a < 0 || b < 0 || !(a < b && b < c)) fail(`${g}: index.html must load ../../shared/js/economy.js, then economy.js, then game.js`);
   if (failures === before) console.log(`✓ ${g}: ${tiers.length} tiers, ${Object.keys(E.items).length} kinds of help, starts with ${E.start}`);
 }
