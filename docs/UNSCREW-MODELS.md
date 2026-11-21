@@ -128,6 +128,12 @@ games/unscrew/models/
 1. ~~Fill the empty categories first~~ *(done: camper van, water tower)*, ~~a second animal and the Dutch canal house~~ *(done: turtle, canal house)*, ~~a second model in the thinnest categories: space, machines, vehicles, industry, and the first everyday object~~ *(done: Mars rover, arcade cabinet, steam train, wind turbine, layer cake; plus a lighthouse)*. Then six more, spread over six categories: ~~burger, pagoda, harbour crane, fire engine, robot dog, kitchen~~ *(done)*.
 2. **Make the level picker aware of categories** (issue U-1, step 3), now that there are twenty-four models: each `GENS3D` entry already carries its category (`[name, generator, category]`), so `pick3D` can avoid two models of one category in a row. This reshuffles the levels once, like adding a model.
 3. Then more depth in the older models (issue [U-2](ISSUES.md#u-2-older-models-silently-lose-parts)), and the next ideas: a living room, a workshop, a tractor, an excavator, a space station, a Greek temple, a clock tower.
+4. **Screws on the bottom.** The camera orbits all the way under a model (`POL_MIN`/`POL_MAX` in game.js) and the static base fades out from below (`fadeBase`), so the view is ready. What is still needed:
+   - `finalize()` skips every slot with `wn.y<-0.3` or `wp.y<0.1`. Let downward slots through, but only on parts lifted well clear of the base (a screw needs about 0.5 of free space to come out, and its pull-out line must not hit anything).
+   - The base: `finalize()` rejects a slot whose pull-out line hits a static part, while `firstBlocker()` at play time ignores static parts. A screw under a part that hangs over the base is therefore never chosen. Either keep bottom screws for parts with only air below them (a model on legs or stilts, overhangs, a vehicle's underside above its wheels), or let both checks ignore the base (the screw then comes out through the faded slab).
+   - `box()` makes slots on `+x -x +y +z -z` only. A model opts in with `faces:[…,'-y']` or `faceSlot(part,'-y',u,v)`, so older models stay as they are and their levels don't change.
+   - Players don't expect screws underneath: start with one or two per model, perhaps a hint the first time, and check that the screw head (rotated from +y to -y by `setFromUnitVectors`) and its unscrew animation look right.
+   - The inspector (`?models`) and `scripts/unscrew-models.mjs` only look from above: add a view from below to check such models.
 
 ## Recipe: adding a model
 
@@ -170,7 +176,7 @@ The building blocks are in [`models/kit.js`](../games/unscrew/models/kit.js). Re
 - **Two top screws on one part 0.4 apart cost you one of them.** The kitchen's hob had a slot at each burner and kept only one, so one burner had no screw and was dropped: give such a part one slot of its own (`faces:[]` plus `faceSlot`) and make the rest decoration.
 - **Anything that floats just above a part's top screw blocks it.** A plant of low-poly blobs 0.15 over a vase took the vase's screw and made both parts block each other: make leaves decoration (`decor`).
 - Scenery that belongs to the ground (a stoop, a pond, water, a boat at the back) can be decoration on the ground part (`decor(ground, mesh)`, or `decor(BLD.parts[0], mesh)` with `pad`): it stays when the level is done and never gets in the way.
-- Slots pointing more than slightly downward, or lower than 0.1 above the ground, are skipped.
+- Slots pointing more than slightly downward, or lower than 0.1 above the ground, are skipped. The camera can look from below (the base fades out there), but screws on the underside are not switched on yet: see "Screws on the bottom" under *What to build next*.
 - Use only the generator `R` for randomness (never `Math.random`), so a level number always gives the same object.
 
 ### 3. Size and difficulty

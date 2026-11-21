@@ -118,6 +118,11 @@ button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outli
 .lob-alt{border:0;background:#e8eef4;box-shadow:0 4px 0 #c2cfdc}
 .lob-lvl.past{background:#f8fafc}
 .runnote{margin:0;font-size:12px;font-weight:600;color:var(--ink-2)}
+/* Under the level grid: replay the next level that's short of 3 stars, or a note when every one is perfect */
+.btn.perfect{background:#fff6d6;box-shadow:0 4px 0 #e6c45a;color:var(--ink)}
+.btn.perfect:active{box-shadow:0 2px 0 #e6c45a}
+.btn.perfect .pstar{color:var(--gold);font-size:18px;line-height:1;text-shadow:0 1px 0 #c98a00}
+.runnote.allperfect{text-align:center;color:#a07800}
 .gnav-bar .lob-wallet{--gn-size:42px;margin-left:auto;margin-right:8px;font-family:var(--f-display);font-weight:400;box-shadow:0 3px 0 var(--steel-sh)}
 .gnav-bar .lob-wallet .coin{width:22px;height:22px}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:14px;padding:13px 16px;font-family:var(--f-display);font-size:15px;cursor:pointer;background:#e8eef4;box-shadow:0 4px 0 #c2cfdc}

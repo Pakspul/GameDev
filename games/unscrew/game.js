@@ -194,6 +194,8 @@ let camera=persp;
 const hemi=new THREE.HemisphereLight(srgb('#eef6ff'),srgb('#c8b28c'),LOOK.hemi);scene.add(hemi);
 const sun=new THREE.DirectionalLight(srgb('#fff4e6'),LOOK.sun);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-0.0006;sun.shadow.normalBias=0.02;scene.add(sun,sun.target);
 const rim=new THREE.DirectionalLight(srgb('#dbe8ff'),LOOK.rim);scene.add(rim);
+// A soft light from below, only while the camera looks from underneath (fadeBase), so undersides aren't a dark blot
+const under=new THREE.DirectionalLight(srgb('#fff8ee'),0);scene.add(under,under.target);
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.ShadowMaterial({opacity:0.16}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
 // Builds the studio environment from LOOK (once at startup). Materials made before a later call keep the old one
 function applyLook(){if(scene.environment)scene.environment.dispose();const st=studioScene(LOOK.env);scene.environment=pmrem.fromScene(st,0.04).texture;
@@ -217,8 +219,12 @@ const ghostDark=shared(new THREE.MeshBasicMaterial({color:srgb('#2a303a'),transp
 const hitMat=shared(new THREE.MeshBasicMaterial({visible:false}));
 
 let CUR=null,LS=null,state='menu',anims=[];
-const G={mode:'3d',diff:'normal',level:1,score:0,hearts:3};
+// replay: a single cleared level played again for more stars, outside the run (no lives, score or run saved)
+const G={mode:'3d',diff:'normal',level:1,score:0,hearts:3,replay:false};
+// The camera orbits the object all the way round: az horizontally, pol from straight above (0) to straight below (PI).
+// The model itself never turns, so screw positions, raycasts and the sun's shadows stay in world space.
 const orbit={az:0.75,pol:1.02,dist:14,fit:14,target:V(),auto:false,tw:null};
+const POL_MIN=0.06,POL_MAX=Math.PI-0.06;
 
 function look(s){if(s.state!=='in')return;const g=s.group,h=g.children[0],d=g.children[1],xr=LS&&LS.xrayUntil>performance.now();
   if(!s.hidden){g.visible=true;h.material=headMats[s.color];d.material=darkMat;h.renderOrder=d.renderOrder=0;h.castShadow=true}
@@ -234,7 +240,14 @@ function setCurrent(lv){if(CUR){scene.remove(CUR.group);disposeTree(CUR.group)}a
   const dir=is2?V(-0.45,1,-0.6).normalize():V(-0.55,1,0.7).normalize();
   sun.position.copy(c).addScaledVector(dir,R*3);sun.target.position.copy(c);lightLevels(is2);
   const sc=sun.shadow.camera;sc.left=-R*1.2;sc.right=R*1.2;sc.top=R*1.2;sc.bottom=-R*1.2;sc.near=0.5;sc.far=R*7;sc.updateProjectionMatrix();
-  rim.position.copy(c).add(V(4,3,-8));orbit.target.copy(c)}
+  rim.position.copy(c).add(V(4,3,-8));under.position.copy(c).add(V(1,-R*3,2));under.target.position.copy(c);under.intensity=0;orbit.target.copy(c);
+  // The base slabs a model stands on (static parts) would hide everything from below, so they fade out there (fadeBase)
+  lv.base={mats:[],top:0,k:0};if(!is2)lv.parts.forEach(p=>{if(!p.static)return;lv.base.top=Math.max(lv.base.top,new THREE.Box3().setFromObject(p.mesh).max.y);
+    p.mesh.traverse(o=>{if(o.visible&&o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(!m.userData.shared&&!lv.base.mats.includes(m))lv.base.mats.push(m)})})})}
+function fadeBase(){if(!CUR||camera!==persp)return;under.intensity=0.45*Math.min(1,Math.max(0,-Math.cos(orbit.pol)*2.5));
+  const b=CUR.base;if(!b||!b.mats.length)return;
+  const R=CUR.radius,h=persp.position.y-b.top,k=Math.min(1,Math.max(0,(0.12*R-h)/(0.3*R)));if(k===b.k)return;
+  const was=b.k>0;b.k=k;b.mats.forEach(m=>{if((k>0)!==was){m.transparent=k>0;m.depthWrite=k===0;m.needsUpdate=true}m.opacity=1-0.9*k})}
 
 /* --- camera fit --- */
 function availRect(){const W=innerWidth,H=innerHeight;
@@ -259,7 +272,7 @@ canvas.addEventListener('pointerdown',e=>{ensureAudio();try{canvas.setPointerCap
 canvas.addEventListener('pointermove',e=>{const pv=ptrs.get(e.pointerId);if(!pv)return;const dx=e.clientX-pv.x,dy=e.clientY-pv.y;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   const is3=CUR&&CUR.mode==='3d';
   if(ptrs.size===1&&down){if(!down.moved&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>7)down.moved=true;
-    if(down.moved&&is3){orbit.az-=dx*0.009;orbit.pol=Math.min(1.5,Math.max(0.2,orbit.pol-dy*0.007));orbit.auto=false;orbit.tw=null}}
+    if(down.moved&&is3){orbit.az-=dx*0.009;orbit.pol=Math.min(POL_MAX,Math.max(POL_MIN,orbit.pol-dy*0.007));orbit.auto=false;orbit.tw=null}}
   else if(ptrs.size===2&&is3){const[a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(d>10)orbit.dist=clampDist(dist0*pinch0/d)}});
 function endPtr(e){const tap=down&&!down.moved&&ptrs.size===1&&e.type==='pointerup';ptrs.delete(e.pointerId);if(tap)onTap(e.clientX,e.clientY);if(!ptrs.size)down=null}
 canvas.addEventListener('pointerup',endPtr);canvas.addEventListener('pointercancel',endPtr);
@@ -292,8 +305,8 @@ let toastT=0;function toast(t,ms=1700){const el=$('#toast');el.textContent=t;el.
 /* --- HUD --- */
 $('#coinIco').innerHTML=COIN;
 const HEART='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.5S2.5 12.7 2.5 7.4A4 4 0 0 1 10 5.3a4 4 0 0 1 7.5 2.1c0 5.3-7.5 10.1-7.5 10.1z" fill="FILL"/></svg>';
-function renderTop(){$('#lvN').textContent=G.level;$('#lvS').textContent=`${CUR?_t('obj.'+CUR.name):''} · ${_t('diff.'+G.diff)} · ${G.mode.toUpperCase()}`;
-  $('#hearts').innerHTML=[0,1,2].map(i=>HEART.replace('FILL',i<G.hearts?'#ff4d6d':'rgba(23,33,46,.18)')).join('');$('#hearts').setAttribute('aria-label',_t('lives',{n:G.hearts}));renderScore();renderProgress();renderCoins()}
+function renderTop(){$('#lvN').textContent=G.level;$('#lvS').textContent=`${G.replay?_t('replay.tag')+' · ':''}${CUR?_t('obj.'+CUR.name):''} · ${_t('diff.'+G.diff)} · ${G.mode.toUpperCase()}`;
+  $('#hearts').style.display=G.replay?'none':'';$('#hearts').innerHTML=[0,1,2].map(i=>HEART.replace('FILL',i<G.hearts?'#ff4d6d':'rgba(23,33,46,.18)')).join('');$('#hearts').setAttribute('aria-label',_t('lives',{n:G.hearts}));renderScore();renderProgress();renderCoins()}
 function runScore(){return Math.max(0,G.score+(LS?LS.levelScore:0))}
 function renderScore(){$('#scoreN').textContent=fmt(runScore())}
 function renderCoins(){$('#coinN').textContent=fmt(save.coins);const sc=$('#stCoins');if(sc)sc.textContent=fmt(save.coins)}
@@ -329,8 +342,8 @@ function startLevel(){
     for(let i=0;i<cfg.K;i++)LS.boxes.push(nextBox());
     renderTop();renderBoxes();renderRail();renderTools();$('#loading').hidden=true;orbit.auto=false;orbit.tw=null;
     requestAnimationFrame(()=>fitCamera(true));
-    save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist()},30)}
-function addScore(v){if(!LS)return;LS.levelScore+=Math.round(v*LS.cfg.mult);renderScore();const b=save.best[key()]||{score:0,level:0};if(runScore()>b.score){b.score=runScore();save.best[key()]=b}}
+    if(!G.replay){save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist()}},30)}
+function addScore(v){if(!LS)return;LS.levelScore+=Math.round(v*LS.cfg.mult);renderScore();if(G.replay)return;const b=save.best[key()]||{score:0,level:0};if(runScore()>b.score){b.score=runScore();save.best[key()]=b}}
 function addCoins(n){save.coins+=n;renderCoins();persist()}
 
 function tapScrew(s){
@@ -443,40 +456,57 @@ function stuck(){LS.paused=true;sfx.fail();const acts=[];const resume=()=>{LS.pa
   const label=id=>_t('stuck.buy',{name:TOOLS[id].name,price:COIN+toolPrice(id)});
   if(canUse('drill')&&affordable('drill'))acts.push([label('drill'),()=>{resume();useTool('drill')},'primary']);
   if(canUse('chest')&&affordable('chest'))acts.push([label('chest'),()=>{resume();useTool('chest')},acts.length?'':'primary']);
-  acts.push([_t('stuck.retry'),()=>loseLife(),acts.length?'':'primary']);
+  acts.push(G.replay?[_t('stuck.again'),()=>startLevel(),acts.length?'':'primary']:[_t('stuck.retry'),()=>loseLife(),acts.length?'':'primary']);
   modal(_t('stuck.title'),`<p>${_t('stuck.body')}${acts.length>1?_t('stuck.toolHint'):''}</p>`,acts)}
 function loseLife(){G.hearts--;if(G.hearts<=0)return gameOver();save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist();startLevel()}
 // Stars per level, so a run is also something to perfect: 3 for a clean, quick clear, one less
 // for using any tool, and one less for running out of time bonus. Coins only pay for new stars.
+// A replay (a cleared level played again from the menu) follows the same rules: a better result raises the
+// stars and pays only the difference (ECO.levelPay), a worse one changes nothing, so replays can't farm coins.
 const starsOf=(m=G.mode,d=G.diff)=>save.stars[key(m,d)]||(save.stars[key(m,d)]={});
+// Levels you've cleared in this mode and difficulty: those with stars, and (for saves from before stars) up to your highest.
+function cleared(n,m=G.mode,d=G.diff){const b=save.best[key(m,d)];return(save.stars[key(m,d)]||{})[n]>0||n<=(b&&b.level||0)}
+// The lowest cleared level with fewer than 3 stars (0 when every one is perfect), for the menu's "perfect it" button.
+function toPerfect(m,d,skip){const k=key(m,d),st=save.stars[k]||{},b=save.best[k],top=Math.max(b&&b.level||0,...Object.keys(st).map(Number));
+  for(let n=1;n<=top;n++)if(n!==skip&&cleared(n,m,d)&&(st[n]||0)<3)return n;return 0}
+function replayLevel(n){ensureAudio();Object.assign(G,{mode:save.sel.mode,diff:save.sel.diff,level:n,score:0,hearts:3,replay:true});startLevel()}
 function levelComplete(){LS.done=true;const secs=(performance.now()-LS.start)/1000,m=LS.cfg.mult,slow=secs>LS.total*4;
   const base=LS.levelScore,time=Math.round(Math.max(0,LS.total*4-secs)*2*m),bonus=Math.round((150+G.level*20)*m);
   const stars=Math.max(1,Economy.helped(3,LS.helped)-(slow?1:0)),st=starsOf(),prev=st[G.level]||0,coins=ECO.levelPay(G.diff,stars,prev);
   if(stars>prev)st[G.level]=stars;
-  LS.levelScore+=time+bonus;G.score=runScore();const done=G.level;G.level++;LS.levelScore=0;if(coins)addCoins(coins);
-  const b=save.best[key()]||{score:0,level:0};b.score=Math.max(b.score,G.score);b.level=Math.max(b.level,done);save.best[key()]=b;
-  save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist();sfx.win();renderScore();
+  LS.levelScore+=time+bonus;G.score=runScore();const done=G.level;LS.levelScore=0;if(coins)addCoins(coins);
+  if(!G.replay){G.level++;const b=save.best[key()]||{score:0,level:0};b.score=Math.max(b.score,G.score);b.level=Math.max(b.level,done);save.best[key()]=b;
+    save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts}}
+  persist();sfx.win();renderScore();
   const mm=Math.floor(secs/60),ss=String(Math.floor(secs%60)).padStart(2,'0');
   const notes=[LS.helped&&_t('win.toolStar'),slow&&_t('win.slowStar'),prev>stars&&_t('win.prev',{n:prev}),!coins&&_t('win.noCoins')].filter(Boolean);
+  // After a replay: try this one again while it's short of 3 stars, or go on to the next level that is
+  const nx=G.replay&&toPerfect(G.mode,G.diff,done),acts=G.replay?[stars<3&&[_t('replay.again'),()=>replayLevel(done)],nx&&[_t('replay.next',{n:nx}),()=>replayLevel(nx)],[_t('toMenu'),()=>showMenu()]].filter(Boolean)
+    :[[_t('win.next'),()=>startLevel()],[_t('menu.shop'),()=>{openShop(()=>startLevel());return'keep'}],[_t('toMenu'),()=>showMenu()]];acts[0][2]='primary';
   const starRow=`<div class="wstars" role="img" aria-label="${_t('win.stars',{n:stars})}">${[0,1,2].map(i=>`<span class="${i<stars?'':'off'}">★</span>`).join('')}</div>`;
   setTimeout(()=>modal(_t('win.title',{n:done}),`${starRow}<div class="rows"><div><span>${_t('win.screws')}</span><span>${fmt(base)}</span></div><div><span>${_t('win.time',{t:mm+':'+ss})}</span><span>+${fmt(time)}</span></div><div><span>${_t('win.level')}</span><span>+${fmt(bonus)}</span></div><div class="tot"><span>${_t('win.total')}</span><span>${fmt(G.score)}</span></div><div class="gold"><span>${_t('win.coins')}</span><span>${COIN} +${coins}</span></div></div>${notes.length?`<p class="wnote">${notes.join(' ')}</p>`:''}`,
-    [[_t('win.next'),()=>startLevel(),'primary'],[_t('menu.shop'),()=>{openShop(()=>startLevel());return'keep'}],[_t('toMenu'),()=>showMenu()]]),reduceMotion?50:650)}
+    acts),reduceMotion?50:650)}
 function gameOver(){const b=save.best[key()]||{score:0,level:0};const reached=G.level-1;const isBest=G.score>0&&G.score>=b.score;b.score=Math.max(b.score,G.score);b.level=Math.max(b.level,reached);save.best[key()]=b;
   delete save.runs[key()];persist();
   modal(_t('over.title'),`<p>${_t('over.body',{level:G.level,score:fmt(G.score)})}</p>${isBest?`<span class="newbest">${_t('over.newBest')}</span>`:`<p style="margin-top:6px">${_t('over.best',{n:fmt(b.score)})}</p>`}`,
     [[_t('menu.newRun'),()=>{newRun();startLevel()},'primary'],[_t('toMenu'),()=>showMenu()]])}
 
 /* --- menu --- */
-function newRun(){Object.assign(G,{mode:save.sel.mode,diff:save.sel.diff,level:1,score:0,hearts:3})}
+function newRun(){Object.assign(G,{mode:save.sel.mode,diff:save.sel.diff,level:1,score:0,hearts:3,replay:false})}
 // The menu is the lobby (shared/js/gamelobby.js): 2D or 3D, the difficulty, your run, and every level's stars.
-// Levels come one after the other in a run, so only the run's own level can be played from the grid.
+// Levels come one after the other in a run: the run's own level continues the run, any level you've cleared
+// can be replayed on its own for more stars (replayLevel), and a button under the grid picks the next one to perfect.
 const MODE_ICON={'2d':'<svg viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="5" width="20" height="9" rx="4.5" fill="#8fd3ff"/><rect x="11" y="10" width="9" height="20" rx="4.5" fill="#ffcf70"/><rect x="15" y="16" width="16" height="9" rx="4.5" transform="rotate(-30 23 20)" fill="#b8a4ff"/><circle cx="8" cy="9.5" r="2.4" fill="#ff3d9a"/><circle cx="15.5" cy="25" r="2.4" fill="#1f7bff"/><circle cx="26" cy="17" r="2.4" fill="#8fd61f"/></svg>','3d':'<svg viewBox="0 0 34 34" aria-hidden="true"><path d="M17 3l12 7v14l-12 7-12-7V10z" fill="#7cc68d"/><path d="M17 17l12-7v14l-12 7z" fill="#4f9e64"/><path d="M17 17L5 10l12-7 12 7z" fill="#b8e3b5"/><circle cx="17" cy="10" r="2.4" fill="#ff3d9a"/><circle cx="23" cy="21" r="2.4" fill="#ffcc1a"/><circle cx="10.5" cy="20" r="2.4" fill="#7b4dff"/></svg>'};
 let wallet=null;
 function renderMenu(){const sel=save.sel,k=key(sel.mode,sel.diff),r=save.runs[k],b=save.best[k],st=save.stars[k]||{};
   const reached=Math.max(1,b&&b.level||0,r?r.level:0,...Object.keys(st).map(Number)),sv=Object.values(st).filter(Boolean);
   const fresh=wallet;wallet=GameLobby.wallet({value:fmt(save.coins),icon:COIN,label:_t('menu.shop'),onClick:()=>{ensureAudio();openShop(()=>renderMenu())}});
   if(fresh)fresh.replaceWith(wallet);placeNav();
-  const go=()=>{ensureAudio();if(!r){newRun();startLevel();return}Object.assign(G,{mode:sel.mode,diff:sel.diff,level:r.level,score:r.score,hearts:r.hearts});startLevel()};
+  const go=()=>{ensureAudio();if(!r){newRun();startLevel();return}Object.assign(G,{mode:sel.mode,diff:sel.diff,level:r.level,score:r.score,hearts:r.hearts,replay:false});startLevel()};
+  const runLv=r?r.level:1,ok=n=>cleared(n,sel.mode,sel.diff),pf=toPerfect(sel.mode,sel.diff);
+  let perfect='';if(reached>1&&pf){perfect=document.createElement('button');perfect.className='btn perfect';
+    perfect.innerHTML=`<span class="pstar" aria-hidden="true">★</span><span>${_t('menu.perfect',{n:pf})}</span>`;perfect.onclick=()=>replayLevel(pf)}
+  else if(reached>1&&(sv.length||b&&b.level>0))perfect=Object.assign(document.createElement('p'),{className:'runnote allperfect',textContent:_t('menu.allPerfect')});
   $('#lobby').replaceChildren(
     GameLobby.choice({label:_t('menu.view'),value:sel.mode,options:['2d','3d'].map(m=>({value:m,label:m.toUpperCase(),note:_t('menu.'+m),icon:MODE_ICON[m]})),
       onChoose:m=>{save.sel.mode=m;persist();renderMenu();buildDemo()}}),
@@ -488,7 +518,8 @@ function renderMenu(){const sel=save.sel,k=key(sel.mode,sel.diff),r=save.runs[k]
       more:[r&&{label:_t('menu.newRun'),onClick:()=>{ensureAudio();newRun();startLevel()}}],
       stats:[[b?fmt(b.score):'0',_t('menu.best').toLowerCase()],[b&&b.level||0,_t('menu.highest').toLowerCase()],[sv.reduce((a,x)=>a+x,0),_t('lobby.stars')]]}),
     // The grid only once there's something on it, so a new player still sees the model turning behind the menu.
-    reached>1?GameLobby.levels({last:reached,next:r?r.level:1,perPage:12,stars:n=>st[n]||0,playable:n=>n===(r?r.level:1),onPick:go}):'',
+    reached>1?GameLobby.levels({last:reached,next:runLv,perPage:12,stars:n=>st[n]||0,playable:n=>n===runLv||ok(n),onPick:n=>n===runLv?go():replayLevel(n)}):'',
+    perfect,
     reached>1?Object.assign(document.createElement('p'),{className:'runnote',textContent:_t('menu.runNote')}):'');
 }
 function buildDemo(){const m=save.sel.mode;const lv=buildLevel(m,'normal',m==='2d'?6:1,cfgFor('normal',3),'demo');setCurrent(lv);spawnScrews(lv);orbit.auto=m==='3d'&&!reduceMotion;requestAnimationFrame(()=>fitCamera(true))}
@@ -499,7 +530,7 @@ let last=performance.now();
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;
   if(orbit.auto)orbit.az+=dt*0.22;
   if(orbit.tw){let da=orbit.tw.az-orbit.az;da=Math.atan2(Math.sin(da),Math.cos(da));orbit.az+=da*Math.min(1,dt*6);orbit.pol+=(orbit.tw.pol-orbit.pol)*Math.min(1,dt*6);if(Math.abs(da)<0.002&&Math.abs(orbit.tw.pol-orbit.pol)<0.002)orbit.tw=null}
-  if(camera===persp)applyOrbit();
+  if(camera===persp){applyOrbit();fadeBase()}
   if(anims.length)anims=anims.filter(a=>a(dt)!==false);
   renderer.render(scene,camera);requestAnimationFrame(frame)}
 showMenu();requestAnimationFrame(frame);
