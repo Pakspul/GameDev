@@ -21,7 +21,8 @@ How the repository is organised, why, and how to improve it step by step without
 │   ├── graphite/            levels/ holds one generator per puzzle type; worker.js runs them off the main thread
 │   ├── wallbreaker/         src/ holds the engine, generator, modes, economy (config.js has every number), renderer and save
 │   ├── coin-dozer/          src/ holds the physics board (Rapier), the machine's rules, economy, themes, renderer and save; config.js has every number
-│   └── starflip/            src/ holds its own pinball physics, the tables and missions as data, the rules, renderer and sounds; config.js has every number
+│   ├── starflip/            src/ holds its own pinball physics, the tables and missions as data, the rules, renderer and sounds; config.js has every number
+│   └── loopline/            src/ holds the rules (engine.js), pictures, level generator, solver, renderer and sounds; config.js has every number
 ├── shared/                  Things every game uses, kept in exactly one place
 │   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md), gamenav.js (back button and menu), gamelobby.js (a game's own menu)
 │   ├── css/                 gamenav.css, gamelobby.css: the neutral look of those, which each game restyles
@@ -37,6 +38,7 @@ How the repository is organised, why, and how to improve it step by step without
 ├── tests/puzzles.mjs        npm test: Graphite's generators give unique puzzles, and the same ones every time
 ├── tests/economy.mjs        npm test: every game's prices and rewards follow docs/ECONOMY.md
 ├── tests/unscrew.mjs        npm test: every Unscrew model is loaded, in the fixed level order, and named in every language
+├── tests/loopline/          npm test: Loopline's rules, every level solvable and pinned (rules.test.mjs in Node), e2e.mjs in a phone browser
 ├── tests/wallbreaker/       npm test: Wallbreaker's acceptance criteria (rules.test.mjs in Node, e2e.mjs in a phone browser)
 ├── tests/coin-dozer/        npm test: Coin Dozer's acceptance criteria (rules and sim tests in Node on the real physics, e2e.mjs in a phone browser)
 ├── docs/                    Guides (this file, Android publishing, roadmap)
@@ -71,6 +73,7 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Coin Dozer | English + Dutch | ~2,900 (ES modules) | three.js r128 + Rapier physics, instanced coins; nothing runs while paused or hidden | `coin-dozer.save` | Coin pusher: fixed 60 Hz physics, seeded board, prizes and bonus events; its own economy in `src/config.js`; service worker for offline install. See [COIN-DOZER.md](COIN-DOZER.md) |
 | Crystal Reels | English + Dutch | ~6,000 (ES modules) | DOM + SVG, no canvas except particles; frame loop only while something moves | `honest-arcade.slots.save.0/1` | Slot machines with play money; maths engine + simulator in `games/crystal-reels/src/engine`, see [SLOTS.md](SLOTS.md) |
 | Starflip | English + Dutch | ~2,200 (ES modules) | 2D canvas, a cached layer per table; frame loop only while playing | `starflip.v1` | Pinball with missions and bonus tables; its own physics in `src/physics.js` (fixed 600 Hz), rules in `src/rules.js`. See [STARFLIP.md](STARFLIP.md) |
+| Loopline | English + Dutch | ~1,800 (ES modules) | 2D canvas; frame loop only while something moves | `loopline.v1` | Colour-clearing puzzle in two modes (Depot, Critters); rules in `src/engine.js` (ticks), seeded levels built from a solution in `src/levels.js`, hint solver in `src/solver.js`. See [LOOPLINE.md](LOOPLINE.md) |
 | Inkfield | English + Dutch | ~1,500 (ES modules) | three.js r128, top-down; land smoothed on the GPU only where it changed | `inkfield.v1` | Territory game against computer players; rules in `src/sim.js` (fixed 60 Hz, grids), bots in `src/bots.js`. Prototype. See [INKFIELD.md](INKFIELD.md) |
 | Camper Crew | English + Dutch | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
 

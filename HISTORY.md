@@ -19,6 +19,23 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-21
+
+**Done**
+- **Loopline**, a new colour-clearing puzzle with two modes on one engine (see [docs/LOOPLINE.md](docs/LOOPLINE.md)):
+  - **Depot:** buses leave a jammed car park and pick up passengers of their colour on a loop round a pixel picture.
+  - **Critters:** critters ride a belt from lanes and pop blocks of their colour.
+  - Rules in `src/engine.js`: one cell per step, the first one a mover sees. Movers with room left park in bays, and a full set of bays loses. Free undo and hints.
+  - Levels are built from a solution and replayed before use, so every level can be solved. 15 drawn pictures, then endless seeded ones.
+  - Tests: rules and levels 1–60 per mode in Node (`npm run test:loopline`), plus a phone-browser e2e that clears levels with real taps.
+
+**Decided**
+- Name: **Loopline**. Buses (Depot) and shooters (Critters) first; 3D is for V2.
+- One cell per step instead of a whole run per step: with runs, random tapping won ~95% of hard levels.
+
+**Next**
+- Playtest Loopline on the phone and tune `params()`.
+
 ## 2026-11-20
 
 **Done**
