@@ -1,5 +1,5 @@
-// Loopline's rules, with no drawing in them. Shared by the game, the level generator, the solver
-// and the tests, so what you see is exactly what was checked.
+// Critters' rules (Depot's are in depot.js), with no drawing in them. Shared by the game, the level
+// generator, the solver and the tests, so what you see is exactly what was checked.
 //
 // The board: a picture of w × h cells, each empty (0) or a colour (1..). Around it runs a loop
 // (the track). Movers (buses in Depot, critters in Critters) have a colour and a capacity. You send
@@ -8,8 +8,8 @@
 // cell behind it then shows, for the next mover or the next lap). After its lap a mover with nothing left is done; one with room left
 // parks in a free bay, from where you can send it again. No free bay: the level is lost.
 //
-// Movers wait in the yard: in lanes (Critters, only the front one of a lane can go) or in a car park
-// (Depot, a vehicle can leave only if nothing stands between its nose and the edge of the park).
+// Critters wait in lanes; only the front one of a lane can go. (The car park helpers at the bottom
+// of the file are Depot's.)
 //
 // Time runs in ticks. Each tick every mover on the loop moves one step. Several movers can be on
 // the loop at once; the front one acts first. All of it is deterministic.
@@ -69,17 +69,16 @@ export function carPath(car, lw, lh) {
 }
 
 export class Game {
-  /** level: { w, h, cells, movers: [{ color, cap }], lanes?: [[mover]], lot?: { w, h, cars: [{ m, x, y, len, dir }] }, bays, belt? } */
+  /** level: { w, h, cells, movers: [{ color, cap }], lanes: [[mover]], bays, belt? } */
   constructor(level, { history = true } = {}) {
     this.level = level;
+    this.kind = "critters";
     this.w = level.w; this.h = level.h;
     this.track = makeTrack(level.w, level.h);
     this.L = this.track.length;
     this.beltMax = level.belt || 4;
     this.spacing = level.spacing || 2;
     this.keepHistory = history;
-    this.cars = level.lot ? level.lot.cars : null;
-    this.carOf = level.lot ? new Map(level.lot.cars.map((c, i) => [c.m, i])) : null;
     this.reset();
   }
 
@@ -89,11 +88,7 @@ export class Game {
     this.remaining = this.cells.reduce((a, v) => a + (v ? 1 : 0), 0);
     this.left = lv.movers.map((m) => m.cap);
     this.where = lv.movers.map(() => YARD);
-    this.lanes = lv.lanes ? lv.lanes.map((l) => l.slice()) : null;
-    if (lv.lot) {
-      this.occ = new Int16Array(lv.lot.w * lv.lot.h).fill(-1);
-      lv.lot.cars.forEach((c, i) => { for (const [x, y] of carCells(c)) this.occ[y * lv.lot.w + x] = i; });
-    } else this.occ = null;
+    this.lanes = lv.lanes.map((l) => l.slice());
     this.bays = new Array(lv.bays).fill(-1);
     this.belt = [];   // [{ m, pos }], front first
     this.queue = [];  // movers waiting to get on the loop
@@ -113,12 +108,7 @@ export class Game {
     const w = this.where[m];
     if (w === BAY) return true;
     if (w !== YARD) return false;
-    if (this.lanes) return this.lanes.some((l) => l[0] === m);
-    if (this.cars) {
-      const lot = this.level.lot;
-      return carPath(this.cars[this.carOf.get(m)], lot.w, lot.h).every(([x, y]) => this.occ[y * lot.w + x] === -1);
-    }
-    return false;
+    return this.lanes.some((l) => l[0] === m);
   }
   /** Every mover that can be sent now. */
   ready() {
@@ -137,12 +127,7 @@ export class Game {
     if (this.keepHistory) this.history.push(this.snapshot());
     let from;
     if (this.where[m] === BAY) { const b = this.bays.indexOf(m); this.bays[b] = -1; from = { bay: b }; }
-    else if (this.lanes) { const k = this.lanes.findIndex((l) => l[0] === m); this.lanes[k].shift(); from = { lane: k }; }
-    else {
-      const i = this.carOf.get(m), lw = this.level.lot.w;
-      for (const [x, y] of carCells(this.cars[i])) this.occ[y * lw + x] = -1;
-      from = { car: i };
-    }
+    else { const k = this.lanes.findIndex((l) => l[0] === m); this.lanes[k].shift(); from = { lane: k }; }
     this.where[m] = QUEUE;
     this.queue.push(m);
     this.events.push({ type: "launch", m, from });
@@ -215,16 +200,19 @@ export class Game {
     return true;
   }
 
+  /** For the solver: the position as text. */
+  key() { return String.fromCharCode.apply(null, this.cells) + "|" + this.left.join(",") + "|" + this.where.join(""); }
+
   snapshot() {
     return {
       cells: this.cells.slice(), remaining: this.remaining, left: this.left.slice(), where: this.where.slice(),
-      lanes: this.lanes && this.lanes.map((l) => l.slice()), occ: this.occ && this.occ.slice(), bays: this.bays.slice(),
+      lanes: this.lanes.map((l) => l.slice()), bays: this.bays.slice(),
       belt: this.belt.map((b) => ({ ...b })), queue: this.queue.slice(), status: this.status, lostBy: this.lostBy, ticks: this.ticks,
     };
   }
   restore(s) {
     this.cells = s.cells.slice(); this.remaining = s.remaining; this.left = s.left.slice(); this.where = s.where.slice();
-    this.lanes = s.lanes && s.lanes.map((l) => l.slice()); this.occ = s.occ && s.occ.slice(); this.bays = s.bays.slice();
+    this.lanes = s.lanes.map((l) => l.slice()); this.bays = s.bays.slice();
     this.belt = s.belt.map((b) => ({ ...b })); this.queue = s.queue.slice(); this.status = s.status; this.lostBy = s.lostBy; this.ticks = s.ticks;
     this.events = [];
   }

@@ -1,12 +1,12 @@
-// Loopline: the app shell. Taps, the tick loop, the HUD, the lobby and the result screen, sound
-// and saving. The rules live in src/engine.js, the levels in src/levels.js, hints come from
-// src/solver.js, and src/render.js draws it all on one canvas.
+// Loopline: the app shell. Taps, the tick loop, the HUD and toolbar, the lobby and the result screen,
+// sound and saving. The rules live in src/engine.js (Critters) and src/depot.js (Depot), the levels in
+// src/levels.js, hints come from src/solver.js, and src/render.js draws it all on one canvas.
 //
-// Saves under "loopline.v1" in localStorage: the chosen mode, per mode the highest level cleared
-// and the stars per level, and the sound and vibration switches.
+// Saves under "loopline.v2" in localStorage: the chosen mode and difficulty, per mode and difficulty
+// the highest level cleared and the stars per level, and the sound and vibration switches.
+// (v1 had one track per mode with other levels; its stars would point at different puzzles.)
 import { CONFIG } from "./src/config.js";
-import { Game, YARD } from "./src/engine.js";
-import { makeLevel, MODES } from "./src/levels.js";
+import { makeLevel, newGame, MODES, DIFFS } from "./src/levels.js";
 import { solve } from "./src/solver.js";
 import { Renderer } from "./src/render.js";
 import { Sound } from "./src/audio.js";
@@ -15,18 +15,20 @@ const _t = I18n.t;
 const $ = (id) => document.getElementById(id);
 
 // ---- Saving -------------------------------------------------------------------------------------------------
-const SAVE_KEY = "loopline.v1";
+const SAVE_KEY = "loopline.v2";
 function loadSave() {
-  const fresh = { mode: "depot", progress: {}, sound: true, haptics: true };
+  const fresh = { mode: "depot", diff: "easy", progress: {}, sound: true, haptics: true };
   try { return Object.assign(fresh, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) { return fresh; }
 }
 function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ } }
 const save = loadSave();
-const prog = (m) => (save.progress[m] = save.progress[m] || { best: 0, stars: {} });
+const track = () => `${mode}:${diff}`;
+const prog = (k = track()) => (save.progress[k] = save.progress[k] || { best: 0, stars: {} });
 
 // ---- State --------------------------------------------------------------------------------------------------
 let state = "menu";   // menu | play | pause | over
 let mode = MODES.includes(save.mode) ? save.mode : "depot";
+let diff = DIFFS.includes(save.diff) ? save.diff : "easy";
 let levelN = 1, game = null, helps = 0, total = 1;
 let raf = 0, last = 0, acc = 0, endAt = -1, endKind = "", wantHint = false;
 const streak = new Map();
@@ -39,62 +41,72 @@ function haptic(ms) { if (save.haptics) Platform.haptic(ms); }
 // ---- A level ------------------------------------------------------------------------------------------------
 function loadLevel(n) {
   levelN = n;
-  game = new Game(makeLevel(mode, n));
+  game = newGame(makeLevel(mode, diff, n));
   total = game.remaining;
   helps = 0; acc = 0; endAt = -1; endKind = ""; wantHint = false;
   streak.clear();
   showTip();
-  R.top = layoutTop();
+  R.tickDT = tickDT();
+  layoutCanvas();
   R.setGame(game, mode);
   updateHud();
   redraw();
 }
-const tickDT = () => CONFIG.lapSeconds / game.L;
+const tickDT = () => (game.kind === "depot" ? CONFIG.depot.tick : CONFIG.lapSeconds / game.L);
 
 function showTip() {
   const key = `tip.${mode}.${levelN}`;
   const tip = $("tip");
-  if (levelN <= 3 && I18n.has(key)) { tip.textContent = _t(key); tip.hidden = false; } else tip.hidden = true;
+  if (diff === "easy" && levelN <= 3 && I18n.has(key)) { tip.textContent = _t(key); tip.hidden = false; } else tip.hidden = true;
 }
-function layoutTop() {
+function layoutCanvas() {
   const hud = $("hud").getBoundingClientRect();
   const tip = $("tip");
   const tipH = !tip.hidden && state !== "menu" ? tip.getBoundingClientRect().height + 8 : 0;
-  return Math.round(hud.bottom + tipH + 6);
+  R.top = Math.round(hud.bottom + tipH + 2);
+  R.bottom = Math.round(window.innerHeight - $("tools").getBoundingClientRect().top);
 }
 
 function send(m) {
   const r = game.launch(m);
   if (r === "ok") { sound.go(); drain(); kick(); return; }
   if (r === "blocked") { R.shake(m, now()); sound.nope(); toast(_t("toast.blocked." + mode)); kick(); }
-  else if (r === "full") { sound.nope(); toast(_t("toast.full")); }
+  else if (r === "full") { R.shake(m, now()); sound.nope(); toast(_t("toast.full." + mode)); kick(); }
 }
 
 /** Turn the engine's events into sounds and effects. */
 function drain() {
-  const t = now();
+  const t = now(), depot = game.kind === "depot";
   for (const e of game.events) {
-    if (e.type === "launch") { R.onLaunch(e.m, e.from, t); streak.set(e.m, 0); }
+    if (e.type === "launch") { R.onLaunch(e.m, e, t); streak.set(e.m, 0); }
     else if (e.type === "take") {
       const k = streak.get(e.m) || 0;
       streak.set(e.m, k + 1);
       R.onTake(e.m, e.cell, t, R.trackPoint(e.pos));
       sound.pop(k);
-    } else if (e.type === "park") { R.onPark(e.m, e.bay, t); sound.park(); haptic(8); }
+    } else if (e.type === "board") {
+      const k = streak.get(e.m) || 0;
+      streak.set(e.m, k + 1);
+      R.onBoard(e.m, e.cell, e.dock, t, R.ringPoint(game.stop));
+      sound.pop(k);
+    } else if (e.type === "enter" && depot) R.onEnter(e.cell, t);
+    else if (e.type === "dock") { sound.park(); haptic(6); }
+    else if (e.type === "depart") { R.onDepart(e.m, e.dock, t); sound.done(); haptic(12); }
+    else if (e.type === "park") { R.onPark(e.m, e.bay, t); sound.park(); haptic(8); }
     else if (e.type === "done") { R.onDone(e.m, t); sound.done(); haptic(12); }
-    else if (e.type === "won") { R.onWin(t); sound.win(); haptic(30); endKind = "won"; endAt = t + 0.9; }
-    else if (e.type === "lost") { sound.lose(); haptic(60); endKind = "lost"; endAt = t + 0.6; }
+    else if (e.type === "won") { R.onWin(t); sound.win(); haptic(30); endKind = "won"; endAt = t + 1.0; }
+    else if (e.type === "lost") { sound.lose(); haptic(60); endKind = "lost"; endAt = t + 0.7; }
   }
   if (game.events.length) updateHud();
   game.events.length = 0;
 }
 
-// ---- Loop: ticks while movers are on the loop, frames while anything moves ---------------------------------
+// ---- Loop: ticks while something can happen, frames while anything moves ----------------------------------
 function frame(ts) {
   raf = 0;
   const t = ts / 1000, dt = Math.min(0.1, t - (last || t));
   last = t;
-  const running = state === "play" && game.status !== "lost" && !game.idle;
+  const running = state === "play" && game.status !== "lost" && !game.idle; // after a win, let the loop run empty
   if (running) {
     acc += dt;
     const DT = tickDT();
@@ -109,7 +121,7 @@ function frame(ts) {
 function kick() { if (!raf) { last = 0; raf = requestAnimationFrame(frame); } }
 function redraw() { R.draw(0, now()); kick(); }
 
-/** The loop just ran empty: a pending hint, or no way forward at all. */
+/** Everything just stopped: a pending hint, or no way forward at all. */
 function afterSettle() {
   if (game.status !== "play") return;
   if (wantHint) { wantHint = false; hint(); }
@@ -119,7 +131,10 @@ function afterSettle() {
 // ---- HUD ----------------------------------------------------------------------------------------------------
 function updateHud() {
   if (!game) return;
-  $("levelName").textContent = `${_t("mode." + mode)} · ${_t("hud.level", { n: levelN })}`;
+  $("levelName").textContent = _t("hud.level", { n: levelN });
+  const chip = $("diffChip");
+  chip.textContent = `${_t("mode." + mode)} · ${_t("diff." + diff)}`;
+  chip.className = "chip " + diff;
   const p = Math.round((100 * (total - game.remaining)) / total);
   $("bar").style.width = p + "%";
   $("bar").parentElement.setAttribute("title", _t("hud.progress", { p }));
@@ -163,12 +178,14 @@ $("cv").addEventListener("pointerdown", (e) => {
   const h = R.hit(e.clientX - r.left, e.clientY - r.top);
   if (h) send(h.m);
 });
-$("undoBtn").addEventListener("click", () => { sound.unlock(); undo(); });
-$("hintBtn").addEventListener("click", () => { sound.unlock(); hint(); });
+$("undoBtn").addEventListener("click", () => { sound.unlock(); if (state === "play") undo(); });
+$("hintBtn").addEventListener("click", () => { sound.unlock(); if (state === "play") hint(); });
+$("restartBtn").addEventListener("click", () => { sound.unlock(); if (state === "play") start(levelN); });
 addEventListener("keydown", (e) => {
   if (state === "play" && (e.key === "z" || e.key === "Z" || e.key === "Backspace")) { e.preventDefault(); undo(); }
   else if (state === "play" && (e.key === "h" || e.key === "H")) hint();
-  else if (state === "menu" && e.key === "Enter" && document.activeElement?.tagName !== "BUTTON") start(prog(mode).best + 1);
+  else if (state === "play" && (e.key === "r" || e.key === "R")) start(levelN);
+  else if (state === "menu" && e.key === "Enter" && document.activeElement?.tagName !== "BUTTON") start(prog().best + 1);
 });
 
 // ---- Screens ------------------------------------------------------------------------------------------------
@@ -185,8 +202,11 @@ function setState(s) {
 function setMode(m) {
   mode = save.mode = m;
   writeSave();
-  document.body.classList.toggle("mode-depot", m === "depot");
-  document.body.classList.toggle("mode-critters", m === "critters");
+  for (const x of MODES) document.body.classList.toggle("mode-" + x, x === m);
+}
+function setDiff(d) {
+  diff = save.diff = d;
+  writeSave();
 }
 
 function start(n) {
@@ -200,9 +220,10 @@ function finish() {
   const kind = endKind;
   endAt = -1; endKind = "";
   const main = $("resultMain"), alt = $("resultAlt");
+  $("resultLevel").textContent = `${_t("hud.level", { n: levelN })} · ${_t("diff." + diff)}`;
   if (kind === "won") {
     const stars = helps === 0 ? 3 : helps <= 2 ? 2 : 1;
-    const p = prog(mode);
+    const p = prog();
     p.best = Math.max(p.best, levelN);
     p.stars[levelN] = Math.max(p.stars[levelN] || 0, stars);
     writeSave();
@@ -212,36 +233,45 @@ function finish() {
     $("resultNote").textContent = stars < 3 ? _t("res.helps") : "";
     main.textContent = _t("next"); main.onclick = () => start(levelN + 1);
     alt.textContent = _t("menu"); alt.onclick = toMenu;
+    $("result").classList.remove("lost");
   } else {
     $("resultStars").innerHTML = "";
-    $("resultTitle").textContent = _t(kind === "stuck" ? "res.stuck" : "res.lost");
+    $("resultTitle").textContent = _t(kind === "stuck" ? "res.stuck" : "res.lost." + mode);
     $("resultText").textContent = kind === "stuck" ? _t("res.stuckText") : _t("res.lostText." + mode);
     $("resultNote").textContent = "";
     main.textContent = _t("undoLast"); main.onclick = undo;
     alt.textContent = _t("again"); alt.onclick = () => start(levelN);
+    $("result").classList.add("lost");
   }
   $("tip").hidden = true;
   setState("over");
-  main.focus({ preventScroll: true });
+  main.focus({ preventScroll: true, focusVisible: false });
 }
 
-// The start screen is the lobby (shared/js/gamelobby.js): the two modes, one big Play, every level.
+// The start screen is the lobby (shared/js/gamelobby.js): the two modes, the difficulty, one big Play, every level.
 const ICON = {
   depot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="3"/><path d="M3 11h18M8 5v6M13 5v6"/><circle cx="7.5" cy="18.5" r="1.8" fill="currentColor"/><circle cx="16.5" cy="18.5" r="1.8" fill="currentColor"/></svg>',
   critters: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="13" r="8"/><circle cx="6.5" cy="5.5" r="2"/><circle cx="17.5" cy="5.5" r="2"/><circle cx="9.3" cy="11.5" r="1.3" fill="currentColor"/><circle cx="14.7" cy="11.5" r="1.3" fill="currentColor"/></svg>',
 };
 function refreshMenu() {
-  const p = prog(mode), next = p.best + 1;
+  const p = prog(), next = p.best + 1;
   const stars = Object.values(p.stars).reduce((a, b) => a + b, 0);
+  document.body.dataset.diff = diff;
   $("lobby").replaceChildren(
     GameLobby.choice({
       label: _t("mode"), value: mode,
       options: MODES.map((m) => ({ value: m, label: _t("mode." + m), note: _t(`mode.${m}.note`), icon: ICON[m] })),
       onChoose: (m) => { setMode(m); refreshMenu(); showBehind(); },
     }),
+    GameLobby.tabs({
+      label: _t("diff"), value: diff,
+      options: DIFFS.map((d, i) => ({ value: d, label: _t("diff." + d), pips: [i + 1, 3], meta: _t("diff.cleared", { n: prog(`${mode}:${d}`).best }) })),
+      onChoose: (d) => { setDiff(d); refreshMenu(); showBehind(); },
+    }),
     GameLobby.play({
-      title: _t("playTitle", { mode: _t("mode." + mode), n: next }),
-      text: _t("playText." + mode),
+      eyebrow: `${_t("mode." + mode)} · ${_t("diff." + diff)}`,
+      title: _t("hud.level", { n: next }),
+      text: _t(`playText.${mode}.${diff}`),
       action: { label: _t("play"), onClick: () => start(next) },
       stats: [[p.best, _t("st.cleared")], [stars, _t("st.stars")]],
     }),
@@ -249,7 +279,7 @@ function refreshMenu() {
   );
 }
 /** The board of the next level, behind the menu. */
-function showBehind() { loadLevel(prog(mode).best + 1); }
+function showBehind() { loadLevel(prog().best + 1); }
 
 // ---- Back (top left) and the menu drawer (top right) ------------------------------------------------------
 const nav = GameNav.create({
@@ -263,7 +293,7 @@ const nav = GameNav.create({
       inLevel && { icon: "restart", label: _t("restart"), onSelect() { start(levelN); } },
       { icon: "sound", label: _t("sound"), checked: save.sound, onToggle(on) { save.sound = sound.on = on; writeSave(); } },
       { icon: "tap", label: _t("haptics"), checked: save.haptics, onToggle(on) { save.haptics = on; writeSave(); } },
-      { icon: "help", label: _t("how"), html: "<ul>" + [1, 2, 3, 4, 5].map((n) => "<li>" + _t("how." + n) + "</li>").join("") + "</ul>" },
+      { icon: "help", label: _t("how"), html: "<p><b>" + _t("mode." + mode) + "</b></p><ul>" + [1, 2, 3, 4].map((n) => "<li>" + _t(`how.${mode}.${n}`) + "</li>").join("") + "</ul>" },
       state === "menu" && GameNav.language(),
     ];
   },
@@ -277,7 +307,9 @@ function placeNav() {
 }
 
 document.addEventListener("visibilitychange", () => { if (document.hidden && state === "play") setState("pause"); });
-addEventListener("resize", () => { R.top = layoutTop(); R.resize(); redraw(); });
+addEventListener("resize", () => { layoutCanvas(); R.resize(); redraw(); });
+// The canvas draws numbers in the game's font: draw again once it has loaded.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => redraw());
 
 // ---- Start: the menu over the next level's board ------------------------------------------------------------
 setMode(mode);
@@ -285,7 +317,12 @@ refreshMenu();
 setState("menu");
 showBehind();
 window.Loopline = {
-  get game() { return game; }, get state() { return state; }, get mode() { return mode; }, get level() { return levelN; },
-  start, send, undo, hint, setMode(m) { setMode(m); refreshMenu(); showBehind(); }, solve: () => solve(game),
+  get game() { return game; }, get state() { return state; }, get mode() { return mode; }, get diff() { return diff; }, get level() { return levelN; },
+  start, send, undo, hint,
+  setMode(m) { setMode(m); refreshMenu(); showBehind(); },
+  setDiff(d) { setDiff(d); refreshMenu(); showBehind(); },
+  solve: () => solve(game),
   point: (m) => R.yardPoint(m), bayPoint: (b) => R.bayPoint(b),
+  /** Where the board and the yard ended up, for the layout check in the tests. */
+  layoutInfo: () => ({ cs: R.cs, bottom: R.yard.y + R.yard.h + (mode === "depot" ? 10 : 6), left: Math.min(R.yard.x, R.px - R.ringOut), right: Math.max(R.yard.x + R.yard.w, R.px + R.pw + R.ringOut) }),
 };

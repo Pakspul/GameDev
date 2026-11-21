@@ -33,6 +33,17 @@ Template: copy this to the top for a new day
 - Name: **Loopline**. Buses (Depot) and shooters (Critters) first; 3D is for V2.
 - One cell per step instead of a whole run per step: with runs, random tapping won ~95% of hard levels.
 
+- **Loopline, second pass** (see [docs/LOOPLINE.md](docs/LOOPLINE.md)):
+  - **Easy, Medium and Hard** tracks per mode, each with its own levels, progress and stars (difficulty tabs in the lobby).
+  - **Depot reworked into a bus stop:** the picture's pixels leave by a left and a right door and ride a loop of trays; buses from the car park wait at docks by one stop, and pixels of their colour get on as they pass. A full bus drives away. Every dock taken and nothing can board: jammed. Rules in the new `src/depot.js`.
+  - **A new look:** deep indigo board, light rails with running chevrons, the picture as voxel pixels, critters and buses as pixel sprites, Lilita One / Baloo 2, a red pill for the level, a red toolbar with Undo, Hint and Restart.
+  - 14 bigger drawn pictures (16 wide) for Medium and Hard.
+  - Save key `loopline.v2` (every level changed). Tests: rules for both modes, levels 1–30 of all six tracks solvable, e2e with difficulty tabs and the toolbar.
+
+**Decided**
+- Depot: one stop where pixels get on, with pixels looping and fed in from both sides (the playtester's own sketch), instead of buses driving round the picture.
+- Difficulty as separate tracks the player picks, not badges inside one track.
+
 **Next**
 - Playtest Loopline on the phone and tune `params()`.
 

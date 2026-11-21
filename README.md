@@ -17,7 +17,7 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Wallbreaker** | A brick breaker with seven modes (Classic, Zen, Descent, Run, Daily, Puzzle, Time Attack), endless seeded levels, bosses, and risky capsules you catch or dodge. See [docs/WALLBREAKER.md](docs/WALLBREAKER.md) |
 | **Coin Dozer** | A coin pusher with real physics: drop coins, the pusher shoves the pile, win what spills over. Gems and figures to collect in four machine themes. See [docs/COIN-DOZER.md](docs/COIN-DOZER.md) |
 | **Starflip** | Space pinball with clear missions: the banner says what to shoot, arrows show where. Finished missions open a wormhole to 30-second bonus tables. See [docs/STARFLIP.md](docs/STARFLIP.md) |
-| **Loopline** *(new)* | Send buses (Depot) or critters (Critters) round the loop to clear a pixel picture, colour by colour; the order is the puzzle, and every level is checked solvable. See [docs/LOOPLINE.md](docs/LOOPLINE.md) |
+| **Loopline** *(new)* | Clear a pixel picture colour by colour: bring buses to the stop as pixels loop past (Depot), or send critters round the loop (Critters). Easy, Medium and Hard tracks; every level is checked solvable. See [docs/LOOPLINE.md](docs/LOOPLINE.md) |
 | **Inkfield** *(prototype)* | Draw loops to claim land, cut the others' trails, be the last one on the board (against computer players). See [docs/INKFIELD.md](docs/INKFIELD.md) |
 | **Camper Crew** *(prototype, dev only)* | Action: you're the only crew on a self-driving camper. Steer through bends, refuel, cook and patch leaks to reach camp before sunset |
 
@@ -59,7 +59,7 @@ docs/               guides
 - [docs/SLOTS.md](docs/SLOTS.md): Crystal Reels: how it is built, the maths simulator, fairness rules, requirement map
 - [docs/WALLBREAKER.md](docs/WALLBREAKER.md): Wallbreaker: the plan, how it is built, and where each acceptance criterion is tested
 - [docs/INKFIELD.md](docs/INKFIELD.md): Inkfield: the rules, how it is built, ideas for add-ons
-- [docs/LOOPLINE.md](docs/LOOPLINE.md): Loopline: the rules, how levels are made solvable, how it's built, what to playtest, and V2 (3D)
+- [docs/LOOPLINE.md](docs/LOOPLINE.md): Loopline: the rules of both modes, difficulty, how levels are made solvable, how it's built, what to playtest, and V2 (3D)
 - [docs/STARFLIP.md](docs/STARFLIP.md): Starflip: how it plays, the missions and bonus tables, how it's built, and what to playtest
 - [docs/COIN-DOZER.md](docs/COIN-DOZER.md): Coin Dozer: the spec, how it is built, where it differs from the spec, and where each acceptance criterion is tested
 - [docs/ECONOMY.md](docs/ECONOMY.md): how coins, washers and points work in every game: prices in levels of effort, stars for playing without help

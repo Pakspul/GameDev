@@ -22,7 +22,8 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [x] "Back to arcade" button in four games: see **Release issues**, item 1 (now in every game: back top left, menu top right, issue H-1)
 - [x] Language work for Unscrew, per the decision above
 - [ ] Colour-blind check: can Unscrew's screws and boxes be told apart without colour?
-- [ ] Loopline: playtest both modes on the phone and tune the difficulty (`params()` in `games/loopline/src/levels.js`, see [docs/LOOPLINE.md](docs/LOOPLINE.md))
+- [x] Loopline: Easy / Medium / Hard tracks, Depot as a bus stop with looping pixels, a pixel-art look
+- [ ] Loopline: playtest both modes and all three difficulties on the phone and tune `params()` (`games/loopline/src/levels.js`, see [docs/LOOPLINE.md](docs/LOOPLINE.md)); Critters Medium may be too easy
 - [ ] Loopline: colour-blind check (a symbol per colour on movers and cells?)
 - [ ] Loopline V2: 3D modes (Orbit, Diorama)
 - [ ] Unscrew: more 3D models, one category at a time (issue U-1; catalogue and recipe in [docs/UNSCREW-MODELS.md](docs/UNSCREW-MODELS.md)). Vehicles and industry first

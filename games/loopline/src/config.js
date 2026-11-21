@@ -5,6 +5,10 @@ export const CONFIG = {
   spacing: 2,        // track steps between two movers on the loop
   belt: 4,           // at most this many movers on the loop (or waiting to get on) at once
   launchTween: 0.3,  // seconds from the yard or a bay to the loop's entrance
+  depot: {
+    tick: 0.075,     // seconds per tray the loop turns
+    transit: 7,      // ticks a bus takes from the car park to its dock
+  },
 };
 
 // The colours a picture can use. A cell stores its colour's index + 1 (0 is empty). Pictures are
