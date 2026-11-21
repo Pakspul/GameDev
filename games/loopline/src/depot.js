@@ -74,6 +74,7 @@ export class Depot {
     this.filled = 0;
     this.left = lv.movers.map((m) => m.cap);
     this.where = lv.movers.map(() => YARD);
+    this.magnet = lv.movers.map(() => 0); // 1 for a bus sent with the Magnet power, until it docks
     if (lv.lot) {
       this.occ = new Int16Array(lv.lot.w * lv.lot.h).fill(-1);
       lv.lot.cars.forEach((c, i) => { for (const [x, y] of carCells(c)) this.occ[y * lv.lot.w + x] = i; });
@@ -103,10 +104,11 @@ export class Depot {
     return true;
   }
 
-  /** Can bus m leave the car park now (ignoring whether a dock is free)? */
-  free(m) {
+  /** Can bus m leave the car park now (ignoring whether a dock is free)? `any`: the tow truck (the
+   *  Tow power) pulls it out whatever stands in its way. */
+  free(m, any = false) {
     if (this.status !== "play" || this.where[m] !== YARD) return false;
-    if (!this.cars) return true;
+    if (!this.cars || any) return true;
     const lot = this.level.lot;
     return carPath(this.cars[this.carOf.get(m)], lot.w, lot.h).every(([x, y]) => this.occ[y * lot.w + x] === -1);
   }
@@ -116,13 +118,16 @@ export class Depot {
     return out;
   }
 
-  /** Send bus m to a free dock. Returns "ok", "blocked", "full" (no free dock) or "over". */
-  launch(m) {
+  /** Send bus m to a free dock. Returns "ok", "blocked", "full" (no free dock) or "over".
+   *  Powers: { any } tows it out of the car park, { magnet } makes it pull its colour off the loop
+   *  and out of the picture as it docks; { power } names the one used, so undo can give it back. */
+  launch(m, { any = false, magnet = false, power = null } = {}) {
     if (this.status !== "play") return "over";
-    if (!this.free(m)) return "blocked";
+    if (!this.free(m, any)) return "blocked";
     const d = this.docks.indexOf(-1);
     if (d < 0) return "full";
-    if (this.keepHistory) this.history.push(this.snapshot());
+    if (this.keepHistory) { const s = this.snapshot(); s.used = power; this.history.push(s); }
+    if (magnet) this.magnet[m] = 1;
     let from = null;
     if (this.cars) {
       const i = this.carOf.get(m), lw = this.level.lot.w;
@@ -142,6 +147,7 @@ export class Depot {
     // Buses on their way arrive.
     for (const d of this.driving) if (--d.t <= 0) { this.where[d.m] = DOCKED; this.events.push({ type: "dock", m: d.m, dock: this.docks.indexOf(d.m) }); }
     this.driving = this.driving.filter((d) => d.t > 0);
+    for (let m = 0; m < this.magnet.length; m++) if (this.magnet[m] && this.where[m] === DOCKED) this.pull(m);
     // The loop turns one tray.
     this.rot = (this.rot + 1) % R;
     // The pixel at the stop gets on a bus of its colour.
@@ -159,6 +165,7 @@ export class Depot {
       }
     }
     // Pixels step on at the doors.
+    this.skipFed();
     for (let side = 0; side < 2; side++) {
       const q = this.feeds[side];
       if (this.fed[side] >= q.length) continue;
@@ -174,6 +181,42 @@ export class Depot {
     if (this.freeBays() === 0 && this.quiet()) { this.status = "lost"; this.events.push({ type: "lost", why: "docks" }); }
   }
 
+  /** The Magnet power: a bus that just docked takes every pixel of its colour it has seats for, off
+   *  the loop first, then straight out of the picture (next out of the doors first). */
+  pull(m) {
+    this.magnet[m] = 0;
+    const c = this.color(m), d = this.docks.indexOf(m);
+    for (let i = 0; i < this.R && this.left[m] > 0; i++) {
+      const cell = this.ring[i];
+      if (cell < 0 || this.level.cells[cell] !== c) continue;
+      this.ring[i] = -1; this.onRing[c]--; this.filled--; this.remaining--; this.left[m]--;
+      this.events.push({ type: "board", m, cell, dock: d, tray: i });
+    }
+    for (let side = 0; side < 2; side++) {
+      const q = this.feeds[side];
+      for (let j = this.fed[side]; j < q.length && this.left[m] > 0; j++) {
+        const cell = q[j];
+        if (this.cells[cell] !== c) continue;
+        this.cells[cell] = 0; this.remaining--; this.left[m]--;
+        this.events.push({ type: "board", m, cell, dock: d, pic: true });
+      }
+    }
+    this.skipFed();
+    if (this.left[m] === 0) { this.docks[d] = -1; this.where[m] = DONE; this.events.push({ type: "depart", m, dock: d }); }
+  }
+  /** Door queues pass over pixels the Magnet already took. */
+  skipFed() {
+    for (let side = 0; side < 2; side++) {
+      const q = this.feeds[side];
+      while (this.fed[side] < q.length && this.cells[q[this.fed[side]]] === 0) this.fed[side]++;
+    }
+  }
+  /** The Extra dock power: one more dock for the rest of this level (undo keeps it). */
+  addBay() {
+    this.docks.push(-1);
+    for (const s of this.history) s.docks.push(-1);
+  }
+
   settle(max = 200000) { let n = 0; while (!this.idle && n++ < max) this.tick(); }
   /** Depot never gets stuck without losing: with a free dock there is always a bus that can leave. */
   stuck() { return false; }
@@ -182,34 +225,36 @@ export class Depot {
   key() {
     let s = "";
     for (let p = 0; p < this.R; p++) { const c = this.ring[this.slot(p)]; s += c < 0 ? "." : String.fromCharCode(64 + this.level.cells[c]); }
-    return s + "|" + this.fed.join(",") + "|" + this.left.join(",") + "|" + this.where.join("") + "|" + this.docks.join(",");
+    return s + "|" + this.fed.join(",") + "|" + this.remaining + "|" + this.left.join(",") + "|" + this.where.join("") + "|" + this.docks.join(",");
   }
 
   /** For the level generator: a bus that wasn't there yet. */
   addMover(color, cap) {
     this.level.movers.push({ color, cap });
-    this.left.push(cap); this.where.push(YARD);
+    this.left.push(cap); this.where.push(YARD); this.magnet.push(0);
     return this.level.movers.length - 1;
   }
 
   snapshot() {
     return {
       cells: this.cells.slice(), remaining: this.remaining, ring: this.ring.slice(), rot: this.rot, fed: this.fed.slice(),
-      onRing: this.onRing.slice(), filled: this.filled, left: this.left.slice(), where: this.where.slice(),
+      onRing: this.onRing.slice(), filled: this.filled, left: this.left.slice(), where: this.where.slice(), magnet: this.magnet.slice(),
       occ: this.occ && this.occ.slice(), docks: this.docks.slice(), driving: this.driving.map((d) => ({ ...d })),
       status: this.status, ticks: this.ticks,
     };
   }
   restore(s) {
     this.cells = s.cells.slice(); this.remaining = s.remaining; this.ring = s.ring.slice(); this.rot = s.rot; this.fed = s.fed.slice();
-    this.onRing = s.onRing.slice(); this.filled = s.filled; this.left = s.left.slice(); this.where = s.where.slice();
+    this.onRing = s.onRing.slice(); this.filled = s.filled; this.left = s.left.slice(); this.where = s.where.slice(); this.magnet = s.magnet.slice();
     this.occ = s.occ && s.occ.slice(); this.docks = s.docks.slice(); this.driving = s.driving.map((d) => ({ ...d }));
     this.status = s.status; this.ticks = s.ticks;
     this.events = [];
   }
   undo() {
     if (!this.history.length) return false;
-    this.restore(this.history.pop());
+    const s = this.history.pop();
+    this.restore(s);
+    this.undone = s.used || null;
     return true;
   }
   clone() {

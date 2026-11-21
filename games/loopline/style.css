@@ -109,19 +109,40 @@ body.mode-orbit #gl { display: block; }
 /* ---------- Toolbar ---------- */
 #tools {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 3;
-  display: flex; justify-content: center; gap: clamp(14px, 6vw, 34px);
-  padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 10px);
+  display: flex; justify-content: center; gap: clamp(2px, 2.4vw, 26px);
+  padding: 12px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
   background: linear-gradient(#ef4656, #d8303f); border-top: 3px solid var(--ink-dark);
   box-shadow: inset 0 3px 0 rgba(255, 255, 255, .25);
 }
 .state-menu #tools { visibility: hidden; }
-.tool { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; min-width: 64px; }
+.tool { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; min-width: 54px; flex: 0 1 64px; }
 .tool .ico {
-  width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; color: var(--accent-dark);
+  width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; color: var(--accent-dark);
   background: radial-gradient(circle at 50% 30%, #ffffff, #e3e6ff 70%); border: 3px solid var(--ink-dark); box-shadow: 0 4px 0 var(--ink-dark);
 }
 .tool .ico svg { width: 26px; height: 26px; }
-.tool .cap { font-size: 13px; color: #fff; }
+.tool .cap { font-size: 13px; color: #fff; white-space: nowrap; }
+/* Prices: a gold tag on the button's shoulder. */
+.cost {
+  display: inline-flex; align-items: center; gap: 2px; font: 400 12px/1 var(--display); color: var(--ink-dark);
+  background: #fff3c4; border: 2px solid var(--ink-dark); border-radius: 99px; padding: 1px 5px 1px 2px;
+}
+.cost[hidden] { display: none; }
+.coin { width: 14px; height: 14px; flex: none; }
+.tool .cost { position: absolute; top: -9px; right: -2px; z-index: 1; box-shadow: 0 2px 0 var(--ink-dark); }
+.tool.short .cost { background: #d7d9ee; color: #5b5f86; }
+.tool.short .ico { filter: saturate(.4); }
+/* The powers: purple faces; an armed one glows gold until its send. */
+.tool.power .ico { color: #7b3fd0; }
+.tool.armed .ico { background: radial-gradient(circle at 50% 30%, #fff8d0, #ffd84a 70%); color: var(--ink-dark); animation: armed 1s ease-in-out infinite; }
+@keyframes armed { 50% { box-shadow: 0 4px 0 var(--ink-dark), 0 0 0 6px rgba(255, 228, 92, .45); } }
+.coins { display: inline-flex; align-items: center; gap: 3px; font: 400 15px/1 var(--display); color: #fff; white-space: nowrap;
+  text-shadow: 0 1px 0 var(--ink-dark), 1px 0 0 var(--ink-dark), -1px 0 0 var(--ink-dark), 0 -1px 0 var(--ink-dark); }
+.coins .coin { width: 17px; height: 17px; }
+.coinline { display: flex; justify-content: center; align-items: center; gap: 5px; font: 400 22px/1 var(--display); color: var(--gold); }
+.coinline:empty { display: none; }
+.coinline .coin { width: 24px; height: 24px; }
+.primary .cost { vertical-align: 2px; margin-left: 4px; }
 .tool:active .ico { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink-dark); }
 .tool:disabled { opacity: .5; cursor: default; }
 .tool:disabled:active .ico { transform: none; box-shadow: 0 4px 0 var(--ink-dark); }
@@ -211,7 +232,15 @@ body.mode-orbit #gl { display: block; }
   #tip { top: calc(env(safe-area-inset-top, 0px) + 66px); font-size: 12.5px; padding: 5px 10px; }
   #tools { padding-top: 6px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); }
   .tool .ico { width: 42px; height: 42px; }
+  .tool { min-width: 48px; }
   .tool .ico svg { width: 21px; height: 21px; }
   .tool .cap { font-size: 11px; }
   #toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); }
+}
+/* Narrow phones (320 px): six tools still fit. */
+@media (max-width: 360px) {
+  .tool { min-width: 46px; }
+  .tool .ico { width: 42px; height: 42px; }
+  .tool .ico svg { width: 21px; height: 21px; }
+  .tool .cap { font-size: 11px; }
 }

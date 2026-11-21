@@ -207,7 +207,7 @@ export class Renderer {
     const wide = W > (bot - top) * 1.15;
     const compact = !wide && avH < 560; // small phones: tighter everything
     const rail = compact ? 16 : 20, Gmin = compact ? 16 : 22;
-    const nS = depot ? lv.docks : lv.bays;
+    const nS = depot ? g.docks.length : g.bays.length; // the Extra bay power can add one
     const slotS = compact ? 44 : depot ? 58 : 54, slotGap = compact ? 8 : 10;
     // Gaps: board to slots (the stop's crossing in Depot), slots to yard.
     const gap1 = depot ? (compact ? 26 : 34) : compact ? 12 : 18, gap2 = compact ? 14 : 24;
@@ -327,7 +327,7 @@ export class Renderer {
     }
     let pts;
     if (e.from.bay != null) pts = [this.bayPoint(e.from.bay)];
-    else pts = [[this.yard.x + (e.from.lane + 0.5) * this.cellY, this.yard.y + 0.5 * this.rowH]];
+    else pts = [[this.yard.x + (e.from.lane + 0.5) * this.cellY, this.yard.y + ((e.from.row || 0) + 0.5) * this.rowH]];
     pts.push(this.entrance());
     this.tweens.set(m, { pts, t0: now, dur: 0.3 });
   }
@@ -378,6 +378,7 @@ export class Renderer {
   showHint(m, now) { this.hint = m; this.hintT0 = now; }
 
   busy(now) {
+    if (this.armed) return true; // a power waits for a tap: keep it pulsing
     if (this.fx.some((f) => now < f.t0 + f.dur)) return true;
     for (const t of this.tweens.values()) if (now < t.t0 + t.dur) return true;
     for (const t0 of this.shakes.values()) if (now < t0 + 0.4) return true;
@@ -387,8 +388,9 @@ export class Renderer {
   }
 
   // ---- Hit testing -------------------------------------------------------------------------------------------
-  /** What's under a tap: { m } a mover to send, or null. */
-  hit(x, y) {
+  /** What's under a tap: { m } a mover to send, or null. `any` (the Pick power): any critter in a
+   *  lane, not just the front one. */
+  hit(x, y, any = false) {
     const g = this.game;
     if (this.mode !== "depot") {
       for (let b = 0; b < this.slots.length; b++) {
@@ -400,7 +402,13 @@ export class Renderer {
     if (x < Y.x - 6 || x > Y.x + Y.w + 6 || y < Y.y - 6 || y > Y.y + Y.h + 6) return null;
     if (g.lanes) {
       const k = clamp(Math.floor((x - Y.x) / this.cellY), 0, g.lanes.length - 1);
-      return g.lanes[k].length ? { m: g.lanes[k][0], lane: k } : null;
+      const lane = g.lanes[k], rows = Math.round(Y.h / this.rowH);
+      if (!lane.length) return null;
+      if (any) {
+        const i = clamp(Math.floor((y - Y.y) / this.rowH), 0, rows - 1);
+        if (i < lane.length && !(i === rows - 1 && lane.length > rows)) return { m: lane[i], lane: k };
+      }
+      return { m: lane[0], lane: k };
     }
     const lw = g.level.lot.w;
     const cx = Math.floor((x - Y.x) / this.cellY), cy = Math.floor((y - Y.y) / this.cellY);
@@ -595,9 +603,10 @@ export class Renderer {
           const m = lane[i];
           const at = [Y.x + (k + 0.5) * c, Y.y + (i + 0.5) * this.rowH];
           if (i === rows - 1 && lane.length > rows) { label(ctx, "+" + (lane.length - rows + 1), at[0], at[1], 18); continue; }
-          this.drawMover(m, at, now, i === 0 ? "front" : "lane", g.level.hidden && i > 0);
+          this.drawMover(m, at, now, i === 0 || this.armed === "pick" ? "front" : "lane", g.level.hidden && i > 0 && this.armed !== "pick");
         }
       }
+      if (this.armed === "pick") this.armedFrame(Y.x - 2, Y.y - 10, Y.w + 4, Y.h + 20, now);
       return;
     }
     // The car park.
@@ -613,6 +622,16 @@ export class Renderer {
       if (g.where[car.m] !== YARD) return;
       this.drawMover(car.m, this.carCenter(car), now, "lot", false, car);
     });
+    if (this.armed === "pick") this.armedFrame(Y.x - 14, Y.y - 14, Y.w + 28, Y.h + 28, now);
+  }
+  /** A pulsing gold frame round the yard while the Pick or Tow power waits for a tap. */
+  armedFrame(x, y, w, h, now) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalAlpha = 0.65 + 0.35 * Math.sin(now * 6);
+    ctx.strokeStyle = UI.glow; ctx.lineWidth = 3; ctx.setLineDash([10, 7]); ctx.lineDashOffset = -now * 30;
+    ctx.beginPath(); rr(ctx, x, y, w, h, 18); ctx.stroke();
+    ctx.restore();
   }
 
   // ---- Movers ------------------------------------------------------------------------------------------------
@@ -652,6 +671,11 @@ export class Renderer {
       else y = 0;
       ctx.translate(0, y);
       const img = sprite(hidden ? "hid" : "crit", hidden ? HIDDEN : CRITTER, hex);
+      // The Laser power: a glow round the critter riding with it, or the one it's waiting for.
+      if (g.zap[m] || (this.armed === "zap" && (where === "front" || where === "bay"))) {
+        ctx.globalAlpha = 0.55 + 0.3 * Math.sin(now * 10); ctx.fillStyle = UI.glow;
+        ctx.beginPath(); ctx.arc(0, 0, size * 0.62, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+      }
       blit(ctx, img, size);
       label(ctx, text, 0, hidden ? 0 : size * 0.2, clamp(size * 0.38, 12, 22));
       if (where === "lane" && !hidden) { ctx.globalAlpha = 0.28; ctx.fillStyle = UI.panel; ctx.beginPath(); ctx.arc(0, 0, size * 0.56, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }

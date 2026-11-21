@@ -120,6 +120,17 @@ Boxes (15–75) and Shapes (20–95) work the same way, see the file. The free h
 
 Outbound works out the balance from the save every time (what you've earned minus what you've spent), so a change to these numbers changes old saves too. When the rules above came in, `Store.migrate()` worked out what each save was worth under the old formulas and kept any difference as `carry`, so no balance went down. **If you change Outbound's numbers again, do the same:** bump `ver` and carry the difference.
 
+### Loopline: coins ([`economy.js`](../games/loopline/economy.js))
+
+| | Easy | Medium | Hard | Orbit Easy | Orbit Medium | Orbit Hard |
+|---|---|---|---|---|---|---|
+| 3-star clear pays | 20 | 35 | 60 | 40 | 70 | 120 |
+| Hint, undo on Hard (peek) | 10 | 18 | 30 | 20 | 35 | 60 |
+| +1 Bay / Dock, Pick / Tow (boost) | 40 | 70 | 120 | 80 | 140 | 240 |
+| Laser / Magnet (heavy) | 60 | 105 | 180 | 120 | 210 | 360 |
+
+Depot and Critters share the first three tiers; Orbit (sculptures of 10,000+ blocks, two to three times as long per level) is its own track. Undo is free on Easy and Medium and still costs a star there, like any help. Undoing a send that used a power refunds that power. Players start with 70; a save from before coins gets what its kept stars would have paid. See [LOOPLINE.md](LOOPLINE.md#coins-and-powers).
+
 ## Games without a currency
 
 - **Graphite**: hints are free and unlimited, and they cost stars (3 with none, 2 with one or two, 1 with more). Its hints explain the logic, so they're part of learning the puzzles, and there's nothing to buy.

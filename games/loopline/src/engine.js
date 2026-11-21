@@ -46,6 +46,17 @@ export function takeAlong(cells, line, color) {
   return -1;
 }
 
+/** A zapping mover (the Laser power) looks past other colours: it takes the first cell of its own
+ *  colour along `line`. */
+export function takeColour(cells, line, color) {
+  for (let i = 0; i < line.length; i++) {
+    if (cells[line[i]] !== color) continue;
+    cells[line[i]] = 0;
+    return line[i];
+  }
+  return -1;
+}
+
 /** One lap of a lone mover: what it would take. Changes `cells`. */
 export function lap(cells, track, color, room) {
   let n = 0;
@@ -90,6 +101,7 @@ export class Game {
     this.where = lv.movers.map(() => YARD);
     this.lanes = lv.lanes.map((l) => l.slice());
     this.bays = new Array(lv.bays).fill(-1);
+    this.zap = lv.movers.map(() => 0); // 1 while a mover rides a lap with the Laser power
     this.belt = [];   // [{ m, pos }], front first
     this.queue = [];  // movers waiting to get on the loop
     this.status = "play"; // play | won | lost
@@ -102,13 +114,14 @@ export class Game {
   get idle() { return this.belt.length === 0 && this.queue.length === 0; }
   color(m) { return this.level.movers[m].color; }
 
-  /** Can mover m be sent now (ignoring how full the loop is)? */
-  free(m) {
+  /** Can mover m be sent now (ignoring how full the loop is)? `any`: from anywhere in a lane (the
+   *  Pick power), not just the front. */
+  free(m, any = false) {
     if (this.status !== "play") return false;
     const w = this.where[m];
     if (w === BAY) return true;
     if (w !== YARD) return false;
-    return this.lanes.some((l) => l[0] === m);
+    return this.lanes.some((l) => (any ? l.includes(m) : l[0] === m));
   }
   /** Every mover that can be sent now. */
   ready() {
@@ -119,15 +132,18 @@ export class Game {
   get beltFull() { return this.belt.length + this.queue.length >= this.beltMax; }
   freeBays() { return this.bays.filter((b) => b < 0).length; }
 
-  /** Send mover m. Returns "ok", "blocked" (it can't leave), "full" (the loop is full) or "over". */
-  launch(m) {
+  /** Send mover m. Returns "ok", "blocked" (it can't leave), "full" (the loop is full) or "over".
+   *  Powers: { any } takes it from anywhere in its lane, { zap } makes this lap look past other
+   *  colours; { power } names the one used, so undo can give it back. */
+  launch(m, { any = false, zap = false, power = null } = {}) {
     if (this.status !== "play") return "over";
-    if (!this.free(m)) return "blocked";
+    if (!this.free(m, any)) return "blocked";
     if (this.beltFull) return "full";
-    if (this.keepHistory) this.history.push(this.snapshot());
+    if (this.keepHistory) { const s = this.snapshot(); s.used = power; this.history.push(s); }
     let from;
     if (this.where[m] === BAY) { const b = this.bays.indexOf(m); this.bays[b] = -1; from = { bay: b }; }
-    else { const k = this.lanes.findIndex((l) => l[0] === m); this.lanes[k].shift(); from = { lane: k }; }
+    else { const k = this.lanes.findIndex((l) => l.includes(m)), row = this.lanes[k].indexOf(m); this.lanes[k].splice(row, 1); from = { lane: k, row }; }
+    if (zap) this.zap[m] = 1;
     this.where[m] = QUEUE;
     this.queue.push(m);
     this.events.push({ type: "launch", m, from });
@@ -153,7 +169,7 @@ export class Game {
       if (b.pos >= this.L) continue;
       const t = this.track[b.pos];
       if (!t.line || this.left[b.m] === 0) continue;
-      const got = takeAlong(this.cells, t.line, this.color(b.m));
+      const got = (this.zap[b.m] ? takeColour : takeAlong)(this.cells, t.line, this.color(b.m));
       if (got >= 0) {
         this.left[b.m]--;
         this.remaining--;
@@ -168,6 +184,7 @@ export class Game {
   }
 
   arrive(m) {
+    this.zap[m] = 0;
     if (this.left[m] === 0) { this.where[m] = DONE; this.events.push({ type: "done", m }); return; }
     const b = this.bays.indexOf(-1);
     if (b < 0 || this.status !== "play") {
@@ -200,26 +217,34 @@ export class Game {
     return true;
   }
 
+  /** The Extra bay power: one more bay for the rest of this level (undo keeps it). */
+  addBay() {
+    this.bays.push(-1);
+    for (const s of this.history) s.bays.push(-1);
+  }
+
   /** For the solver: the position as text. */
   key() { return String.fromCharCode.apply(null, this.cells) + "|" + this.left.join(",") + "|" + this.where.join(""); }
 
   snapshot() {
     return {
-      cells: this.cells.slice(), remaining: this.remaining, left: this.left.slice(), where: this.where.slice(),
+      cells: this.cells.slice(), remaining: this.remaining, left: this.left.slice(), where: this.where.slice(), zap: this.zap.slice(),
       lanes: this.lanes.map((l) => l.slice()), bays: this.bays.slice(),
       belt: this.belt.map((b) => ({ ...b })), queue: this.queue.slice(), status: this.status, lostBy: this.lostBy, ticks: this.ticks,
     };
   }
   restore(s) {
-    this.cells = s.cells.slice(); this.remaining = s.remaining; this.left = s.left.slice(); this.where = s.where.slice();
+    this.cells = s.cells.slice(); this.remaining = s.remaining; this.left = s.left.slice(); this.where = s.where.slice(); this.zap = s.zap.slice();
     this.lanes = s.lanes.map((l) => l.slice()); this.bays = s.bays.slice();
     this.belt = s.belt.map((b) => ({ ...b })); this.queue = s.queue.slice(); this.status = s.status; this.lostBy = s.lostBy; this.ticks = s.ticks;
     this.events = [];
   }
-  /** Back to just before the last send. */
+  /** Back to just before the last send. `undone` then names the power that send used, if any. */
   undo() {
     if (!this.history.length) return false;
-    this.restore(this.history.pop());
+    const s = this.history.pop();
+    this.restore(s);
+    this.undone = s.used || null;
     return true;
   }
   /** A copy without history, for looking ahead (hints, the solver). */
