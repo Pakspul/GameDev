@@ -187,6 +187,15 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); 
 .lvl.next { border: 2px solid var(--accent); }
 .lvl.wip::after { content: ""; position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .lvl:active { transform: scale(.95); }
+.perfect { margin-top: 12px; text-align: center; }
+.perfect-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 99px;
+  border: 1px solid var(--accent); color: var(--ink); font-weight: 700; font-size: .9rem;
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+}
+.perfect-btn:active { transform: scale(.97); }
+.perfect-btn .ico { width: 15px; height: 15px; color: var(--accent); }
+.perfect-note { margin: 0; color: var(--muted); font-size: .85rem; }
 
 .rules { margin-top: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 4px 16px; }
 .rules summary { cursor: pointer; padding: 10px 0; font-weight: 700; }

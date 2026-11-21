@@ -182,6 +182,8 @@ I18n.add({
     "play.play": "Play level {n}",
     "lvl.aria": "Level {n}",
     "lvl.ariaStars": (v) => `Level ${v.n}, ${v.s} star${v.s > 1 ? "s" : ""}`,
+    "perfect.replay": "Replay level {n} for perfection",
+    "perfect.all": "Every solved level has all three stars.",
   },
   nl: {
     "home": "Puzzels",
@@ -363,6 +365,8 @@ I18n.add({
     "play.play": "Speel level {n}",
     "lvl.aria": "Level {n}",
     "lvl.ariaStars": (v) => `Level ${v.n}, ${v.s} ${v.s > 1 ? "sterren" : "ster"}`,
+    "perfect.replay": "Speel level {n} opnieuw voor perfectie",
+    "perfect.all": "Elk opgelost level heeft alle drie de sterren.",
   },
 });
 I18n.apply();

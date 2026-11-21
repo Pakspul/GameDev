@@ -76,6 +76,13 @@ function prog(kind, tier) {
   const p = (store.progress[kind] = store.progress[kind] || {});
   return (p[tier] = p[tier] || { done: {}, best: 0 });
 }
+// The lowest solved level that didn't get all three stars (a hint was used), or 0 if there is none.
+function imperfectLevel(kind, tier) {
+  const done = prog(kind, tier).done;
+  let low = 0;
+  for (const l in done) if (done[l] < 3 && (!low || +l < low)) low = +l;
+  return low;
+}
 function nextLevel(kind, tier) {
   const done = prog(kind, tier).done;
   let l = 1;
@@ -239,7 +246,7 @@ async function startGame(opts) {
   canvas.style.visibility = "";
   G = {
     kind, tier, level, date, slot, key, p: state.p, cells: state.cells.slice(), notes: state.notes.slice(),
-    hints: state.hints || 0, elapsed: state.elapsed || 0, done: false, undo: [], sel: -1, noteMode: false, flash: null, hl: null, win: null,
+    hints: state.hints || 0, elapsed: state.elapsed || 0, perfecting: !!opts.perfecting, done: false, undo: [], sel: -1, noteMode: false, flash: null, hl: null, win: null,
   };
   if (KINDS[kind].input === "digits") G.sel = firstEmpty();
   buildControls();
@@ -1073,7 +1080,10 @@ function showWin(stars, time, best, newBest) {
   } else {
     const kind = G.kind, tier = G.tier, next = G.level + 1;
     btn(_t("levels"), false, () => { closeOverlay(); goHome(); });
-    btn(_t("nextLevel"), true, () => { closeOverlay(); startGame({ kind, tier, level: next }); });
+    // came here from "replay for perfection": offer the next level that still misses a star
+    const again = G.perfecting ? imperfectLevel(kind, tier) : 0;
+    if (again) btn(_t("perfect.replay", { n: again }), true, () => { closeOverlay(); replayForPerfection(kind, tier, again); });
+    else btn(_t("nextLevel"), true, () => { closeOverlay(); startGame({ kind, tier, level: next }); });
   }
   $("#overlay").hidden = false;
   acts.querySelector(".primary").focus();
@@ -1183,12 +1193,28 @@ function renderHome() {
   $("#levelGrid").innerHTML = h;
   $("#levelGrid").querySelectorAll(".lvl").forEach((b) => b.addEventListener("click", () => startGame({ kind, tier, level: +b.dataset.l })));
   $("#pageLabel").textContent = `${first}–${first + PAGE - 1}`;
+  // replay for perfection: the lowest solved level with fewer than three stars
+  const again = imperfectLevel(kind, tier);
+  const perfect = $("#perfectRow");
+  perfect.hidden = !solvedCount;
+  perfect.innerHTML = again
+    ? `<button type="button" class="perfect-btn" id="perfectBtn"><span class="ico">${ICON.star}</span>${_t("perfect.replay", { n: again })}</button>`
+    : `<p class="perfect-note">${_t("perfect.all")}</p>`;
+  if (again) $("#perfectBtn").onclick = () => replayForPerfection(kind, tier, again);
   $("#prevPage").disabled = page === 0;
   $("#prevPage").onclick = () => { store.ui.page[pageKey] = Math.max(0, page - 1); save(); renderHome(); };
   $("#nextPage").onclick = () => { store.ui.page[pageKey] = page + 1; save(); renderHome(); };
 
   $("#rulesName").textContent = K.name;
   $("#rulesBody").innerHTML = "<ul>" + K.rules.map((r) => `<li>${r}</li>`).join("") + "</ul>";
+}
+
+// A fresh go at a solved level. A half-done replay is continued, unless a hint was already
+// used in it: that attempt can't reach three stars any more, so it starts over.
+function replayForPerfection(kind, tier, level) {
+  const cur = store.current[kind + ":" + tier];
+  const fresh = !!(cur && cur.key === keyOf(kind, tier, level) && cur.hints);
+  startGame({ kind, tier, level, fresh, perfecting: true });
 }
 
 /* ---------- navigation: back (top left) and the menu drawer (top right) ---------- */
