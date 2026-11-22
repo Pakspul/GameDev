@@ -41,6 +41,16 @@ function beamTexture() {
   x.fillStyle = v; x.fillRect(0, 0, 64, 64);
   return new THREE.CanvasTexture(c);
 }
+/** A chequerboard of cols × rows squares, for the start and finish line and its flag. */
+function checkerTexture(cols, rows) {
+  const c = document.createElement("canvas");
+  c.width = cols * 8; c.height = rows * 8;
+  const x = c.getContext("2d");
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) { x.fillStyle = (i + j) % 2 ? "#ffffff" : "#26283f"; x.fillRect(i * 8, j * 8, 8, 8); }
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
+  return t;
+}
 function blobTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
@@ -114,7 +124,7 @@ export class Renderer3D {
     this.layout();
   }
   clearFx() {
-    this.fx = []; this.tweens.clear(); this.shakes.clear(); this.hint = -1;
+    this.fx = []; this.tweens.clear(); this.shakes.clear(); this.hint = -1; this.sweep = null;
     this.flies = []; this.flyMesh.count = 0;
     for (const md of this.models.values()) md.group.visible = false;
   }
@@ -155,6 +165,7 @@ export class Renderer3D {
     this.chevOff = 0;
     this.placeChevrons();
     this.board.add(this.chev);
+    if (!lv.view) this.board.add(this.finishLine());
     // The blocks.
     const cells = lv.cells, n = cells.reduce((a, v) => a + (v ? 1 : 0), 0);
     this.blocks = new THREE.InstancedMesh(this.boxGeo, this.blockMat, Math.max(1, n));
@@ -174,6 +185,36 @@ export class Renderer3D {
     this.blocks.instanceColor.needsUpdate = true;
     this.board.add(this.blocks);
     this.beams = new Map();
+  }
+
+  /** A chequered start and finish line across the rail where every lap starts and ends (the track's
+   *  first step), and a little chequered flag on a pole outside it. */
+  finishLine() {
+    const T = this.game.track, L = T.length, S = this.S;
+    const [x, z] = this.stepXZ(T[0]), a = this.stepXZ(T[L - 1]), b = this.stepXZ(T[1]);
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+    const grp = new THREE.Group();
+    grp.position.set(x, 0, z);
+    grp.rotation.y = -ang; // local x runs along the rail, local z across it
+    const across = this.railW + 0.7, n = 4, sq = across / n;
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(sq * 3 + 0.2, 0.08, across + 0.2), this.mat(0x191b33));
+    edge.position.y = 0.27;
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(sq * 3, across), new THREE.MeshLambertMaterial({ map: checkerTexture(3, n) }));
+    line.rotation.x = -Math.PI / 2;
+    line.position.y = 0.32;
+    grp.add(edge, line);
+    // The flag, on a pole outside the corner, flying along the rail so it faces out.
+    const side = Math.sign(-Math.sin(ang) * x + Math.cos(ang) * z) || 1; // which way local z points: out
+    const mast = new THREE.Group();
+    mast.position.set(0, 0, side * (this.railW / 2 + 0.6));
+    const pole = new THREE.Mesh(this.boxGeo, this.mat(0x191b33));
+    pole.scale.set(0.18, 2.5 * S, 0.18);
+    pole.position.y = 1.25 * S;
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.3 * S, 0.85 * S), new THREE.MeshLambertMaterial({ map: checkerTexture(4, 3), side: THREE.DoubleSide }));
+    flag.position.set(-0.65 * S - 0.09, 2.5 * S - 0.43 * S, 0);
+    mast.add(pole, flag);
+    grp.add(mast);
+    return grp;
   }
 
   mat(hex) {
@@ -262,10 +303,16 @@ export class Renderer3D {
     this.gl.setPixelRatio(dpr);
     if (this.game) this.layout();
   }
-  /** From the bottom up: the lanes, the bays, and the 3D view gets the rest. */
+  /** From the bottom up: the lanes, the bays, the loop bar (HTML, placed by game.js), and the 3D view
+   *  gets the rest. In the model gallery (`viewer`) the view gets everything. */
   layout() {
     const g = this.game, W = this.W, pad = 14;
     const bot = this.H - (this.bottom || 0);
+    if (this.viewer) {
+      this.slots = []; this.yard = { x: 0, y: bot, w: 0, h: 0 }; this.laneW = 1; this.rowH = 1; this.bar = null;
+      this.moverSize = 30; this.compact = false;
+      return this.setView(this.top, Math.max(120, bot - this.top - 6));
+    }
     const compact = bot - this.top < 600;
     const nL = g.lanes.length, rows = 3;
     this.laneW = Math.floor(Math.min(84, (W - 2 * pad) / nL));
@@ -277,7 +324,12 @@ export class Renderer3D {
     this.slots = Array.from({ length: nS }, (_, i) => ({ x: Math.round((W - sw) / 2) + i * (slotS + gap), y: sy, s: slotS }));
     this.moverSize = compact ? 30 : 36;
     this.compact = compact;
-    const vy = this.top, vh = Math.max(120, sy - 10 - vy);
+    const barH = compact ? 30 : 34;
+    this.bar = { x: W / 2, y: sy - barH, h: barH - 4 };
+    this.setView(this.top, Math.max(120, sy - barH - 6 - this.top));
+  }
+  setView(vy, vh) {
+    const W = this.W;
     this.view = { x: 0, y: vy, w: W, h: vh };
     const st = this.glc.style;
     st.top = vy + "px"; st.height = vh + "px"; st.width = W + "px";
@@ -346,11 +398,42 @@ export class Renderer3D {
     }
     this.spinT = now;
   }
+  /** The level finishes itself (a sure win): the blocks in `cells` fly off, top layers first, while the
+   *  turntable spins (onWin). */
+  onSweep(cells, was, now) {
+    const plane = this.game.w * this.game.d, h = this.game.h;
+    const delay = new Float32Array(cells.length);
+    cells.forEach((c, k) => { delay[k] = (1 - Math.floor(c / plane) / h) * 1.0 + Math.random() * 0.3; });
+    this.sweep = { t0: now, cells, delay, mask: new Uint8Array(this.game.cells.length) };
+    for (const c of cells) this.sweep.mask[c] = 1;
+  }
+  updateSweep(now) {
+    const sw = this.sweep;
+    if (!sw) return;
+    const plane = this.game.w * this.game.d;
+    let live = 0;
+    sw.cells.forEach((c, k) => {
+      const k2 = this.inst[c];
+      if (k2 < 0) return;
+      const t = (now - sw.t0 - sw.delay[k]) / 0.8;
+      const [x, y, z] = this.cellXYZ(c, plane);
+      if (t < 1) live++;
+      if (t <= 0) return;
+      if (t >= 1) { this.tmpM.makeScale(0, 0, 0); this.blocks.setMatrixAt(k2, this.tmpM); return; }
+      const e = t * t, sc = 1 - t;
+      this.tmpM.makeScale(sc, sc, sc);
+      this.tmpM.setPosition(x * (1 + e * 0.8), y + e * 9, z * (1 + e * 0.8));
+      this.blocks.setMatrixAt(k2, this.tmpM);
+    });
+    this.blocks.instanceMatrix.needsUpdate = true;
+    if (!live) this.sweep = null; // syncBlocks takes over: the swept blocks are gone from the game
+  }
   shake(m, now) { this.shakes.set(m, now); }
   showHint(m, now) { this.hint = m; this.hintT0 = now; }
 
   busy(now) {
     if (this.armed) return true; // a power waits for a tap: keep it pulsing
+    if (this.viewer || this.sweep) return true; // the gallery's turntable turns; a sweep flies
     if (this.drag || Math.abs(this.vYaw) > 0.00005) return true;
     if (this.flies.length || this.fx.some((f) => now < f.t0 + f.dur)) return true;
     for (const t of this.tweens.values()) if (now < t.t0 + t.dur) return true;
@@ -461,6 +544,9 @@ export class Renderer3D {
     if (!g) return;
     // The view: drag, then a little glide.
     if (!this.drag && this.vYaw) { this.yaw += this.vYaw * 16; this.vYaw *= 0.92; if (Math.abs(this.vYaw) < 0.00005) this.vYaw = 0; }
+    // The gallery: the turntable turns slowly unless you hold it.
+    if (this.viewer && !this.drag && !this.vYaw && this.lastNow) this.yaw -= Math.min(0.1, now - this.lastNow) * 0.45;
+    this.lastNow = now;
     let spin = 0;
     if (this.spinT && now < this.spinT + 2) spin = ease((now - this.spinT) / 2) * TAU; else this.spinT = 0;
     const yaw0 = this.yaw;
@@ -468,6 +554,7 @@ export class Renderer3D {
     this.placeCamera();
     this.yaw = yaw0;
     this.syncBlocks();
+    this.updateSweep(now);
     // Chevrons run while critters ride.
     if (g.belt.length) { this.chevOff = (now * 1.8) % 1; this.placeChevrons(); }
     // Critters on the loop, and the ones waiting to get on.
@@ -490,6 +577,7 @@ export class Renderer3D {
     for (const [m, md] of this.models) if (!live.has(m)) md.group.visible = false;
     this.updateFlies(now);
     this.gl.render(this.scene, this.camera);
+    if (this.viewer) return;
     // Flat on top: bays, lanes, critters on their way, effects, the hint.
     this.drawSlots(now);
     this.drawLanes(now);
@@ -504,12 +592,12 @@ export class Renderer3D {
 
   /** Show exactly the blocks the game still has (after pops, undo or restart). */
   syncBlocks() {
-    const cells = this.game.cells, shown = this.shown, inst = this.inst;
+    const cells = this.game.cells, shown = this.shown, inst = this.inst, sweep = this.sweep && this.sweep.mask;
     let changed = false;
     const plane = this.game.w * this.game.d;
     for (let i = 0; i < cells.length; i++) {
       const on = cells[i] ? 1 : 0;
-      if (on === shown[i] || inst[i] < 0) continue;
+      if (on === shown[i] || inst[i] < 0 || (sweep && sweep[i])) continue;
       shown[i] = on;
       changed = true;
       if (on) this.blocks.setMatrixAt(inst[i], this.tmpM.makeTranslation(...this.cellXYZ(i, plane)));

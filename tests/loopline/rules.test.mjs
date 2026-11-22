@@ -6,7 +6,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Game, makeTrack, takeAlong, lap, YARD, BAY, DONE } from "../../games/loopline/src/engine.js";
 import { Depot, feedsOf, ringShape, DRIVING, DOCKED } from "../../games/loopline/src/depot.js";
-import { makeLevel, replay, newGame, params, MODES, DIFFS } from "../../games/loopline/src/levels.js";
+import { makeLevel, replay, newGame, params, MODES, DIFFS, MODELS, modelView, makeTestLevel } from "../../games/loopline/src/levels.js";
 import { solve } from "../../games/loopline/src/solver.js";
 import { Orbit, look3, lap3 } from "../../games/loopline/src/orbit.js";
 import { playThrough } from "../../games/loopline/src/judge.js";
@@ -265,6 +265,41 @@ test("orbit: every sculpture has ten thousand blocks or more on Easy, more on Me
   }
 });
 
+test("orbit: the second batch of models comes after the first on every track, and each has a test level", () => {
+  for (const id of ["burger", "turtle", "strawberry", "cupcake", "ladybug", "frog", "castle", "balloon", "gift", "bee"]) {
+    assert.ok(MODELS.includes(id), id);
+    const v = modelView(id, "easy");
+    assert.ok(v.view && countOf(v) >= 10000 && v.movers.length === 0, `${id}: a view without critters`);
+    const L = makeTestLevel(id, "easy");
+    assert.ok(L.test && L.picture === id && replay(L), `${id}: a solvable test level`);
+  }
+  assert.equal(makeLevel("orbit", "easy", 23).picture, "strawberry", "right after the 22 first models");
+  assert.equal(makeLevel("orbit", "medium", 18).picture, "burger");
+  assert.equal(makeLevel("orbit", "hard", 16).picture, "castle");
+  assert.equal(makeTestLevel("frog", "hard").bays, params("orbit", "hard", 1).bays, "a test is like level 1 of its difficulty");
+});
+
+// ---- A sure win finishes itself ---------------------------------------------------------------------------
+test("sure win: when every critter left would find a free bay, playing it out always wins", () => {
+  let seen = 0;
+  for (const [mode, diff, ns] of [["critters", "easy", [1, 3, 6]], ["critters", "hard", [1, 4, 7]], ["orbit", "easy", [1]], ["orbit", "hard", [4]]]) {
+    for (const n of ns) {
+      const L = makeLevel(mode, diff, n), g = newGame(L, { history: false });
+      for (const m of L.solution) {
+        if (g.sureWin()) { seen++; const c = g.clone(); assert.ok(c.playOut(), `${mode} ${diff} ${n}: playing out wins`); assert.equal(c.remaining, 0); }
+        g.launch(m); g.settle();
+      }
+      assert.equal(g.sureWin(), false, "not once it's won");
+    }
+  }
+  assert.ok(seen > 10);
+  // Three critters left and three free bays: sure. Three critters and two bays: not (yet).
+  const g = new Game(level(["123"], [[R, 1], [Y, 1], [B, 1]], { bays: 3, lanes: [[0, 1, 2]] }));
+  assert.ok(g.sureWin());
+  const h = new Game(level(["123"], [[R, 1], [Y, 1], [B, 1]], { bays: 2, lanes: [[0, 1, 2]] }));
+  assert.ok(!h.sureWin());
+});
+
 // ---- Powers (bought with coins in the game) --------------------------------------------------------------
 test("powers: an extra bay stays for the rest of the level, undo included", () => {
   const g = new Game(level(["11", "22"], [[B, 5], [B, 5], [R, 2], [R, 2]], { bays: 1 }));
@@ -403,11 +438,11 @@ test("levels stay the same levels (saved stars point at them)", () => {
     "critters:easy": ["8d5ceb05", "74b8ea80", "d849cec1", "22607ff5"],
     "critters:medium": ["46a3cda8", "325166e7", "a06015bc", "8c55f97"],
     "critters:hard": ["18443bb2", "dd8479fd", "1e6e6c56", "bf68121e"],
-    "orbit:easy": ["3b03779a", "2c47a3c7", "47f732f7", "e92ec0be"],
-    "orbit:medium": ["fb59ff2b", "d1ce73e0", "b20bafa1", "dee369ba"],
-    "orbit:hard": ["56ae8aad", "bda6458d", "a52e96a0", "9c24eade"],
+    "orbit:easy": ["3b03779a", "2c47a3c7", "47f732f7", "30f4506b"],
+    "orbit:medium": ["fb59ff2b", "d1ce73e0", "b20bafa1", "2435fded"],
+    "orbit:hard": ["56ae8aad", "bda6458d", "a52e96a0", "b1bc4c33"],
   };
   const got = {};
   for (const mode of MODES) for (const diff of DIFFS) got[`${mode}:${diff}`] = [1, 2, 10, 25].map((n) => fp(makeLevel(mode, diff, n)));
-  assert.deepEqual(got, want, "if you changed the generator on purpose, bump the save key (loopline.v3) and update these");
+  assert.deepEqual(got, want, "if you changed the generator on purpose, bump the save key (loopline.v3) and update these (Orbit level 25 changed on purpose in Nov 2026: new models)");
 });

@@ -26,11 +26,13 @@ A bus's seats match the pixels it will carry exactly, so every bus leaves full i
 
 Rules in `src/engine.js`.
 
-1. Tap the front critter of a lane. It rides onto the loop at the bottom-left corner and goes round once, clockwise.
+1. Tap the front critter of a lane. It rides onto the loop at the bottom-left corner (the **chequered start and finish line**) and goes round once, clockwise.
 2. At each step along a side it looks straight into the picture. If the **first block it sees** has its colour (empty cells don't count), it pops it: **one per step**. The block behind shows from then on.
 3. The number on a critter is how many it can still pop. After its lap a critter with **0 left** is done. One with **pops left parks in a bay**; tap it to send it round again.
 4. If a critter comes back with pops left and **every bay is full**, the level is lost. If nothing that can go can pop a block and no lane critter can be parked, it's stuck (also lost).
-5. Up to **4 critters** ride at once, two steps apart; the one in front acts first.
+5. Up to **4 critters** ride at once, two steps apart; the one in front acts first. The **loop bar** over the bays shows how many ride now ("2/4"), one pip per place in the colour of the critter in it.
+6. **Repeat** (on the loop bar) sends the parked critters round again by themselves, as soon as there is room on the loop. It stops on its own once every critter going round has finished two laps without a single block popping anywhere (`dry` in `game.js`): nothing would change any more. You can still send lane critters while it runs; undo, restart and a new level switch it off.
+7. **A sure win finishes itself.** When every critter not yet done (in a lane, a bay or on the loop) would find a free bay, no critter can come back to a full yard, so the level can't be lost (`sureWin()` in `src/engine.js`). It can't get stuck either: a critter's capacity is exactly what it took in the made solution, so per colour the pops left equal the blocks left, and some block always shows. From the moment that holds, and at least half the critters are done (so Easy level 1 isn't over after one tap), the game says so, plays the rest out on a copy (`playOut()`), and shows it at once: the blocks pop (in Orbit they fly off top layers first while the turntable spins), the celebration, the result. It counts as a clean clear.
 
 ## Orbit: Critters in 3D
 
@@ -40,8 +42,9 @@ Rules in `src/orbit.js` (a subclass of Critters' `Game`); everything not listed 
 2. At each step along a side a critter looks straight in on **every layer at once**, bottom to top. On each layer it pops the **first block it sees** if that has its colour, while it has pops left. So one step can pop a whole column of blocks.
 3. Sculptures are solid: peeling the outside shows the inside (a planet's crust, mantle and core; an apple's flesh and pips; a geode's quartz and amethyst; a cake's layers).
 4. **Drag** anywhere outside the bays and lanes to turn the view (the mouse wheel zooms). Turning only changes the view, never the rules.
+5. The start and finish line is a chequered strip across the rail with a little flag on a pole, at the corner where every lap starts.
 
-**Sculptures** (`src/sculptures.js`) are shapes in maths, not drawn grids, so each can be built at any size: `sculptFor()` takes the smallest grid that gives at least the target number of blocks. A `body()` gives the inside, an optional `skin()` the outermost blocks (sprinkles, eyes, stickers). 22 drawn ones (thin, tall ones like the snowman and the rocket only on Easy, because they stay small), then endless seeded ones: layered candy, worlds, rock strata and totems. Their order and shapes are part of every Orbit level, like the pictures are for the other modes.
+**Sculptures** (`src/sculptures.js`) are shapes in maths, not drawn grids, so each can be built at any size: `sculptFor()` takes the smallest grid that gives at least the target number of blocks. A `body()` gives the inside, an optional `skin()` the outermost blocks (sprinkles, eyes, stickers). 32 drawn ones (thin, tall ones like the snowman and the rocket only on Easy, because they stay small; the second batch of ten, from the burger to the bee, comes after the first 22 on every track), then endless seeded ones: layered candy, worlds, rock strata and totems. Their order and shapes are part of every Orbit level, like the pictures are for the other modes.
 
 | | Easy | Medium | Hard |
 |---|---|---|---|
@@ -52,6 +55,10 @@ Rules in `src/orbit.js` (a subclass of Critters' `Game`); everything not listed 
 | Hidden colours | no | from level 10 | yes |
 
 Since November 2026 sculptures have **10,000+ blocks** (they had 1,000–4,900), to see how a phone copes: grids up to 64 blocks on a side (`sculptFor()` guesses the size from a small grid instead of trying every size), one instanced mesh, up to 2,400 flying blocks at once. A level has 35–65 critters. Each critter aims for a random size in its range, so a lap that could take hundreds of blocks of one colour stops somewhere along the way. Making a level takes 50–200 ms on a laptop; a hint usually under 100 ms (at most 2.5 s, then it says it found nothing and costs nothing).
+
+### The model gallery
+
+**Model gallery** in the lobby (under Play) and in the menu drawer shows every drawn sculpture on a slowly turning turntable: its name, blocks and colours, prev/next (or the arrow keys), drag to turn it, and a size (Easy, Medium, Hard: the number of blocks it has on that track). **Test play** makes a test level round it like level 1 of that difficulty (`makeTestLevel()` in `src/levels.js`: same bays, critter sizes and hidden colours, always solvable). Tests are not part of any track: nothing is saved, no coins are paid, powers and hints are free, and back leads to the gallery. (Unscrew has a model inspector too, but only in dev builds behind `?models`; here it's for players.)
 
 ## All modes
 
@@ -128,7 +135,7 @@ games/loopline/
   index.html, style.css, strings.js   markup; the look (deep indigo, light rails, red toolbar, Lilita One + Baloo 2); English + Dutch
   fonts/                               the two fonts, vendored for offline play (scripts/vendor-fonts.mjs)
   economy.js                           coins: pay per tier and the kind (price) of every power (docs/ECONOMY.md)
-  game.js                              app shell: taps, tick loop, HUD, toolbar, coins and powers, lobby (mode, difficulty, levels), result, saving
+  game.js                              app shell: taps, tick loop, HUD, toolbar, loop bar and Repeat, sure wins, coins and powers, lobby (mode, difficulty, levels), model gallery and test levels, result, saving
   src/config.js                        every number, and the 15-colour palette
   src/engine.js                        Critters' rules (track, take, launch, tick, park, lose, stuck, undo) and the car-park helpers
   src/depot.js                         Depot's rules (doors, ring, stop, docks, car park, quiet, lose, undo)
@@ -148,6 +155,7 @@ games/loopline/
 - The layout fits every level between the HUD and the toolbar on phones down to 375×667; on short screens (≤ 700 px) the HUD and toolbar get slimmer and the yard gives up room so pixels stay at least ~9 px. On a 320×568 phone big Depot pictures get small pixels (6–8 px).
 - The solver plays one send at a time (send, let everything run until it stops, repeat), which a player can always do too. Its answers can really be played.
 - Saves under `loopline.v3`: mode and difficulty, per track (`"depot:hard"`) the highest level cleared and the stars per level, coins, sound and vibration. A `loopline.v2` save keeps its Easy and Medium Depot and Critters progress (same levels) and gets the coins those stars would have paid; Hard and Orbit start over (new levels). (`loopline.v1` had one track per mode with different levels; it is ignored.)
+- Orbit levels past the first 22/17/15 drawn sculptures (Easy/Medium/Hard) changed in November 2026, when the second batch of models was put there (Orbit level 25's fingerprints were updated). Saved stars for those levels were kept rather than bumping the save key: Orbit's tracks were days old.
 - `window.Loopline` exposes the game for the end-to-end test (`tests/loopline/e2e.mjs`), which plays levels with real taps.
 
 ## To playtest
@@ -160,6 +168,10 @@ games/loopline/
 - Critters Medium: random tapping still wins ~84%. Fewer bays, or hidden colours earlier?
 - Big pictures (16×17) on a small phone: are cells big enough to see?
 - Colour-blind check: movers show a number, but colours alone tell the pixels apart. Brown, peach and orange in the owl are close.
+
+- Repeat: is "two dry laps each" the right moment to stop, or does it feel slow? Should a lane critter you send join in (it does now, once it parks)?
+- Sure wins: does the level finishing itself feel like a reward, or like being cut short? Is "half the critters done" the right moment?
+- The second batch of models: are they readable at 10,000+ blocks, and fun to peel (the burger and the cake are layered on purpose)?
 
 ## V2 ideas
 

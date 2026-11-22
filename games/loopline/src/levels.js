@@ -20,7 +20,7 @@ import { Game, makeTrack, lap, carCells, carPath } from "./engine.js";
 import { Depot, trayCount } from "./depot.js";
 import { DRAWN, LARGE, artOf, fromArt, madePicture } from "./pictures.js";
 import { Orbit, lap3 } from "./orbit.js";
-import { sculptById, sculptFor, madeSculpture } from "./sculptures.js";
+import { SCULPTS, sculptById, sculptFor, madeSculpture } from "./sculptures.js";
 import { CONFIG } from "./config.js";
 import { playThrough } from "./judge.js";
 
@@ -41,13 +41,18 @@ const ORDER = {
   },
 };
 // Orbit's sculptures, in the order each track meets them (thin, tall ones only on Easy: they stay small).
+// The second batch of models (burger to bee) comes after the first on every track, so levels before it
+// stay the same levels.
 const SCULPT_ORDER = {
   easy: ["jawbreaker", "apple", "mushroom", "cube", "snowman", "pumpkin", "donut", "watermelon", "cake", "rocket", "planet", "duck",
-    "icecream", "tree", "lighthouse", "fish", "penguin", "house", "owl", "robot", "geode", "saturn"],
+    "icecream", "tree", "lighthouse", "fish", "penguin", "house", "owl", "robot", "geode", "saturn",
+    "strawberry", "burger", "ladybug", "gift", "frog", "cupcake", "balloon", "turtle", "bee", "castle"],
   medium: ["planet", "cake", "pumpkin", "owl", "house", "geode", "duck", "penguin", "saturn", "robot", "donut", "apple", "mushroom",
-    "watermelon", "cube", "tree", "jawbreaker"],
+    "watermelon", "cube", "tree", "jawbreaker",
+    "burger", "turtle", "castle", "cupcake", "bee", "ladybug", "balloon", "frog", "gift", "strawberry"],
   hard: ["geode", "house", "owl", "cube", "duck", "pumpkin", "watermelon", "mushroom", "apple", "cake", "penguin", "donut", "planet",
-    "robot", "jawbreaker"],
+    "robot", "jawbreaker",
+    "castle", "bee", "turtle", "burger", "frog", "balloon", "ladybug", "cupcake", "gift", "strawberry"],
 };
 const BY_ID = Object.fromEntries([...DRAWN.map((d) => [d.id, d.art]), ...LARGE.map((d) => [d.id, artOf(d)])]);
 
@@ -190,6 +195,44 @@ function constructOrbit(sc, P, rng) {
   return { movers: movers.map((mv) => ({ color: mv.color, cap: mv.total })), solution };
 }
 
+/** An Orbit level round sculpture `sc`: its critters, lanes and made solution. */
+function orbitLevel(sc, P, rng, info) {
+  const { movers, solution } = constructOrbit(sc, P, rng);
+  const order = [];
+  for (const m of solution) if (!order.includes(m)) order.push(m);
+  return {
+    ...info, picture: sc.id, w: sc.w, h: sc.h, d: sc.d, cells: sc.cells, movers, solution,
+    bays: P.bays, belt: CONFIG.belt, spacing: CONFIG.spacing, hidden: P.hidden, lanes: laneUp(order, P.lanes, rng),
+  };
+}
+
+// ---- The model gallery ---------------------------------------------------------------------------------------
+/** Every drawn Orbit model, in the order the gallery shows them. */
+export const MODELS = SCULPTS.map((s) => s.id);
+
+/** Just the sculpture of model `id`, as big as it is on a track of `diff`'s first level, for looking at:
+ *  { mode: "orbit", view: true, w, h, d, cells } with no critters. */
+export function modelView(id, diff = "easy") {
+  const P = params("orbit", diff, 1), sc = sculptFor(sculptById(id), P.target);
+  return { mode: "orbit", diff, n: 0, view: true, picture: sc.id, w: sc.w, h: sc.h, d: sc.d, cells: sc.cells, movers: [], lanes: [], bays: 0, belt: CONFIG.belt, spacing: CONFIG.spacing };
+}
+
+const tests = new Map();
+/** A test level round model `id`, made like level 1 of Orbit `diff` (bays, critter sizes, hidden colours
+ *  from that track). Always solvable, like every level; not part of any track. */
+export function makeTestLevel(id, diff = "easy") {
+  const key = `orbit:test:${id}:${diff}`;
+  if (tests.has(key)) return tests.get(key);
+  const P = params("orbit", diff, 1), sc = sculptFor(sculptById(id), P.target);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const level = orbitLevel(sc, P, new Rng(hashSeed(`${key}:${attempt}`)), { mode: "orbit", diff, n: 0, test: true });
+    if (!replay(level)) continue;
+    tests.set(key, level);
+    return level;
+  }
+  throw new Error(`could not make a test level for ${id}`);
+}
+
 /** Lanes for critters in the order they first go: each lane keeps that order. */
 function laneUp(order, nLanes, rng) {
   const lanes = Array.from({ length: Math.min(nLanes, order.length) }, () => []);
@@ -319,14 +362,7 @@ export function makeLevel(mode, diff, n) {
     const pic = mode === "orbit" ? null : pictureFor(mode, diff, n, rng, P);
     let level;
     if (mode === "orbit") {
-      const sc = sculptureFor(diff, n, rng, P);
-      const { movers, solution } = constructOrbit(sc, P, rng);
-      const order = [];
-      for (const m of solution) if (!order.includes(m)) order.push(m);
-      level = {
-        mode, diff, n, picture: sc.id, w: sc.w, h: sc.h, d: sc.d, cells: sc.cells, movers, solution,
-        bays: P.bays, belt: CONFIG.belt, spacing: CONFIG.spacing, hidden: P.hidden, lanes: laneUp(order, P.lanes, rng),
-      };
+      level = orbitLevel(sculptureFor(diff, n, rng, P), P, rng, { mode, diff, n });
     } else if (mode === "critters") {
       const { movers, solution } = constructCritters(pic, P, rng);
       const order = [];

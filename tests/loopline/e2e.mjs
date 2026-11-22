@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Loopline end to end, in a headless phone-sized Chromium, through real taps: the lobby with its modes
 // and difficulties, a blocked bus, clearing a level in each mode by tapping the movers the solver
-// picks (Orbit, the 3D mode, fast-forwarded up to the last tap), the result screen and the saved progress, undo, hints, the toolbar and the menu drawer. Serves dist/ (run `npm run build` first;
+// picks (Orbit, the 3D mode, fast-forwarded up to the last tap), the result screen and the saved progress, undo, hints, the toolbar and the menu drawer,
+// the loop bar and Repeat, a sure win finishing itself, and the model gallery with its test levels. Serves dist/ (run `npm run build` first;
 // `npm test` does it), or the source with --src.
 //
 //   node tests/loopline/e2e.mjs [--src]
@@ -285,6 +286,98 @@ await check("Hard: undo costs coins", async () => {
   await page.locator("#undoBtn").click();
   await page.waitForTimeout(100);
   ok((await ll(() => Loopline.coins)) === before - 30, "half a Hard level's pay");
+});
+
+await check("the loop bar counts the critters on the loop, n / 4, with a chequered start line on the rail", async () => {
+  await ll(() => { Loopline.setMode("critters"); Loopline.setDiff("easy"); Loopline.start(5); });
+  await page.waitForTimeout(300);
+  ok(await page.locator("#loopbar").isVisible(), "the loop bar shows in Critters");
+  ok((await page.locator("#loopNum").innerText()) === "0/4", "nobody on the loop yet");
+  const m = await ll(() => Loopline.game.lanes[0][0]);
+  const [x, y] = await spot(m);
+  await page.touchscreen.tap(x, y);
+  await page.waitForTimeout(120);
+  ok((await page.locator("#loopNum").innerText()) === "1/4", "one critter rides");
+  ok((await page.locator("#loopPips i[style]").count()) === 1, "one pip in its colour");
+  await idle();
+  ok((await page.locator("#loopNum").innerText()) === "0/4", "back to none after its lap");
+  await ll(() => Loopline.setMode("depot"));
+  ok(!(await page.locator("#loopbar").isVisible()), "no loop bar in Depot");
+});
+
+await check("Repeat sends parked critters round again by itself, and stops once they pop nothing", async () => {
+  await ll(() => { Loopline.setMode("critters"); Loopline.setDiff("medium"); Loopline.start(2); });
+  await page.waitForTimeout(300);
+  // Play the made solution in the engine until a critter is parked.
+  const parked = await ll(() => {
+    const g = Loopline.game;
+    for (const m of g.level.solution) { if (g.bays.some((b) => b >= 0)) break; g.launch(m); g.settle(); }
+    g.events.length = 0;
+    return g.bays.find((b) => b >= 0);
+  });
+  ok(parked != null, "a critter waits in a bay");
+  await page.locator("#repeatBtn").click();
+  ok(await ll(() => Loopline.repeat), "Repeat is on");
+  await page.waitForFunction((m) => Loopline.game.where[m] !== 3, parked, { timeout: 3000 });
+  await page.waitForFunction(() => !Loopline.repeat, null, { timeout: 90000 });
+  ok(await ll(() => Loopline.game.status !== "lost"), "nothing lost by repeating");
+  ok((await page.locator("#repeatBtn").getAttribute("aria-pressed")) === "false", "the button is off again");
+});
+
+await check("a sure win (every critter left would find a free bay) finishes itself", async () => {
+  await ll(() => { Loopline.setMode("critters"); Loopline.setDiff("easy"); Loopline.start(2); });
+  await page.waitForTimeout(300);
+  let sends = 0, said = false;
+  const total = await ll(() => Loopline.game.level.solution.length);
+  for (let k = 0; k < 20; k++) {
+    await idle();
+    said = said || (await page.locator("#toast").innerText()).includes("Finishing");
+    if (await ll(() => Loopline.state !== "play" || Loopline.game.status !== "play")) break;
+    const m = (await ll(() => Loopline.solve()))[0];
+    await ll((m) => Loopline.send(m), m);
+    sends++;
+    await page.waitForTimeout(700);
+    said = said || (await page.locator("#toast").innerText()).includes("Finishing");
+  }
+  await page.waitForSelector("#result:not([hidden])", { timeout: 15000 });
+  ok(said, "it said it would finish the level");
+  ok(sends < total, `it finished with sends to spare (${sends} of ${total})`);
+  ok((await page.locator("#resultStars svg.on").count()) === 3, "it counts as a clean clear");
+});
+
+await check("the model gallery: from the lobby, turn through every Orbit model, test-play one, back to the gallery", async () => {
+  await page.locator("#resultAlt").click();
+  await page.waitForTimeout(250);
+  await page.locator(".lob-models").click();
+  await page.waitForTimeout(500);
+  ok((await ll(() => Loopline.state)) === "models", "in the gallery");
+  ok(await page.locator("#gl").isVisible(), "a 3D view, whatever mode is chosen");
+  const first = await page.locator("#mName").innerText();
+  await page.locator("#mNext").click();
+  await page.waitForTimeout(300);
+  ok((await page.locator("#mName").innerText()) !== first, "the next model");
+  ok((await page.locator("#mCount").innerText()).includes("32"), "32 models");
+  const yaw = await ll(() => Loopline.yaw);
+  await page.mouse.move(100, 300); await page.mouse.down(); await page.mouse.move(260, 300, { steps: 6 }); await page.mouse.up();
+  ok(Math.abs((await ll(() => Loopline.yaw)) - yaw) > 0.5, "drag turns the model");
+  await page.screenshot({ path: join(OUT, "loopline-gallery.png") });
+  const id = await ll(() => Loopline.gallery.id);
+  const coins = await ll(() => Loopline.coins);
+  await page.locator("#mPlay").click();
+  await page.waitForTimeout(500);
+  ok(await ll(() => Loopline.state === "play" && Loopline.testing && Loopline.game.kind === "orbit"), "a test level");
+  ok(await ll((id) => Loopline.game.level.picture === id, id), "of that model");
+  ok((await page.locator("#levelName").innerText()).startsWith("Test"), "the HUD says it's a test");
+  ok(await page.locator("#hintCost").isHidden(), "hints are free in a test");
+  await page.locator("#hintBtn").click();
+  await page.waitForTimeout(200);
+  ok((await ll(() => Loopline.coins)) === coins, "nothing paid");
+  await page.locator("#hud .gnav-back").click();
+  await page.waitForTimeout(300);
+  ok((await ll(() => Loopline.state)) === "models", "back leads to the gallery");
+  await page.locator(".gnav-bar .gnav-back").click();
+  await page.waitForTimeout(300);
+  ok((await ll(() => Loopline.state)) === "menu", "and from there to the lobby");
 });
 
 if (problems.length) { failures++; console.log("✗ no errors on the page\n    " + [...new Set(problems)].join("\n    ")); }

@@ -1,4 +1,4 @@
-// Orbit's sculptures: voxel models of 1,000 to 4,500 blocks, made from shapes in maths rather than
+// Orbit's sculptures: voxel models of 10,000 blocks and more, made from shapes in maths rather than
 // drawn by hand, so one model can be built at any size. Each has a body (what is inside, which you
 // meet as the outside peels away) and often a skin (what colour the outermost blocks get).
 //
@@ -13,6 +13,7 @@ import { COLOR_OF } from "./config.js";
 // ---- Helpers ---------------------------------------------------------------------------------------------------
 const len3 = (x, y, z) => Math.sqrt(x * x + y * y + z * z);
 const len2 = (x, z) => Math.sqrt(x * x + z * z);
+const TAU = Math.PI * 2;
 /** A repeatable 0..1 from integers (for sprinkles, spots, seeds). */
 function hash3(i, j, k, s = 0) {
   let h = (Math.imul(i | 0, 374761393) + Math.imul(j | 0, 668265263) + Math.imul(k | 0, 2147483647) + Math.imul(s | 0, 1274126177)) | 0;
@@ -330,6 +331,187 @@ export const SCULPTS = [
       if (y < 0.08 && Math.abs(x) < 0.48) return (Math.floor(y * 12) + Math.floor(x * 10)) % 2 ? "F" : "W";
       return null;
     },
+  },
+  // ---- Added in the second batch (November 2026) ----------------------------------------------------------------
+  { id: "burger", aspect: [1, 0.8, 1],
+    body: ({ x, y, z }) => {
+      const rr = len2(x, z), a = Math.atan2(z, x);
+      if (y < -0.5) return rr < 0.9 - Math.max(0, -0.66 - y) * 1.6 ? (rr > 0.78 || y < -0.7 ? "O" : "F") : null; // bottom bun
+      if (y < -0.25) return rr < 0.95 ? (rr > 0.8 ? "N" : "R") : null;             // patty, pink inside
+      if (y < -0.16) return Math.max(Math.abs(x), Math.abs(z)) < 0.86 ? "Y" : null; // a square slice of cheese
+      if (y < -0.06) return rr < 0.96 + 0.06 * Math.sin(10 * a) ? (rr > 0.84 ? "L" : "G") : null; // lettuce
+      if (y < 0.04) return rr < 0.84 ? (rr > 0.7 ? "R" : "K") : null;              // tomato
+      const q = len3(x, (y - 0.04) / 0.76, z);
+      return q < 0.94 ? (q > 0.82 ? "O" : "F") : null;                             // top bun
+    },
+    skin: ({ x, y, z, i, j, k }) => (y > 0.2 && hash3(i, j, k, 23) > 0.86 ? "W" : null), // sesame
+  },
+  { id: "turtle", aspect: [1, 0.62, 0.86],
+    body: ({ x, y, z }) => {
+      if (len3(x - 0.76, y + 0.18, z) < 0.18) return "L";                          // head
+      for (const [lx, lz] of [[0.42, 0.4], [0.42, -0.4], [-0.42, 0.4], [-0.42, -0.4]]) {
+        if (y < -0.24 && len2(x - lx, z - lz) < 0.14) return "L";                   // legs
+      }
+      if (len3(x + 0.8, y + 0.32, z) < 0.09) return "L";                           // tail
+      if (y > -0.36 && y < -0.24) return len2(x / 0.74, z / 0.62) < 1 ? "Y" : null; // the plate underneath
+      if (y < -0.24) return null;
+      const q = len3(x / 0.74, (y + 0.24) / 0.84, z / 0.62);
+      if (q > 1) return null;
+      return q > 0.86 ? "G" : q > 0.6 ? "N" : "F";
+    },
+    skin: ({ x, y, z }) => {
+      if (len3(x - 0.86, y + 0.12, Math.abs(z) - 0.08) < 0.06) return "D";        // eyes
+      if (y < -0.2) return null;
+      const u = Math.atan2(z, x) * 3, v = y * 7;
+      return Math.abs(Math.sin(u)) < 0.16 || Math.abs(Math.sin(v)) < 0.14 ? "L" : null; // shell plates
+    },
+  },
+  { id: "strawberry", aspect: [0.86, 1, 0.86],
+    body: ({ x, y, z }) => {
+      const rr = len2(x, z), a = Math.atan2(z, x);
+      if (y > 0.5 && y < 0.95 && rr < 0.07) return "G";                            // stem
+      if (y > 0.46 && y < 0.62 && rr < 0.62 * (0.55 + 0.45 * Math.cos(5 * a))) return "G"; // leaves
+      const t = (y + 1) / 1.52;
+      if (t < 0 || t > 1) return null;
+      const r = 0.84 * Math.sqrt(Math.sin(t * Math.PI * 0.64)) * (1 - 0.18 * t * t);
+      if (rr > r) return null;
+      return rr > r - 0.12 ? "R" : rr < r * 0.32 ? "W" : "K";
+    },
+    skin: ({ y, i, j, k }) => (y < 0.44 && hash3(i, j, k, 29) > 0.82 ? "Y" : null), // seeds
+  },
+  { id: "cupcake", aspect: [0.9, 1, 0.9],
+    body: ({ x, y, z }) => {
+      const rr = len2(x, z), a = Math.atan2(z, x);
+      if (len3(x, y - 0.84, z) < 0.14) return "R";                                // cherry
+      if (y > 0.9 && y < 1 && len2(x - 0.04, z) < 0.035) return "G";
+      if (y < -0.15) {
+        const r = 0.6 + 0.2 * ((y + 1) / 0.85);
+        if (rr > r) return null;
+        return rr > r - 0.1 ? (Math.cos(14 * a) > 0 ? "S" : "W") : "N";           // wrapper, chocolate cake
+      }
+      const t = (y + 0.15) / 0.92;
+      const r = 0.86 * Math.pow(1 - t, 0.75) * (0.92 + 0.08 * Math.sin(t * 18 + a * 2));
+      return rr < r ? (rr > r - 0.14 ? "K" : "W") : null;                        // a swirl of frosting
+    },
+    skin: ({ y, i, j, k }) => {
+      if (y < -0.12 || y > 0.7) return null;
+      const h = hash3(i, j, k, 31);
+      return h > 0.94 ? "Y" : h > 0.9 ? "S" : h > 0.87 ? "L" : null;               // sprinkles
+    },
+  },
+  { id: "ladybug", aspect: [1, 0.6, 0.82],
+    body: ({ x, y, z }) => {
+      if (y < -0.56) return Math.abs(Math.abs(x) - 0.28) < 0.06 && Math.abs(z) < 0.62 ? "D" : null; // legs
+      if (len3(x - 0.66, y + 0.24, z) < 0.26) return "D";                        // head
+      if (y < -0.5) return len2(x / 0.76, z / 0.68) < 1 ? "D" : null;
+      const q = len3(x / 0.76, (y + 0.5) / 1.06, z / 0.68);
+      if (q > 1) return null;
+      return q > 0.84 ? "R" : q > 0.5 ? "O" : "Y";
+    },
+    skin: ({ x, y, z }) => {
+      if (len3(x - 0.82, y + 0.14, Math.abs(z) - 0.12) < 0.07) return "W";        // eyes
+      if (x > 0.5 || y < -0.48) return null;
+      if (Math.abs(z) < 0.035 && x > -0.7) return "D";                            // where the wings meet
+      for (const [sx, sz] of [[0.2, 0.3], [-0.2, 0.4], [-0.45, 0.18], [0.3, 0.05], [-0.1, 0.1], [0, 0.55]]) {
+        if (len2(x - sx, Math.abs(z) - sz) < 0.13) return "D";                    // spots, both sides
+      }
+      return null;
+    },
+  },
+  { id: "frog", aspect: [1, 0.8, 0.92],
+    body: ({ x, y, z }) => {
+      const rr = len2(x, z);
+      if (y < -0.68) return rr < 0.98 && !(z > 0.2 && Math.abs(x) < z * 0.35) ? (y < -0.74 ? "G" : "L") : null; // lily pad
+      for (const s of [-1, 1]) {
+        if (len3(x - s * 0.3, y - 0.3, z - 0.2) < 0.2) return "L";                // eyes on top
+        if (len3((x - s * 0.58) / 0.8, (y + 0.5) / 0.6, z - 0.1) < 0.24) return "L"; // back legs
+        if (len3(x - s * 0.36, y + 0.6, z - 0.5) < 0.1) return "L";               // front feet
+      }
+      const q = len3(x / 0.7, (y + 0.2) / 0.52, z / 0.64);
+      if (q > 1) return null;
+      return q > 0.84 ? "L" : q > 0.5 ? "G" : "Y";
+    },
+    skin: ({ x, y, z }) => {
+      const ex = Math.abs(x) - 0.3;
+      if (len3(ex, y - 0.34, z - 0.36) < 0.09) return "D";                        // pupils
+      if (len3(ex, y - 0.32, z - 0.3) < 0.15 && z > 0.25) return "W";
+      if (z > 0.3 && y < -0.05 && y > -0.5 && len2(x / 0.55, (y + 0.3) / 0.25) < 1) return "Y"; // belly
+      if (z > 0.4 && Math.abs(y - 0.06) < 0.035 && Math.abs(x) < 0.34) return "K"; // smile
+      return null;
+    },
+  },
+  { id: "castle", aspect: [1, 0.9, 1],
+    body: ({ x, y, z }) => {
+      const ax = Math.abs(x), az = Math.abs(z), m = Math.max(ax, az);
+      if (y < -0.78) return m < 0.98 ? "G" : null;                                // the hill
+      for (const [tx, tz] of [[0.66, 0.66], [-0.66, 0.66], [0.66, -0.66], [-0.66, -0.66]]) {
+        const r = len2(x - tx, z - tz);
+        if (r < 0.24 && y < 0.42) return "E";                                      // corner towers
+        if (y >= 0.42 && y < 0.86 && r < 0.27 * (1 - (y - 0.42) / 0.44)) return "R"; // their roofs
+      }
+      if (m > 0.52 && m < 0.68 && y < 0.1) return "E";                            // walls
+      if (m > 0.52 && m < 0.68 && y < 0.22) return (Math.floor((x + z + 2) * 7) % 2) ? "E" : null; // battlements
+      if (m <= 0.52 && y < -0.6) return "N";                                     // the yard
+      if (ax < 0.3 && az < 0.3 && y < 0.5) return y < -0.2 ? "N" : "W";           // the keep
+      if (y >= 0.5 && y < 0.96 && len2(x, z) < 0.34 * (1 - (y - 0.5) / 0.46)) return "B";
+      return null;
+    },
+    skin: ({ x, y, z }) => {
+      if (z > 0.6 && Math.abs(x) < 0.16 && y < -0.3 && y > -0.78) return "N";     // the gate
+      if (y > -0.2 && y < 0.05 && Math.abs(Math.abs(x) - 0.3) < 0.07 && Math.max(Math.abs(x), Math.abs(z)) > 0.6) return "D";
+      if (y > 0.1 && y < 0.3 && Math.max(Math.abs(x), Math.abs(z)) < 0.31 && (Math.abs(x) < 0.06 || Math.abs(z) < 0.06)) return "D"; // keep windows
+      return null;
+    },
+  },
+  { id: "balloon", aspect: [0.84, 1, 0.84],
+    body: ({ x, y, z }) => {
+      const rr = len2(x, z), a = Math.atan2(z, x);
+      if (y < -0.72) return Math.max(Math.abs(x), Math.abs(z)) < 0.2 ? (y > -0.78 ? "D" : "N") : null; // basket
+      if (y < -0.3) {                                                             // ropes
+        const f = (y + 0.72) / 0.42, rx = 0.17 + f * 0.2;
+        for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) if (len2(x - sx * rx, z - sz * rx) < 0.035) return "D";
+        return null;
+      }
+      const q = len3(x, (y - 0.25) / (y < 0.25 ? 0.6 : 0.74), z) / 0.82;
+      if (q > 1 || y < -0.3) return null;
+      if (q < 0.55) return "Y";                                                   // the warm inside
+      if (q < 0.82) return "O";
+      const seg = Math.floor(((a + Math.PI) / TAU) * 10) % 5;
+      return y > 0.76 ? "W" : "RYBGP"[seg];                                       // stripes
+    },
+    skin: ({ x, y, z }) => (Math.abs(y - 0.25) < 0.04 ? "W" : null),
+  },
+  { id: "gift", aspect: [0.9, 0.9, 0.9],
+    body: ({ x, y, z }) => {
+      const ax = Math.abs(x), az = Math.abs(z);
+      for (const s of [-1, 1]) {
+        const d = len3((x - s * 0.24) / 1.6, (y - 0.74) / 1, z / 0.7);
+        if (d < 0.17 && d > 0.07) return "Y";                                     // the bow
+      }
+      if (len3(x, y - 0.7, z) < 0.08) return "Y";
+      if (y > 0.4 && y < 0.62) return ax < 0.86 && az < 0.86 ? (ax < 0.12 || az < 0.12 ? "Y" : "P") : null; // the lid
+      if (y < -0.9 || y >= 0.4 || ax >= 0.8 || az >= 0.8) return null;
+      if (ax > 0.7 || az > 0.7 || y < -0.8) return ax < 0.12 || az < 0.12 ? "Y" : "P"; // the box
+      if (len3(x, (y + 0.22) / 0.9, z) < 0.36) return len3(x, y + 0.22, z) < 0.18 ? "K" : "R"; // a surprise inside
+      return "W";                                                                // tissue paper
+    },
+    skin: ({ x, y, z, i, j, k }) => (Math.abs(x) >= 0.12 && Math.abs(z) >= 0.12 && hash3(i >> 1, j >> 1, k >> 1, 37) > 0.8 ? "K" : null), // dots
+  },
+  { id: "bee", aspect: [1, 0.84, 0.76],
+    body: ({ x, y, z }) => {
+      if (len3(x - 0.66, y + 0.06, z) < 0.28) return "D";                         // head
+      if (y > 0.86 - 0.1 && Math.abs(Math.abs(z) - 0.1) < 0.04 && Math.abs(x - 0.72) < 0.04) return "D";
+      for (const s of [-1, 1]) {
+        if (len3((x + 0.05) / 0.36, (y - 0.46) / 0.12, (z - s * 0.32) / 0.26) < 1) return "S"; // wings
+        if (len3(x - 0.66 - 0.06 * (y - 0.24), 0, z - s * 0.1) < 0.04 && y > 0.18 && y < 0.6) return "D"; // feelers
+      }
+      if (x < -0.66 && len2(y + 0.1, z) < 0.12 * (1 + (x + 0.66) * 4)) return "D"; // sting
+      const q = len3((x + 0.04) / 0.68, (y + 0.1) / 0.5, z / 0.5);
+      if (q > 1) return null;
+      if (q < 0.6) return "O";                                                    // honey
+      return Math.floor((x + 1.2) * 5.5) % 2 ? "Y" : "D";                         // stripes
+    },
+    skin: ({ x, y, z }) => (len3(x - 0.84, y + 0.0, Math.abs(z) - 0.12) < 0.07 ? "W" : null),
   },
 ];
 

@@ -19,6 +19,23 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-22
+
+**Done**
+- **Loopline: Orbit feedback** (see [docs/LOOPLINE.md](docs/LOOPLINE.md)):
+  - A **chequered start and finish line** on the rail where every lap starts (Orbit also gets a little flag), in Critters and Orbit.
+  - A **loop bar** over the bays: how many critters ride the loop, "1/4", one pip per place in the critter's colour.
+  - **Repeat**: parked critters are sent round again by themselves until every one going round has done two laps without anything popping; then it stops.
+  - **A sure win finishes itself**: once every critter left would find a free bay (so the level can't be lost) and half are done, the rest is played out at once: blocks fly off, the turntable spins, the result.
+  - **Ten new models** (burger, turtle, strawberry, cupcake, ladybird, frog, castle, hot-air balloon, present, bee), after the first 22 on every Orbit track: 32 in all.
+  - A **model gallery** in the lobby and the menu: every model in 3D on a turning turntable, at the size of each difficulty, with **test play** (a level-1-like test level; nothing saved, powers free).
+  - Fixed: a kick during a frame could start a second animation loop, so frames ran twice.
+  - Tests: the new models and their test levels, sure wins always win when played out; e2e for the loop bar, Repeat, a sure win, the gallery and test play.
+
+**Decided**
+- The model viewer is part of the game (a lobby and menu item), not a hidden dev page like Unscrew's inspector.
+- New models go after the existing ones, so earlier Orbit levels stay the same; saved stars past them are kept.
+
 ## 2026-11-21
 
 **Done**
