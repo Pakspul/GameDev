@@ -209,8 +209,10 @@ export class Renderer {
     const rail = compact ? 16 : 20, Gmin = compact ? 16 : 22;
     const nS = depot ? g.docks.length : g.bays.length; // the Extra bay power can add one
     const slotS = compact ? 44 : depot ? 58 : 54, slotGap = compact ? 8 : 10;
-    // Gaps: board to slots (the stop's crossing in Depot), slots to yard.
-    const gap1 = depot ? (compact ? 26 : 34) : compact ? 12 : 18, gap2 = compact ? 14 : 24;
+    // Gaps: board to slots (the stop's crossing in Depot; in Critters room for the loop bar: how many ride
+    // and Repeat), slots to yard.
+    const barH = depot ? 0 : compact ? 30 : 34;
+    const gap1 = depot ? (compact ? 26 : 34) : (compact ? 8 : 12) + barH, gap2 = compact ? 14 : 24;
     // The yard: lanes of critters or the car park. It gives up room if the picture would get too small.
     let cols, rows, cellY, rowH, yardW, yardH, cs = 30, G = 26;
     if (depot) { cols = lv.lot.w; rows = lv.lot.h; }
@@ -263,6 +265,8 @@ export class Renderer {
     if (wide) sx = clamp(Math.round(cx - sw / 2), pad, Math.max(pad, px + pw + ring - sw));
     this.slots = Array.from({ length: nS }, (_, i) => ({ x: sx + i * (slotS + slotGap), y: sy, s: slotS }));
     this.yard = { x: yx, y: yy, w: yardW, h: yardH };
+    // The loop bar (HTML, placed by game.js) sits just over the bays.
+    this.bar = depot ? null : { x: sx + sw / 2, y: sy - barH, h: barH - 4 };
     this.moverSize = clamp(cs * 1.7, compact ? 22 : 26, 38);
   }
 
@@ -374,6 +378,19 @@ export class Renderer {
       this.fx.push({ kind: "spark", x: px + Math.random() * pw, y: py + Math.random() * ph, vx: (Math.random() - 0.5) * 140, vy: -90 - Math.random() * 140, g: 300, t0: now + Math.random() * 0.3, dur: 1.2, color, s: 6 });
     }
   }
+  /** The level finishes itself (a sure win): `cells` (with their colours in `was`) pop top to bottom. */
+  onSweep(cells, was, now) {
+    const h = this.game.h, w = this.game.w;
+    for (const cell of cells) {
+      const d = (Math.floor(cell / w) / h) * 0.55 + Math.random() * 0.15;
+      this.ghosts.set(cell, { until: now + d, color: was[cell] });
+      const [cx, cy] = this.cellPoint(cell), color = colorOf(was[cell]);
+      for (let k = 0; k < 4; k++) {
+        const a = Math.random() * TAU, v = 40 + Math.random() * 70;
+        this.fx.push({ kind: "spark", x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, g: 160, t0: now + d, dur: 0.5, color, s: Math.max(3, this.cs * 0.34) });
+      }
+    }
+  }
   shake(m, now) { this.shakes.set(m, now); }
   showHint(m, now) { this.hint = m; this.hintT0 = now; }
 
@@ -465,6 +482,20 @@ export class Renderer {
     }
     ctx.stroke();
     ctx.globalAlpha = 1;
+    if (this.mode !== "depot") this.drawFinish();
+  }
+
+  /** Critters: a chequered start and finish line across the rail where every lap starts and ends. */
+  drawFinish() {
+    const ctx = this.ctx, T = this.game.track, L = T.length;
+    const [x, y] = this.stepPoint(T[0]), a = this.stepPoint(T[L - 1]), b = this.stepPoint(T[1]);
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]), n = 4, w = this.rail + 6, s = w / n;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ang);
+    ctx.fillStyle = UI.ink; ctx.fillRect(-1.5 * s - 2, -w / 2 - 2, 3 * s + 4, w + 4);
+    for (let i = 0; i < n; i++) for (let j = 0; j < 3; j++) { ctx.fillStyle = (i + j) % 2 ? "#ffffff" : "#26283f"; ctx.fillRect(-1.5 * s + j * s, -w / 2 + i * s, s, s); }
+    ctx.restore();
   }
 
   drawPicture(now) {

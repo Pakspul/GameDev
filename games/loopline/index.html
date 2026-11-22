@@ -27,6 +27,19 @@
   </div>
 </header>
 <p id="tip" hidden></p>
+
+<!-- Critters and Orbit, just over the bays: how many critters ride the loop, and Repeat -->
+<div id="loopbar" hidden>
+  <span id="loopCount" class="loopcount" role="img">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="6"/><path d="M13 3.5l2.5 2.5-2.5 2.5"/></svg>
+    <span class="pips" id="loopPips"></span>
+    <b id="loopNum"></b>
+  </span>
+  <button type="button" id="repeatBtn" class="repeat" aria-pressed="false" data-i18n-attr="title:hud.repeat.tip">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2.5l3 3-3 3"/><path d="M4 11.5v-1a5 5 0 0 1 5-5h11"/><path d="M7 21.5l-3-3 3-3"/><path d="M20 12.5v1a5 5 0 0 1-5 5H4"/></svg>
+    <span data-i18n="hud.repeat"></span>
+  </button>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <!-- Toolbar: undo (free on Easy and Medium), a hint, three powers paid with coins, restart -->
@@ -68,6 +81,26 @@
     <h1 class="logo"><span class="pix" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>Loopline</h1>
     <p class="lead" data-i18n="lead"></p>
     <div class="lobby" id="lobby"></div>
+  </div>
+</section>
+
+<!-- The model gallery: every Orbit sculpture in 3D, and a test level for each -->
+<section id="models" data-i18n-attr="aria-label:models" hidden>
+  <h1 class="mhead outlined" data-i18n="models"></h1>
+  <div class="mcard">
+    <div class="mrow">
+      <button type="button" class="mnav" id="mPrev" data-i18n-attr="aria-label:models.prev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="mtitle">
+        <span id="mCount" class="eyebrow"></span>
+        <h2 id="mName" class="outlined"></h2>
+        <p id="mInfo" class="note"></p>
+      </div>
+      <button type="button" class="mnav" id="mNext" data-i18n-attr="aria-label:models.next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div id="mSwatches" class="swatches" aria-hidden="true"></div>
+    <div id="mDiff" class="mdiff" role="radiogroup" data-i18n-attr="aria-label:models.size"></div>
+    <button type="button" class="primary" id="mPlay" data-i18n="models.test"></button>
+    <p class="note mfree" data-i18n="models.free"></p>
   </div>
 </section>
 

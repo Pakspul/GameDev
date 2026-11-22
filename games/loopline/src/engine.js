@@ -217,6 +217,30 @@ export class Game {
     return true;
   }
 
+  /** Can this level no longer be lost? True when every critter still to finish (in a lane, a bay or on
+   *  the loop) would find a free bay: then none can come back to a full yard. And it can't get stuck
+   *  either: a critter's capacity is exactly the blocks of its colour it took in the made solution, so
+   *  for every colour the pops left equal the blocks left, and some block always shows. */
+  sureWin() {
+    if (this.status !== "play") return false;
+    let open = 0;
+    for (const w of this.where) if (w !== DONE) open++;
+    return open > 0 && open <= this.bays.length;
+  }
+
+  /** Finish the level by sending everything that can go, over and over (no history, no undo). For a
+   *  sure win (sureWin()), on a copy: returns true if it won. */
+  playOut(maxTicks = 400000) {
+    for (let t = 0; this.status === "play" && t < maxTicks; t++) {
+      for (let m = 0; m < this.where.length && !this.beltFull; m++) if (this.left[m] > 0 && this.free(m)) this.launch(m);
+      this.tick();
+      this.events.length = 0;
+    }
+    if (this.status === "won") this.settle(); // the critters still riding finish their lap
+    this.events.length = 0;
+    return this.status === "won";
+  }
+
   /** The Extra bay power: one more bay for the rest of this level (undo keeps it). */
   addBay() {
     this.bays.push(-1);
