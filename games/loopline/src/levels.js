@@ -15,6 +15,8 @@
 //      order; in Depot the car park is filled from the last bus to leave to the first, each with a clear
 //      way out past the ones already there (but often in their way: that's the jam).
 //   4. Replay the solution with the real rules. Only a level that passes is used.
+//   5. Critters and Orbit: link a few pairs of critters as buddies, which leave the lanes together
+//      (buddyUp(); the level stays the same otherwise).
 import { Rng, hashSeed } from "./rng.js";
 import { Game, makeTrack, lap, carCells, carPath } from "./engine.js";
 import { Depot, trayCount } from "./depot.js";
@@ -79,6 +81,7 @@ export function params(mode, diff, n) {
       maxCap: [420, 500, 580][D],
       lanes: n <= 2 && D === 0 ? 3 : [4, 5, 5][D],
       hidden: D === 2 || (D === 1 && n >= 10),
+      buddies: [n < 3 ? 0 : 2, 3, 4][D],
     };
   }
   if (mode === "depot") {
@@ -105,6 +108,7 @@ export function params(mode, diff, n) {
     pick: [1, 1, 8][D],
     lanes: n <= 2 && D === 0 ? 2 : [3, 4, 4][D],
     hidden: D === 2 || (D === 1 && n >= 12), // only the front critter of a lane shows its colour
+    buddies: [n < 4 ? 0 : n < 10 ? 1 : 2, 2, 3][D], // pairs of critters that leave together
   };
 }
 
@@ -225,12 +229,50 @@ export function makeTestLevel(id, diff = "easy") {
   if (tests.has(key)) return tests.get(key);
   const P = params("orbit", diff, 1), sc = sculptFor(sculptById(id), P.target);
   for (let attempt = 0; attempt < 20; attempt++) {
-    const level = orbitLevel(sc, P, new Rng(hashSeed(`${key}:${attempt}`)), { mode: "orbit", diff, n: 0, test: true });
+    let level = orbitLevel(sc, P, new Rng(hashSeed(`${key}:${attempt}`)), { mode: "orbit", diff, n: 0, test: true });
     if (!replay(level)) continue;
+    level = buddyUp(level, P.buddies, key);
     tests.set(key, level);
     return level;
   }
   throw new Error(`could not make a test level for ${id}`);
+}
+
+// ---- Buddies (Critters and Orbit) -------------------------------------------------------------------------
+/** Where the made solution sends two critters one right after the other, both from the front of their
+ *  lanes, in lanes side by side: the index of the first of the two. `pairs` are buddies already linked
+ *  (the solution sends each pair as one, by its lead). */
+function pairSpots(lanes0, solution, pairs) {
+  const lanes = lanes0.map((l) => l.slice()), linked = new Map(), out = [];
+  for (const [a, b] of pairs) { linked.set(a, b); linked.set(b, a); }
+  const front = (m) => lanes.findIndex((l) => l[0] === m);
+  for (let i = 0; i < solution.length; i++) {
+    const m = solution[i], k = front(m);
+    if (k < 0) continue; // from a bay
+    const n = solution[i + 1], k2 = n == null ? -1 : front(n);
+    if (k2 >= 0 && Math.abs(k - k2) === 1 && !linked.has(m) && !linked.has(n)) out.push(i);
+    for (const x of [m, linked.get(m)]) { const j = x == null ? -1 : front(x); if (j >= 0) lanes[j].shift(); }
+  }
+  return out;
+}
+
+/** Step 5: link up to `want` pairs of critters as buddies. Two critters the made solution sends one after
+ *  the other from the fronts of neighbouring lanes become a pair, sent as one, if the made solution still
+ *  wins that way. Pairs can never wait on each other: the lanes keep the order the solution sends them
+ *  in. Picture, critters and lanes stay as they were; the choice has its own random stream. */
+function buddyUp(level, want, key) {
+  if (!want) return level;
+  const rng = new Rng(hashSeed(`${key}:buddies`)), tried = new Set();
+  let pairs = [], solution = level.solution;
+  for (let guard = 0; pairs.length < want && guard < want * 8; guard++) {
+    const spots = pairSpots(level.lanes, solution, pairs).filter((i) => !tried.has(solution[i] + "," + solution[i + 1]));
+    if (!spots.length) break;
+    const i = spots[rng.int(spots.length)], pair = [solution[i], solution[i + 1]];
+    tried.add(pair.join());
+    const next = { ...level, pairs: [...pairs, pair], solution: [...solution.slice(0, i + 1), ...solution.slice(i + 2)] };
+    if (replay(next)) { pairs = next.pairs; solution = next.solution; }
+  }
+  return pairs.length ? { ...level, pairs, solution } : level;
 }
 
 /** Lanes for critters in the order they first go: each lane keeps that order. */
@@ -396,6 +438,7 @@ export function makeLevel(mode, diff, n) {
     if (score === 0) break;
   }
   if (!best) throw new Error(`could not make ${mode} ${diff} level ${n}`);
+  best = buddyUp(best, P.buddies, key);
   cache.set(key, best);
   return best;
 }

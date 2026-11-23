@@ -300,6 +300,74 @@ test("sure win: when every critter left would find a free bay, playing it out al
   assert.ok(!h.sureWin());
 });
 
+// ---- Buddies: two critters that leave the lanes together -------------------------------------------------
+test("buddies: both must be at the front of their lanes; tapping either sends both, the lead first", () => {
+  // Lanes: [0, 2] and [1]. Critters 1 (lead) and 2 are buddies; 2 waits behind 0.
+  const L = level(["12", "12"], [[R, 2], [R, 0], [B, 2]], { lanes: [[0, 2], [1]], pairs: [[1, 2]], bays: 2 });
+  const g = new Game(L);
+  assert.deepEqual(g.ready(), [0], "the pair can't go while 2 is behind 0");
+  assert.equal(g.launch(1), "buddy", "1 is at the front, but its buddy isn't");
+  assert.equal(g.launch(2), "blocked", "2 isn't at the front itself");
+  assert.equal(g.where[1], YARD);
+  play(g, 0);
+  assert.deepEqual(g.ready(), [1], "now the pair is ready, once, by its lead");
+  assert.equal(g.launch(2), "ok", "tapping the follower sends both");
+  assert.deepEqual(g.queue.concat(g.belt.map((b) => b.m)).sort(), [1, 2]);
+  assert.equal(g.belt[0].m, 1, "the lead goes first");
+  assert.equal(g.history.length, 2, "one send, one undo step");
+  g.undo();
+  assert.equal(g.where[1], YARD); assert.equal(g.where[2], YARD);
+  assert.deepEqual(g.lanes, [[2], [1]], "undo puts both back");
+  g.launch(1); g.settle();
+  assert.equal(g.status, "won");
+});
+
+test("buddies: a pair needs two places on the loop; the Pick power takes both from anywhere", () => {
+  const L = level(["1122"], [[R, 2], [B, 2], [R, 0], [B, 0], [R, 0]], { lanes: [[0, 2], [1, 3], [4]], pairs: [[2, 3]], bays: 3, belt: 3 });
+  const g = new Game(L);
+  assert.equal(g.launch(0), "ok"); assert.equal(g.launch(1), "ok");
+  assert.equal(g.launch(2), "full", "one place left, the pair needs two");
+  g.settle();
+  const h = new Game(L);
+  assert.equal(h.launch(3, { any: true }), "ok", "Pick: both buddies, though neither was at the front");
+  assert.deepEqual(h.lanes, [[0], [1], [4]]);
+});
+
+test("buddies: levels link a few pairs, side by side in the lanes, and stay solvable", () => {
+  let seen = 0;
+  for (const [mode, diff, ns] of [["critters", "easy", [1, 3, 4, 10, 20]], ["critters", "medium", [1, 5, 9]], ["critters", "hard", [2, 6, 18]], ["orbit", "easy", [1, 3]], ["orbit", "hard", [2]]]) {
+    for (const n of ns) {
+      const L = makeLevel(mode, diff, n), pairs = L.pairs || [];
+      assert.ok(pairs.length <= params(mode, diff, n).buddies, `${mode} ${diff} ${n}: not more pairs than asked`);
+      if (mode === "critters" && diff === "easy" && n < 4) assert.equal(pairs.length, 0, "none on the first Easy levels");
+      for (const [a, b] of pairs) {
+        const la = L.lanes.findIndex((l) => l.includes(a)), lb = L.lanes.findIndex((l) => l.includes(b));
+        assert.equal(Math.abs(la - lb), 1, `${mode} ${diff} ${n}: buddies in neighbouring lanes`);
+        assert.equal(L.movers[a].color > 0 && L.movers[b].color > 0, true);
+      }
+      seen += pairs.length;
+      assert.ok(replay(L), `${mode} ${diff} ${n}: the made solution, pairs sent as one, still wins`);
+      // The solver and the stand-in players cope with pairs too.
+      if (mode === "critters") assert.ok(solve(newGame(L), { known: false, budget: 60000 }), `${mode} ${diff} ${n}: the solver finds a way`);
+    }
+  }
+  assert.ok(seen >= 15, `pairs show up (${seen})`);
+  // Same picture, critters and lanes as without buddies: only the pairs are new.
+  assert.deepEqual(makeLevel("critters", "easy", 4).lanes.flat().sort((a, b) => a - b), makeLevel("critters", "easy", 4).movers.map((_, i) => i));
+});
+
+test("a sure win plays out live: sendAll() before every tick is what playOut() does", () => {
+  const L = makeLevel("critters", "medium", 5), g = newGame(L, { history: false });
+  for (const m of L.solution) { if (g.sureWin()) break; g.launch(m); g.settle(); }
+  assert.ok(g.sureWin());
+  const sim = g.clone(), t0 = g.ticks;
+  assert.ok(sim.playOut());
+  for (let k = 0; k < 100000 && !(g.status === "won" && g.idle); k++) { g.sendAll(); g.tick(); g.events.length = 0; }
+  assert.equal(g.status, "won");
+  assert.equal(g.ticks, sim.ticks, "the same number of ticks as the copy said");
+  assert.ok(sim.ticks - t0 > 0);
+});
+
 // ---- Powers (bought with coins in the game) --------------------------------------------------------------
 test("powers: an extra bay stays for the rest of the level, undo included", () => {
   const g = new Game(level(["11", "22"], [[B, 5], [B, 5], [R, 2], [R, 2]], { bays: 1 }));

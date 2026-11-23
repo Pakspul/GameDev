@@ -4,7 +4,7 @@
 // block it sees has its colour (empty cells are looked past), it pops it, while it has pops left. So it
 // peels the side it is passing, and what is behind or inside shows up for later.
 //
-// Everything else (lanes, bays, the loop, losing, undo) is Critters' (engine.js).
+// Everything else (lanes, buddies, bays, the loop, losing, stuck, undo) is Critters' (engine.js).
 import { Game, makeTrack } from "./engine.js";
 
 /** On one layer (cells from `off`), what a critter of `color` takes looking along `line`. */
@@ -84,18 +84,6 @@ export class Orbit extends Game {
 
   /** How many a critter of `color` with `room` would take in one lap from here, alone. */
   lapFrom(color, room) { return lap3(this.cells.slice(), this.track, this.h, this.plane, color, room); }
-
-  stuck() {
-    if (this.status !== "play" || !this.idle) return false;
-    const ready = this.ready();
-    if (!ready.length) return true;
-    const room = this.freeBays() > 0;
-    for (const m of ready) {
-      if (this.where[m] === 0 && room) return false;
-      if (this.lapFrom(this.color(m), this.left[m]) > 0) return false;
-    }
-    return true;
-  }
 
   clone() {
     const g = new Orbit(this.level, { history: false });

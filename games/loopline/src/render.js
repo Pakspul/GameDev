@@ -124,6 +124,34 @@ function label(ctx, text, x, y, size) {
   ctx.fillText(text, x, y);
 }
 
+/** Buddies waiting in the lanes (Critters and Orbit): a gold rope from one to the other, drawn under the
+ *  critters, and (`under` false) a chain link on top, half way. at(m): where m stands in its lane. */
+function drawBuddies(ctx, g, at, size, under) {
+  if (!g.buddy) return;
+  for (let m = 0; m < g.buddy.length; m++) {
+    const p = g.buddy[m];
+    if (p < 0 || !g.lead[m] || g.where[m] !== YARD || g.where[p] !== YARD) continue;
+    const a = at(m), b = at(p);
+    if (!a || !b) continue;
+    ctx.save();
+    if (under) {
+      ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+      ctx.strokeStyle = UI.ink; ctx.lineWidth = 10; ctx.stroke();
+      ctx.strokeStyle = "#ffcf3f"; ctx.lineWidth = 4; ctx.setLineDash([6, 5]); ctx.stroke();
+    } else {
+      const x = (a[0] + b[0]) / 2, y = (a[1] + b[1]) / 2, r = clamp(size * 0.13, 4, 7);
+      ctx.translate(x, y);
+      ctx.rotate(Math.atan2(b[1] - a[1], b[0] - a[0]));
+      ctx.fillStyle = UI.ink;
+      ctx.beginPath(); rr(ctx, -r * 2.3, -r * 1.35, r * 4.6, r * 2.7, r * 1.3); ctx.fill();
+      ctx.strokeStyle = "#ffcf3f"; ctx.lineWidth = Math.max(2, r * 0.5);
+      for (const dx of [-0.6, 0.6]) { ctx.beginPath(); rr(ctx, dx * r - r * 0.95, -r * 0.65, r * 1.9, r * 1.3, r * 0.65); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+}
+
 function rr(ctx, x, y, w, h, r) {
   r = Math.min(r, w / 2, h / 2);
   ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
@@ -144,6 +172,17 @@ function along(pts, t) {
 
 /** A rounded rectangle as a closed polyline from the middle of its top-left corner, clockwise, with
  *  lengths, so a fraction of a lap can be turned into a point and a heading. */
+/** Fireworks for `dur` seconds: a burst every quarter second at `where()` ([x, y]), into `fx`. */
+function fireworks(fx, now, dur, where) {
+  for (let t = 0; t < dur; t += 0.22) {
+    const [x, y] = where(), color = HEX[Math.floor(Math.random() * 10)], n = 16 + Math.floor(Math.random() * 8);
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * TAU + Math.random() * 0.3, v = 70 + Math.random() * 50;
+      fx.push({ kind: "spark", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, g: 120, t0: now + t + Math.random() * 0.05, dur: 0.9, color, s: 5 });
+    }
+  }
+}
+
 function loopPath(x, y, w, h, r) {
   const pts = [];
   const arc = (cx, cy, a0) => { for (let k = 0; k <= 8; k++) { const a = a0 + (k / 8) * (Math.PI / 2); pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
@@ -378,18 +417,11 @@ export class Renderer {
       this.fx.push({ kind: "spark", x: px + Math.random() * pw, y: py + Math.random() * ph, vx: (Math.random() - 0.5) * 140, vy: -90 - Math.random() * 140, g: 300, t0: now + Math.random() * 0.3, dur: 1.2, color, s: 6 });
     }
   }
-  /** The level finishes itself (a sure win): `cells` (with their colours in `was`) pop top to bottom. */
-  onSweep(cells, was, now) {
-    const h = this.game.h, w = this.game.w;
-    for (const cell of cells) {
-      const d = (Math.floor(cell / w) / h) * 0.55 + Math.random() * 0.15;
-      this.ghosts.set(cell, { until: now + d, color: was[cell] });
-      const [cx, cy] = this.cellPoint(cell), color = colorOf(was[cell]);
-      for (let k = 0; k < 4; k++) {
-        const a = Math.random() * TAU, v = 40 + Math.random() * 70;
-        this.fx.push({ kind: "spark", x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, g: 160, t0: now + d, dur: 0.5, color, s: Math.max(3, this.cs * 0.34) });
-      }
-    }
+  /** The level finishes itself (a sure win): fireworks round the board for `dur` seconds, while the
+   *  critters pop what's left. */
+  onCelebrate(now, dur) {
+    const { px, py, pw, ph, ringOut } = this;
+    fireworks(this.fx, now, dur, () => [px - ringOut / 2 + Math.random() * (pw + ringOut), py - ringOut / 2 + Math.random() * (ph * 0.6 + ringOut / 2)]);
   }
   shake(m, now) { this.shakes.set(m, now); }
   showHint(m, now) { this.hint = m; this.hintT0 = now; }
@@ -625,11 +657,19 @@ export class Renderer {
   drawYard(now) {
     const ctx = this.ctx, g = this.game, Y = this.yard;
     if (g.lanes) {
-      const c = this.cellY;
+      const c = this.cellY, rows = Math.round(Y.h / this.rowH);
       for (let k = 0; k < g.lanes.length; k++) {
         ctx.fillStyle = UI.lane;
         ctx.beginPath(); rr(ctx, Y.x + k * c + 5, Y.y - 6, c - 10, Y.h + 12, 16); ctx.fill();
-        const lane = g.lanes[k], rows = Math.round(Y.h / this.rowH);
+      }
+      const at = (m) => { // where m stands, if it shows (not behind the "+n" of a long lane)
+      const lane = g.lanes.find((l) => l.includes(m)), i = lane.indexOf(m);
+      return i < rows - 1 || (i === rows - 1 && lane.length === rows) ? this.yardPoint(m) : null;
+    };
+      const size = Math.min(c * 0.72, this.rowH * 0.92);
+      drawBuddies(ctx, g, at, size, true);
+      for (let k = 0; k < g.lanes.length; k++) {
+        const lane = g.lanes[k];
         for (let i = Math.min(lane.length, rows) - 1; i >= 0; i--) {
           const m = lane[i];
           const at = [Y.x + (k + 0.5) * c, Y.y + (i + 0.5) * this.rowH];
@@ -637,6 +677,7 @@ export class Renderer {
           this.drawMover(m, at, now, i === 0 || this.armed === "pick" ? "front" : "lane", g.level.hidden && i > 0 && this.armed !== "pick");
         }
       }
+      drawBuddies(ctx, g, at, size, false);
       if (this.armed === "pick") this.armedFrame(Y.x - 2, Y.y - 10, Y.w + 4, Y.h + 20, now);
       return;
     }
@@ -775,4 +816,4 @@ export class Renderer {
 }
 
 // Shared with the 3D renderer (render3d.js), which draws Orbit's bays and lanes in the same style.
-export { UI, CRITTER, HIDDEN, FONT, shade, colorOf, sprite, blit, label, rr, along, ease, lerp, clamp };
+export { UI, CRITTER, HIDDEN, FONT, shade, colorOf, sprite, blit, label, rr, along, ease, lerp, clamp, drawBuddies, fireworks };

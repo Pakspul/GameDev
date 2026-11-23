@@ -5,6 +5,13 @@ export const CONFIG = {
   spacing: 2,        // track steps between two movers on the loop
   belt: 4,           // at most this many movers on the loop (or waiting to get on) at once
   launchTween: 0.3,  // seconds from the yard or a bay to the loop's entrance
+  // A sure win plays itself out (Critters and Orbit): the last block pops after about finishPop seconds,
+  // at most finishMaxSpeed times faster or finishMaxSlow times slower than normal, and the result shows
+  // finishSeconds after it started at the earliest (the celebration runs that long).
+  finishPop: 4,
+  finishSeconds: 5,
+  finishMaxSpeed: 12,
+  finishMaxSlow: 3,
   orbit: {
     lapSeconds: 3.4, // Orbit: one lap round the sculpture
   },

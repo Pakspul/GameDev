@@ -8,8 +8,11 @@
 // cell behind it then shows, for the next mover or the next lap). After its lap a mover with nothing left is done; one with room left
 // parks in a free bay, from where you can send it again. No free bay: the level is lost.
 //
-// Critters wait in lanes; only the front one of a lane can go. (The car park helpers at the bottom
-// of the file are Depot's.)
+// Critters wait in lanes; only the front one of a lane can go. Some come in pairs of **buddies**
+// (level.pairs: [[lead, follower]]): a buddy can only leave the lanes together with its buddy, so both
+// have to be at the front of their lanes, and tapping either sends both, the lead first. Once they are
+// on the loop they're two ordinary critters (they park, come back and finish on their own). (The car
+// park helpers at the bottom of the file are Depot's.)
 //
 // Time runs in ticks. Each tick every mover on the loop moves one step. Several movers can be on
 // the loop at once; the front one acts first. All of it is deterministic.
@@ -90,7 +93,16 @@ export class Game {
     this.beltMax = level.belt || 4;
     this.spacing = level.spacing || 2;
     this.keepHistory = history;
+    this.setPairs(level.pairs);
     this.reset();
+  }
+
+  /** Buddies: buddy[m] is m's buddy (or -1); lead[m] is 1 for the one of a pair that goes first. */
+  setPairs(pairs = []) {
+    const n = this.level.movers.length;
+    this.buddy = new Int16Array(n).fill(-1);
+    this.lead = new Uint8Array(n);
+    for (const [a, b] of pairs || []) { this.buddy[a] = b; this.buddy[b] = a; this.lead[a] = 1; }
   }
 
   reset() {
@@ -120,33 +132,46 @@ export class Game {
     if (this.status !== "play") return false;
     const w = this.where[m];
     if (w === BAY) return true;
-    if (w !== YARD) return false;
-    return this.lanes.some((l) => (any ? l.includes(m) : l[0] === m));
+    if (w !== YARD || !this.inLane(m, any)) return false;
+    const p = this.buddy[m];
+    return p < 0 || this.where[p] !== YARD || this.inLane(p, any);
   }
-  /** Every mover that can be sent now. */
+  /** Is m at the front of a lane (`any`: anywhere in one)? */
+  inLane(m, any = false) { return this.lanes.some((l) => (any ? l.includes(m) : l[0] === m)); }
+  /** The buddies still waiting together in the lanes, [lead, follower] (or [m] for a lone critter). */
+  group(m) {
+    const p = this.buddy[m];
+    if (p < 0 || this.where[m] !== YARD || this.where[p] !== YARD) return [m];
+    return this.lead[m] ? [m, p] : [p, m];
+  }
+  /** Every mover that can be sent now (a pair of buddies once, by its lead). */
   ready() {
     const out = [];
-    for (let m = 0; m < this.where.length; m++) if (this.free(m)) out.push(m);
+    for (let m = 0; m < this.where.length; m++) if (this.free(m) && this.group(m)[0] === m) out.push(m);
     return out;
   }
   get beltFull() { return this.belt.length + this.queue.length >= this.beltMax; }
   freeBays() { return this.bays.filter((b) => b < 0).length; }
 
-  /** Send mover m. Returns "ok", "blocked" (it can't leave), "full" (the loop is full) or "over".
-   *  Powers: { any } takes it from anywhere in its lane, { zap } makes this lap look past other
-   *  colours; { power } names the one used, so undo can give it back. */
+  /** Send mover m (and its buddy, if they wait in the lanes together). Returns "ok", "blocked" (it
+   *  can't leave), "buddy" (it could, but its buddy isn't at the front of its lane), "full" (no room on
+   *  the loop) or "over". Powers: { any } takes it from anywhere in its lane, { zap } makes this lap look
+   *  past other colours; { power } names the one used, so undo can give it back. */
   launch(m, { any = false, zap = false, power = null } = {}) {
     if (this.status !== "play") return "over";
-    if (!this.free(m, any)) return "blocked";
-    if (this.beltFull) return "full";
+    if (!this.free(m, any)) return this.where[m] === YARD && this.inLane(m, any) ? "buddy" : "blocked";
+    const go = this.group(m);
+    if (this.belt.length + this.queue.length + go.length > this.beltMax) return "full";
     if (this.keepHistory) { const s = this.snapshot(); s.used = power; this.history.push(s); }
-    let from;
-    if (this.where[m] === BAY) { const b = this.bays.indexOf(m); this.bays[b] = -1; from = { bay: b }; }
-    else { const k = this.lanes.findIndex((l) => l.includes(m)), row = this.lanes[k].indexOf(m); this.lanes[k].splice(row, 1); from = { lane: k, row }; }
+    for (const x of go) {
+      let from;
+      if (this.where[x] === BAY) { const b = this.bays.indexOf(x); this.bays[b] = -1; from = { bay: b }; }
+      else { const k = this.lanes.findIndex((l) => l.includes(x)), row = this.lanes[k].indexOf(x); this.lanes[k].splice(row, 1); from = { lane: k, row }; }
+      this.where[x] = QUEUE;
+      this.queue.push(x);
+      this.events.push({ type: "launch", m: x, from, pair: go.length > 1 });
+    }
     if (zap) this.zap[m] = 1;
-    this.where[m] = QUEUE;
-    this.queue.push(m);
-    this.events.push({ type: "launch", m, from });
     this.enter();
     return "ok";
   }
@@ -209,13 +234,17 @@ export class Game {
     if (this.status !== "play" || !this.idle) return false;
     const ready = this.ready();
     if (!ready.length) return true;
-    const room = this.freeBays() > 0;
+    const room = this.freeBays();
     for (const m of ready) {
-      if (this.where[m] === YARD && room) return false;
-      if (lap(this.cells.slice(), this.track, this.color(m), this.left[m]) > 0) return false;
+      const go = this.group(m);
+      if (this.where[m] === YARD && room >= go.length) return false;
+      for (const x of go) if (this.lapFrom(this.color(x), this.left[x]) > 0) return false;
     }
     return true;
   }
+
+  /** How many a critter of `color` with `room` would take in one lap from here, alone. */
+  lapFrom(color, room) { return lap(this.cells.slice(), this.track, color, room); }
 
   /** Can this level no longer be lost? True when every critter still to finish (in a lane, a bay or on
    *  the loop) would find a free bay: then none can come back to a full yard. And it can't get stuck
@@ -232,13 +261,19 @@ export class Game {
    *  sure win (sureWin()), on a copy: returns true if it won. */
   playOut(maxTicks = 400000) {
     for (let t = 0; this.status === "play" && t < maxTicks; t++) {
-      for (let m = 0; m < this.where.length && !this.beltFull; m++) if (this.left[m] > 0 && this.free(m)) this.launch(m);
+      this.sendAll();
       this.tick();
       this.events.length = 0;
     }
     if (this.status === "won") this.settle(); // the critters still riding finish their lap
     this.events.length = 0;
     return this.status === "won";
+  }
+
+  /** One step of playOut(): send everything that can go and fits on the loop. (game.js runs the same
+   *  steps live, to show a sure win finishing.) */
+  sendAll() {
+    for (let m = 0; m < this.where.length && !this.beltFull; m++) if (this.left[m] > 0 && this.free(m)) this.launch(m);
   }
 
   /** The Extra bay power: one more bay for the rest of this level (undo keeps it). */

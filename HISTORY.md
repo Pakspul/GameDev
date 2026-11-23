@@ -19,6 +19,19 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-23
+
+**Done**
+- **Loopline: playtest feedback** (see [docs/LOOPLINE.md](docs/LOOPLINE.md)):
+  - **A sure win plays itself out where you can see it**: instead of every block flying off at once (about 2 s, "huh, what happened?"), the critters keep riding and pop the last blocks live while fireworks go off (Orbit: one slow turn of the turntable). The last block pops after about 4 s (slow motion when little is left, fast forward when a lot is) and the result shows after 5 s at the earliest. Taps wait meanwhile.
+  - **Buddies** in Critters and Orbit: two critters tied with a gold rope leave the lanes together. Both must be at the front of their lanes; tapping either sends both. Easy from level 4 (Orbit Easy from 3), more on Medium and Hard. A tip the first time.
+  - Orbit's start and finish line lost its **flag on a pole**; the chequered strip on the rail stays.
+  - Tests: buddies (rules, Pick, undo, the loop's room, levels with pairs stay solvable, the solver copes), the live play-out matches `playOut()`; e2e for buddies and a sure win that takes its time.
+
+**Decided**
+- Buddies are added on top of the existing levels (their own random stream, verified by replaying the made solution with each pair sent as one), so pictures, critters and lanes, and the fingerprints, stay the same; no new save key.
+- Buddies only in neighbouring lanes, so the rope stays short and readable. Hard levels (many sends from bays) find fewer spots: 0-3 pairs.
+
 ## 2026-11-22
 
 **Done**

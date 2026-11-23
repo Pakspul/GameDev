@@ -2,7 +2,7 @@
 // Loopline end to end, in a headless phone-sized Chromium, through real taps: the lobby with its modes
 // and difficulties, a blocked bus, clearing a level in each mode by tapping the movers the solver
 // picks (Orbit, the 3D mode, fast-forwarded up to the last tap), the result screen and the saved progress, undo, hints, the toolbar and the menu drawer,
-// the loop bar and Repeat, a sure win finishing itself, and the model gallery with its test levels. Serves dist/ (run `npm run build` first;
+// the loop bar and Repeat, a sure win finishing itself, buddies, and the model gallery with its test levels. Serves dist/ (run `npm run build` first;
 // `npm test` does it), or the source with --src.
 //
 //   node tests/loopline/e2e.mjs [--src]
@@ -324,22 +324,50 @@ await check("Repeat sends parked critters round again by itself, and stops once 
   ok((await page.locator("#repeatBtn").getAttribute("aria-pressed")) === "false", "the button is off again");
 });
 
+await check("buddies: tied critters at the front of two lanes go together, and wait for each other", async () => {
+  await ll(() => { Loopline.setMode("critters"); Loopline.setDiff("easy"); Loopline.start(10); });
+  await page.waitForTimeout(400);
+  const { pairs, lanes } = await ll(() => ({ pairs: Loopline.game.level.pairs, lanes: Loopline.game.lanes }));
+  ok(pairs && pairs.length, "Easy level 10 has buddies");
+  const ready = pairs.find(([a, b]) => lanes.some((l) => l[0] === a) && lanes.some((l) => l[0] === b));
+  const waiting = pairs.find((p) => p !== ready);
+  if (waiting) {
+    const [a, b] = waiting, front = lanes.some((l) => l[0] === a) ? a : lanes.some((l) => l[0] === b) ? b : -1;
+    if (front >= 0) {
+      const [x, y] = await spot(front);
+      await page.touchscreen.tap(x, y);
+      await page.waitForTimeout(100);
+      ok(await ll((m) => Loopline.game.where[m] === 0, front), "a buddy doesn't go without the other");
+      ok((await page.locator("#toast").innerText()).includes("Buddies"), "and the game says why");
+    }
+  }
+  ok(ready, "a pair at the front of two lanes");
+  const [x, y] = await spot(ready[1]);
+  await page.touchscreen.tap(x, y);
+  await page.waitForTimeout(100);
+  ok(await ll(([a, b]) => Loopline.game.where[a] !== 0 && Loopline.game.where[b] !== 0, ready), "tapping one sends both");
+});
+
 await check("a sure win (every critter left would find a free bay) finishes itself", async () => {
   await ll(() => { Loopline.setMode("critters"); Loopline.setDiff("easy"); Loopline.start(2); });
   await page.waitForTimeout(300);
   let sends = 0, said = false;
   const total = await ll(() => Loopline.game.level.solution.length);
   for (let k = 0; k < 20; k++) {
-    await idle();
+    await page.waitForFunction(() => Loopline.auto || Loopline.state !== "play" || (Loopline.game.idle && Loopline.game.events.length === 0), null, { timeout: 15000 });
     said = said || (await page.locator("#toast").innerText()).includes("Finishing");
-    if (await ll(() => Loopline.state !== "play" || Loopline.game.status !== "play")) break;
+    if (await ll(() => Loopline.auto || Loopline.state !== "play" || Loopline.game.status !== "play")) break;
     const m = (await ll(() => Loopline.solve()))[0];
     await ll((m) => Loopline.send(m), m);
     sends++;
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(250);
     said = said || (await page.locator("#toast").innerText()).includes("Finishing");
   }
-  await page.waitForSelector("#result:not([hidden])", { timeout: 15000 });
+  await page.waitForFunction(() => Loopline.auto || Loopline.state === "over", null, { timeout: 15000 });
+  const from = Date.now();
+  ok(await ll(() => Loopline.state === "over" || Loopline.game.remaining > 0), "the critters pop what's left as they ride, not all at once");
+  await page.waitForSelector("#result:not([hidden])", { timeout: 20000 });
+  ok(Date.now() - from > 4000, `it takes its time, so you see what happens (${Date.now() - from} ms)`);
   ok(said, "it said it would finish the level");
   ok(sends < total, `it finished with sends to spare (${sends} of ${total})`);
   ok((await page.locator("#resultStars svg.on").count()) === 3, "it counts as a clean clear");
