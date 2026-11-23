@@ -31,8 +31,9 @@ Rules in `src/engine.js`.
 3. The number on a critter is how many it can still pop. After its lap a critter with **0 left** is done. One with **pops left parks in a bay**; tap it to send it round again.
 4. If a critter comes back with pops left and **every bay is full**, the level is lost. If nothing that can go can pop a block and no lane critter can be parked, it's stuck (also lost).
 5. Up to **4 critters** ride at once, two steps apart; the one in front acts first. The **loop bar** over the bays shows how many ride now ("2/4"), one pip per place in the colour of the critter in it.
-6. **Repeat** (on the loop bar) sends the parked critters round again by themselves, as soon as there is room on the loop. It stops on its own once every critter going round has finished two laps without a single block popping anywhere (`dry` in `game.js`): nothing would change any more. You can still send lane critters while it runs; undo, restart and a new level switch it off.
-7. **A sure win finishes itself.** When every critter not yet done (in a lane, a bay or on the loop) would find a free bay, no critter can come back to a full yard, so the level can't be lost (`sureWin()` in `src/engine.js`). It can't get stuck either: a critter's capacity is exactly what it took in the made solution, so per colour the pops left equal the blocks left, and some block always shows. From the moment that holds, and at least half the critters are done (so Easy level 1 isn't over after one tap), the game says so, plays the rest out on a copy (`playOut()`), and shows it at once: the blocks pop (in Orbit they fly off top layers first while the turntable spins), the celebration, the result. It counts as a clean clear.
+6. **Buddies**: two critters tied together with a gold rope (with a chain link half way) leave the lanes **together**. Both have to be at the front of their lanes; then tapping either sends both, the lead first (`level.pairs`: `[[lead, follower]]`; `group()` in `src/engine.js`). They need two places on the loop. Tapping one while its buddy is still behind another critter shakes both and says so. Once on the loop they are two ordinary critters: each parks, comes back and finishes on its own. Pick takes both from anywhere in their lanes; one undo puts both back. The first level with buddies shows a tip until a pair is sent.
+7. **Repeat** (on the loop bar) sends the parked critters round again by themselves, as soon as there is room on the loop. It stops on its own once every critter going round has finished two laps without a single block popping anywhere (`dry` in `game.js`): nothing would change any more. You can still send lane critters while it runs; undo, restart and a new level switch it off.
+8. **A sure win finishes itself.** When every critter not yet done (in a lane, a bay or on the loop) would find a free bay, no critter can come back to a full yard, so the level can't be lost (`sureWin()` in `src/engine.js`). It can't get stuck either: a critter's capacity is exactly what it took in the made solution, so per colour the pops left equal the blocks left, and some block always shows. From the moment that holds, and at least half the critters are done (so Easy level 1 isn't over after one tap), the game says so and plays the rest out **live**: before every tick, every critter that can go goes (`sendAll()`, the same steps as `playOut()`), so you see the critters pop the last blocks while fireworks go off (in Orbit the turntable makes one slow turn). A copy plays it first to count the ticks, and the pace is set so the last block pops after about 4 seconds (`finishPop` in `src/config.js`: slow motion when little is left, up to 3× slower than normal; fast forward when a lot is, up to 12× faster), and the result shows 5 seconds after it started at the earliest (`finishSeconds`). Taps, undo, hints and powers wait meanwhile; restart and the menu still work. It counts as a clean clear. (Until November 2026 the blocks all flew off at once in about 2 seconds, which was too quick to follow.)
 
 ## Orbit: Critters in 3D
 
@@ -42,7 +43,7 @@ Rules in `src/orbit.js` (a subclass of Critters' `Game`); everything not listed 
 2. At each step along a side a critter looks straight in on **every layer at once**, bottom to top. On each layer it pops the **first block it sees** if that has its colour, while it has pops left. So one step can pop a whole column of blocks.
 3. Sculptures are solid: peeling the outside shows the inside (a planet's crust, mantle and core; an apple's flesh and pips; a geode's quartz and amethyst; a cake's layers).
 4. **Drag** anywhere outside the bays and lanes to turn the view (the mouse wheel zooms). Turning only changes the view, never the rules.
-5. The start and finish line is a chequered strip across the rail with a little flag on a pole, at the corner where every lap starts.
+5. The start and finish line is a chequered strip across the rail, at the corner where every lap starts. (It had a little flag on a pole too, until November 2026.)
 
 **Sculptures** (`src/sculptures.js`) are shapes in maths, not drawn grids, so each can be built at any size: `sculptFor()` takes the smallest grid that gives at least the target number of blocks. A `body()` gives the inside, an optional `skin()` the outermost blocks (sprinkles, eyes, stickers). 32 drawn ones (thin, tall ones like the snowman and the rocket only on Easy, because they stay small; the second batch of ten, from the burger to the bee, comes after the first 22 on every track), then endless seeded ones: layered candy, worlds, rock strata and totems. Their order and shapes are part of every Orbit level, like the pictures are for the other modes.
 
@@ -53,6 +54,7 @@ Rules in `src/orbit.js` (a subclass of Critters' `Game`); everything not listed 
 | Bays | 5 | 3 | 3 (every 4th: 2) |
 | Lanes | 4 (3 on levels 1–2) | 5 | 5 |
 | Hidden colours | no | from level 10 | yes |
+| Buddy pairs (at most) | 2 from level 3 | 3 | 4 |
 
 Since November 2026 sculptures have **10,000+ blocks** (they had 1,000–4,900), to see how a phone copes: grids up to 64 blocks on a side (`sculptFor()` guesses the size from a small grid instead of trying every size), one instanced mesh, up to 2,400 flying blocks at once. A level has 35–65 critters. Each critter aims for a random size in its range, so a lap that could take hundreds of blocks of one colour stops somewhere along the way. Making a level takes 50–200 ms on a laptop; a hint usually under 100 ms (at most 2.5 s, then it says it found nothing and costs nothing).
 
@@ -97,6 +99,7 @@ Every level comes from a seed (`"<mode>:<diff>:<n>:<attempt>"`), so Depot Hard l
    - **Depot:** the car park is filled from the *last* bus to leave to the first. Each bus gets a spot with a clear way out past the buses already parked, preferably in *their* way (that's the jam; `jam` makes it denser on harder tracks).
    - **Critters:** in order over the lanes, so each lane keeps the solution's order.
 4. **Replay** the solution with the real rules. Only a level that passes is used; otherwise the next attempt seed is tried.
+5. **Buddies** (Critters and Orbit, `buddyUp()`): two critters the made solution sends one right after the other, both from the front of neighbouring lanes, become a pair that the solution sends as one, if the solution still wins that way (replayed). Up to `buddies` pairs per level, picked with their own random stream (`"<key>:buddies"`), so picture, critters and lanes stay exactly what they were and the fingerprints don't change. Pairs can never wait on each other: the lanes keep the order the solution sends them in. Hard levels, which send more critters from bays, find fewer spots and get 0–3 pairs.
 
 `tests/loopline/rules.test.mjs` checks levels 1–30 of all nine tracks this way, checks that the solver also finds its own way through levels 1–10 (without the shortcut below), and pins fingerprints of a few levels per track. **Changing the generator, the pictures, their order or the RNG changes levels**, and saved stars would point at different puzzles. If you do it on purpose, bump the save key (now `loopline.v3`) and update the fingerprints.
 
@@ -115,6 +118,7 @@ Every level comes from a seed (`"<mode>:<diff>:<n>:<attempt>"`), so Depot Hard l
 | Critters lanes | 3 (2 on levels 1–2) | 4 | 4 |
 | Critters hidden colours | no | from level 12 | yes |
 | Critters max critter size | 12 | 18 | 30 |
+| Critters buddy pairs (at most) | 1 from level 4, 2 from level 10 | 2 | 3 |
 
 Hard also has: **`bias`**, how the made solution picks its next colour. Easy and Medium follow the obvious move (weight = shows^1.5), so the obvious send is usually right. Hard leans the other way (Depot 0.5, Critters and Orbit −0.5), so the colour that shows most is often not the one to send yet. **`pick`**: see step 0 above. Critters Hard has 2 bays (was 3) and critters of up to 30 (was 24) that come back for more more often (`keep` 0.85).
 
@@ -137,7 +141,7 @@ games/loopline/
   economy.js                           coins: pay per tier and the kind (price) of every power (docs/ECONOMY.md)
   game.js                              app shell: taps, tick loop, HUD, toolbar, loop bar and Repeat, sure wins, coins and powers, lobby (mode, difficulty, levels), model gallery and test levels, result, saving
   src/config.js                        every number, and the 15-colour palette
-  src/engine.js                        Critters' rules (track, take, launch, tick, park, lose, stuck, undo) and the car-park helpers
+  src/engine.js                        Critters' rules (track, take, launch, buddies, tick, park, lose, stuck, sure win, undo) and the car-park helpers
   src/depot.js                         Depot's rules (doors, ring, stop, docks, car park, quiet, lose, undo)
   src/pictures.js                      drawn pictures (small and LARGE) and the seeded picture makers
   src/levels.js                        level generator and difficulty (see above)
@@ -170,7 +174,8 @@ games/loopline/
 - Colour-blind check: movers show a number, but colours alone tell the pixels apart. Brown, peach and orange in the owl are close.
 
 - Repeat: is "two dry laps each" the right moment to stop, or does it feel slow? Should a lane critter you send join in (it does now, once it parks)?
-- Sure wins: does the level finishing itself feel like a reward, or like being cut short? Is "half the critters done" the right moment?
+- Sure wins: does the level finishing itself feel like a reward, or like being cut short? Is "half the critters done" the right moment? Is about 5 seconds of watching the critters finish it right, or too long?
+- Buddies: is the gold rope readable, also on a hidden ("?") critter? Is it clear why a buddy won't go? Enough pairs on Hard (some levels get none)?
 - The second batch of models: are they readable at 10,000+ blocks, and fun to peel (the burger and the cake are layered on purpose)?
 
 ## V2 ideas
@@ -178,5 +183,5 @@ games/loopline/
 - **Diorama:** Depot as a little 3D town (Orbit, the 3D Critters, is done).
 - Orbit: tap a block to see which colours could reach it; a slow turntable spin while idle (costs battery).
 - A picture album: every cleared picture collected.
-- More yard twists: linked pairs that leave together, mystery buses, layered cells, a VIP dock.
+- More yard twists: buddy buses in Depot, mystery buses, layered cells, a VIP dock.
 - A daily level.

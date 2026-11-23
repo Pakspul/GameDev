@@ -68,8 +68,10 @@ const pm = () => (testing || state === "models" ? "orbit" : mode);
 // nothing more can happen and Repeat stops.
 let repeat = false;
 const dry = new Map();
-// A sure win: once nothing can go wrong any more, the level finishes itself at `sureAt`.
-let sureAt = -1;
+// A sure win: once nothing can go wrong any more, the level finishes itself from `sureAt`: the critters
+// play it out live, fast enough to take about CONFIG.finishSeconds, under a celebration. `auto` holds the
+// tick length while that runs (taps wait; restart and the menu still work).
+let sureAt = -1, auto = null;
 const sound = new Sound();
 sound.on = save.sound;
 // Depot and Critters draw on the 2D canvas; Orbit adds a 3D view under it (made the first time it's needed).
@@ -90,6 +92,7 @@ function pickRenderer() {
   syncModeClass();
 }
 const now = () => performance.now() / 1000;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function haptic(ms) { if (save.haptics) Platform.haptic(ms); }
 
 // ---- A level ------------------------------------------------------------------------------------------------
@@ -98,7 +101,7 @@ function loadLevel(n, level = null) {
   pickRenderer();
   game = newGame(level || makeLevel(mode, diff, n));
   total = game.remaining;
-  helps = 0; acc = 0; endAt = -1; endKind = ""; wantHint = false; sureAt = -1;
+  helps = 0; acc = 0; endAt = -1; endKind = ""; wantHint = false; sureAt = -1; auto = null;
   used = {}; setArmed(null); setRepeat(false);
   streak.clear();
   showTip();
@@ -110,12 +113,16 @@ function loadLevel(n, level = null) {
   updateTools();
   redraw();
 }
-const tickDT = () => (game.kind === "depot" ? CONFIG.depot.tick : (game.kind === "orbit" ? CONFIG.orbit.lapSeconds : CONFIG.lapSeconds) / game.L);
+const lapDT = () => (game.kind === "depot" ? CONFIG.depot.tick : (game.kind === "orbit" ? CONFIG.orbit.lapSeconds : CONFIG.lapSeconds) / game.L);
+const tickDT = () => (auto ? auto.dt : lapDT());
 
+/** The first levels' tips; and the first time buddies show up, what they are (until a pair is sent). */
 function showTip() {
   const key = `tip.${mode}.${levelN}`;
   const tip = $("tip");
-  if (!testing && diff === "easy" && levelN <= 3 && I18n.has(key)) { tip.textContent = _t(key); tip.hidden = false; } else tip.hidden = true;
+  if (!testing && diff === "easy" && levelN <= 3 && I18n.has(key)) { tip.textContent = _t(key); tip.hidden = false; }
+  else if (game.level.pairs && game.level.pairs.length && !save.buddies) { tip.textContent = _t("tip.buddies"); tip.hidden = false; }
+  else tip.hidden = true;
 }
 function layoutCanvas() {
   if (state === "models") { // the gallery: between its title and its card
@@ -131,6 +138,7 @@ function layoutCanvas() {
 }
 
 function send(m) {
+  if (auto) return; // the level is finishing itself
   const opt = {};
   // An armed power goes with this send, unless it isn't needed (Pick on a critter that could go anyway).
   let power = armed;
@@ -146,9 +154,11 @@ function send(m) {
   const r = game.launch(m, opt);
   if (r === "ok") {
     if (power) { spend(power); setArmed(null); }
+    if (game.events.some((e) => e.type === "launch" && e.pair) && !save.buddies) { save.buddies = true; writeSave(); }
     sound.go(); drain(); kick(); return;
   }
-  if (r === "blocked") { R.shake(m, now()); sound.nope(); toast(_t("toast.blocked." + pm())); kick(); }
+  if (r === "buddy") { const p = game.buddy[m]; R.shake(m, now()); R.shake(p, now()); sound.nope(); toast(_t("toast.buddy")); kick(); }
+  else if (r === "blocked") { R.shake(m, now()); sound.nope(); toast(_t("toast.blocked." + pm())); kick(); }
   else if (r === "full") { R.shake(m, now()); sound.nope(); toast(_t("toast.full." + pm())); kick(); }
 }
 
@@ -177,7 +187,7 @@ function drain() {
     else if (e.type === "depart") { R.onDepart(e.m, e.dock, t); sound.done(); haptic(12); }
     else if (e.type === "park") { R.onPark(e.m, e.bay, t); sound.park(); haptic(8); if (repeat) dry.set(e.m, (dry.get(e.m) || 0) + 1); }
     else if (e.type === "done") { R.onDone(e.m, t); sound.done(); haptic(12); }
-    else if (e.type === "won") { R.onWin(t); sound.win(); haptic(30); endKind = "won"; endAt = t + 1.0; }
+    else if (e.type === "won") { R.onWin(t); if (!auto) sound.win(); haptic(30); endKind = "won"; endAt = Math.max(t + 1.0, auto ? auto.until : 0); }
     else if (e.type === "lost") { sound.lose(); haptic(60); endKind = "lost"; endAt = t + 0.7; }
   }
   if (game.events.length) { updateHud(); updateLoopbar(); }
@@ -197,7 +207,7 @@ function frame(ts) {
     acc += dt;
     const DT = tickDT();
     let k = 0;
-    while (acc >= DT && k++ < 30 && !game.idle && game.status !== "lost") { game.tick(); acc -= DT; drain(); repeatStep(); }
+    while (acc >= DT && k++ < 40 && !game.idle && game.status !== "lost") { game.tick(); acc -= DT; autoStep(); drain(); repeatStep(); }
     if (game.idle) { acc = 0; afterSettle(); }
   }
   if (state === "play") checkSure(t);
@@ -220,7 +230,7 @@ function setRepeat(on) {
 }
 /** The Repeat button: on (if something is parked) or off. */
 function toggleRepeat() {
-  if (state !== "play" || game.kind === "depot" || game.status !== "play") return;
+  if (state !== "play" || game.kind === "depot" || game.status !== "play" || auto) return;
   if (repeat) { setRepeat(false); toast(_t("toast.repeatOff")); return; }
   if (!game.bays.some((m) => m >= 0)) { sound.nope(); toast(_t("toast.repeatNone")); return; }
   setRepeat(true);
@@ -247,7 +257,7 @@ function repeatStep() {
 /** Critters and Orbit: once at least half the critters are done and nothing can go wrong any more
  *  (game.sureWin()), say so and, a moment later, finish the level for the player. */
 function checkSure(t) {
-  if (game.kind === "depot" || game.status !== "play") { sureAt = -1; return; }
+  if (game.kind === "depot" || game.status !== "play" || auto) { sureAt = -1; return; }
   if (sureAt < 0) {
     let done = 0;
     for (const w of game.where) if (w === DONE) done++;
@@ -256,23 +266,29 @@ function checkSure(t) {
   }
   if (t >= sureAt) { sureAt = -1; autoFinish(t); }
 }
-/** Play the rest out on a copy, then show it all at once: the blocks fly off, the turntable spins. */
+/** Play the rest out live: every critter that can go goes, as often as it can (game.sendAll(), the same
+ *  steps as game.playOut()), at a pace that has the last block pop after about CONFIG.finishPop seconds,
+ *  while the celebration runs; the result shows CONFIG.finishSeconds after it started at the earliest.
+ *  A copy plays it first, to know how many ticks that takes. */
 function autoFinish(t) {
-  const sim = game.clone();
-  if (!sim.playOut()) return; // can't happen for a sure win; then the player just plays on
-  drain();
-  const was = game.cells.slice();
-  game.restore(sim.snapshot());
-  const gone = [];
-  for (let i = 0; i < was.length; i++) if (was[i] && !game.cells[i]) gone.push(i);
+  const sim = game.clone(), t0 = sim.ticks;
+  for (let k = 0; sim.status === "play" && k < 400000; k++) { sim.sendAll(); sim.tick(); sim.events.length = 0; }
+  if (sim.status !== "won") return; // can't happen for a sure win; then the player just plays on
+  const ticks = Math.max(1, sim.ticks - t0), normal = lapDT();
+  // Slow motion when little is left, fast forward when a lot is, within limits (a blur shows nothing).
+  auto = { dt: clamp(CONFIG.finishPop / ticks, normal / CONFIG.finishMaxSpeed, normal * CONFIG.finishMaxSlow), until: t + CONFIG.finishSeconds };
+  game.keepHistory = false; // nothing to undo any more
   setRepeat(false); setArmed(null);
-  R.clearFx();
-  R.onSweep(gone, was, t);
-  R.onWin(t);
+  R.onCelebrate(t, CONFIG.finishSeconds);
   sound.win(); haptic(30);
-  updateHud(); updateLoopbar();
-  endKind = "won"; endAt = t + 2.3;
+  acc = 0;
+  autoStep();
+  drain();
+  updateHud(); updateTools();
+  kick();
 }
+/** While the level finishes itself: before every tick, send whatever can go. */
+function autoStep() { if (auto && game.status === "play") game.sendAll(); }
 
 /** Everything just stopped: a pending hint, or no way forward at all. */
 function afterSettle() {
@@ -292,7 +308,7 @@ function updateHud() {
   const p = Math.round((100 * (total - game.remaining)) / total);
   $("bar").style.width = p + "%";
   $("bar").parentElement.setAttribute("title", _t("hud.progress", { p }));
-  $("undoBtn").disabled = !game.history.length;
+  $("undoBtn").disabled = !game.history.length || !!auto;
   $("coins").textContent = save.coins;
 }
 
@@ -348,7 +364,7 @@ function setArmed(p) {
 }
 /** A power button: the extra bay works at once; Pick and Laser wait for the next send. Tap again to put it away. */
 function power(item) {
-  if (state !== "play" || game.status !== "play") return;
+  if (state !== "play" || game.status !== "play" || auto) return;
   if (armed === item) { setArmed(null); toast(_t("toast.off")); return; }
   const cost = price(item);
   if (save.coins < cost) { poor(cost); return; }
@@ -399,6 +415,7 @@ function toast(text) {
 }
 
 function undo() {
+  if (auto) return; // the level is finishing itself
   if (!game.history.length) { toast(_t("toast.nothingToUndo")); return; }
   // Hard: undo is the Rewind, and costs coins. Easy and Medium: free, and it still costs a star.
   const cost = undoCost();
@@ -423,7 +440,7 @@ function undo() {
 }
 
 function hint() {
-  if (game.status !== "play") return;
+  if (game.status !== "play" || auto) return;
   if (!game.idle) { wantHint = true; return; }
   const cost = price("hint");
   if (save.coins < cost) { poor(cost); return; }
@@ -441,7 +458,7 @@ $("cv").addEventListener("pointerdown", (e) => {
   if (state !== "play" && state !== "models") return;
   const r = $("cv").getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
   if (state === "models") { R.beginDrag(x, y); $("cv").setPointerCapture?.(e.pointerId); kick(); return; } // turn the model
-  const h = game.status === "play" ? R.hit(x, y, armed === "pick") : null;
+  const h = game.status === "play" && !auto ? R.hit(x, y, armed === "pick") : null;
   if (h) send(h.m);
   else if (R.beginDrag) { R.beginDrag(x, y); $("cv").setPointerCapture?.(e.pointerId); kick(); } // Orbit: turn the view
 });
@@ -656,7 +673,7 @@ const nav = GameNav.create({
       (state === "menu" || state === "pause") && { icon: "view", label: _t("models"), onSelect() { openModels(); } },
       { icon: "sound", label: _t("sound"), checked: save.sound, onToggle(on) { save.sound = sound.on = on; writeSave(); } },
       { icon: "tap", label: _t("haptics"), checked: save.haptics, onToggle(on) { save.haptics = on; writeSave(); } },
-      { icon: "help", label: _t("how"), html: "<p><b>" + _t("mode." + pm()) + "</b></p><ul>" + [1, 2, 3, 4, 5].filter((n) => I18n.has(`how.${pm()}.${n}`)).map((n) => "<li>" + _t(`how.${pm()}.${n}`) + "</li>").join("") + (pm() === "depot" ? "" : "<li>" + _t("how.end") + "</li>") + "</ul>" },
+      { icon: "help", label: _t("how"), html: "<p><b>" + _t("mode." + pm()) + "</b></p><ul>" + [1, 2, 3, 4, 5, 6].filter((n) => I18n.has(`how.${pm()}.${n}`)).map((n) => "<li>" + _t(`how.${pm()}.${n}`) + "</li>").join("") + (pm() === "depot" ? "" : "<li>" + _t("how.end") + "</li>") + "</ul>" },
       { icon: "help", label: _t("powers"), html: "<p>" + _t("powers.intro") + "</p><ul>" + ["hint", "undo", "bay", "pick", "zap"].map((k) => "<li>" + _t(`powers.${k}.${pm() === "depot" ? "depot" : "critters"}`) + "</li>").join("") + "</ul><p>" + _t("powers.prices") + "</p>" },
       state === "menu" && GameNav.language(),
     ];
@@ -684,7 +701,7 @@ showBehind();
 window.Loopline = {
   get game() { return game; }, get state() { return state; }, get yaw() { return R.yaw; }, get mode() { return mode; }, get diff() { return diff; }, get level() { return levelN; },
   start, send, undo, hint, openModels, showModel, startTest, toggleRepeat,
-  get repeat() { return repeat; }, get testing() { return testing; }, get gallery() { return { ...gallery, id: MODELS[gallery.i] }; },
+  get repeat() { return repeat; }, get auto() { return !!auto; }, get testing() { return testing; }, get gallery() { return { ...gallery, id: MODELS[gallery.i] }; },
   setMode(m) { setMode(m); refreshMenu(); showBehind(); },
   setDiff(d) { setDiff(d); refreshMenu(); showBehind(); },
   solve: () => solve(game),
