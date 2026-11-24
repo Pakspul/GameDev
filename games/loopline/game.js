@@ -7,12 +7,15 @@
 // the highest level cleared and the stars per level, the coins, and the sound and vibration switches.
 // (v2 had other Hard and Orbit levels; its Easy and Medium Depot and Critters progress is carried over.
 // v1 had one track per mode with other levels; it is ignored.)
+// "depot": 2 marks saves from after Depot became the crowd and the car park: older Depot progress
+// pointed at other levels and is dropped (the coins it earned stay; Critters and Orbit keep theirs).
 import { CONFIG } from "./src/config.js";
 import { makeLevel, newGame, MODES, DIFFS, MODELS, modelView, makeTestLevel } from "./src/levels.js";
 import { DONE } from "./src/engine.js";
 import { solve } from "./src/solver.js";
 import { Renderer, colorOf } from "./src/render.js";
 import { Renderer3D } from "./src/render3d.js";
+import { DepotRenderer } from "./src/renderDepot.js";
 import { Sound } from "./src/audio.js";
 
 const _t = I18n.t;
@@ -23,24 +26,29 @@ const SAVE_KEY = "loopline.v3";
 const tierOf = (m, d) => (m === "orbit" ? "orbit-" : "") + d;
 function loadSave() {
   const fresh = { mode: "depot", diff: "easy", progress: {}, coins: ECO.start, sound: true, haptics: true };
+  let s = null;
   try {
     const now = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (now) return Object.assign(fresh, now);
-    // From v2: Easy and Medium Depot and Critters are the same levels, so their stars stay, and pay
-    // what they would have paid. Hard and Orbit have new levels now.
-    const old = JSON.parse(localStorage.getItem("loopline.v2"));
-    if (old) {
-      const keep = {};
-      for (const k in old.progress || {}) {
-        const [m, d] = k.split(":");
-        if (m === "orbit" || d === "hard") continue;
-        keep[k] = old.progress[k];
-        for (const s of Object.values(keep[k].stars || {})) fresh.coins += ECO.levelPay(tierOf(m, d), s, 0);
+    if (now) s = Object.assign(fresh, now);
+    else {
+      // From v2: Easy and Medium Depot and Critters are the same levels, so their stars stay, and pay
+      // what they would have paid. Hard and Orbit have new levels now.
+      const old = JSON.parse(localStorage.getItem("loopline.v2"));
+      if (old) {
+        const keep = {};
+        for (const k in old.progress || {}) {
+          const [m, d] = k.split(":");
+          if (m === "orbit" || d === "hard") continue;
+          keep[k] = old.progress[k];
+          for (const st of Object.values(keep[k].stars || {})) fresh.coins += ECO.levelPay(tierOf(m, d), st, 0);
+        }
+        s = Object.assign(fresh, { mode: old.mode || fresh.mode, diff: old.diff || fresh.diff, sound: old.sound !== false, haptics: old.haptics !== false, progress: keep });
       }
-      return Object.assign(fresh, { mode: old.mode || fresh.mode, diff: old.diff || fresh.diff, sound: old.sound !== false, haptics: old.haptics !== false, progress: keep });
     }
   } catch (e) { /* storage blocked or broken: start fresh */ }
-  return fresh;
+  if (!s) return Object.assign(fresh, { depot: 2 });
+  if (s.depot !== 2) { for (const k of Object.keys(s.progress)) if (k.startsWith("depot:")) delete s.progress[k]; s.depot = 2; }
+  return s;
 }
 function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage blocked */ } }
 const save = loadSave();
@@ -55,7 +63,7 @@ let levelN = 1, game = null, helps = 0, total = 1;
 // Coins and powers: uses of each item in this level (boosts get dearer), and the power that waits for
 // the next tap ("pick" or "zap"; paid when that send happens).
 let used = {}, armed = null;
-let raf = 0, last = 0, acc = 0, endAt = -1, endKind = "", wantHint = false;
+let raf = 0, last = 0, acc = 0, endAt = -1, endKind = "", wantHint = false, wasIdle = false;
 const streak = new Map(), popAt = new Map();
 // The model gallery: which model and size it shows; `testing` while a test level of one is played
 // ({ id, diff }: not part of any track, nothing saved, powers free).
@@ -74,12 +82,13 @@ const dry = new Map();
 let sureAt = -1, auto = null;
 const sound = new Sound();
 sound.on = save.sound;
-// Depot and Critters draw on the 2D canvas; Orbit adds a 3D view under it (made the first time it's needed).
-const R2 = new Renderer($("cv"));
+// Depot and Critters draw on the 2D canvas (each with its own renderer); Orbit adds a 3D view under it
+// (made the first time it's needed).
+const R2 = new Renderer($("cv")), RD = new DepotRenderer($("cv"));
 let R3 = null, R = R2;
 /** The renderer for the current mode. */
 function pickRenderer() {
-  let want = R2;
+  let want = pm() === "depot" ? RD : R2;
   if (pm() === "orbit") {
     if (!R3) {
       try { R3 = new Renderer3D($("cv"), $("gl")); }
@@ -101,7 +110,7 @@ function loadLevel(n, level = null) {
   pickRenderer();
   game = newGame(level || makeLevel(mode, diff, n));
   total = game.remaining;
-  helps = 0; acc = 0; endAt = -1; endKind = ""; wantHint = false; sureAt = -1; auto = null;
+  helps = 0; acc = 0; endAt = -1; endKind = ""; wantHint = false; wasIdle = false; sureAt = -1; auto = null;
   used = {}; setArmed(null); setRepeat(false);
   streak.clear();
   showTip();
@@ -179,10 +188,10 @@ function drain() {
     } else if (e.type === "board") {
       const k = streak.get(e.m) || 0;
       streak.set(e.m, k + 1);
-      // The Magnet pulls pixels from anywhere on the loop and out of the picture; the rest board at the stop.
-      R.onBoard(e.m, e.cell, e.dock, t, e.pic ? R.cellPoint(e.cell) : R.ringPoint(e.tray != null ? game.posOf(e.tray) : game.stop));
+      // The Magnet takes people from anywhere on the loop and out of the streams; the rest board at the stop.
+      R.onBoard(e.m, e.id, e.dock, t, e);
       sound.pop(k);
-    } else if (e.type === "enter" && depot) R.onEnter(e.cell, t);
+    } else if (e.type === "enter" && depot) R.onEnter(e.id, e.stream, t);
     else if (e.type === "dock") { sound.park(); haptic(6); }
     else if (e.type === "depart") { R.onDepart(e.m, e.dock, t); sound.done(); haptic(12); }
     else if (e.type === "park") { R.onPark(e.m, e.bay, t); sound.park(); haptic(8); if (repeat) dry.set(e.m, (dry.get(e.m) || 0) + 1); }
@@ -196,24 +205,33 @@ function drain() {
 
 // ---- Loop: ticks while something can happen, frames while anything moves ----------------------------------
 let inFrame = false;
+// Depot's crowd keeps walking round its loop while the game waits for you (that changes nothing in the
+// rules), so a Depot level ticks and draws for as long as it is played.
 function frame(ts) {
   raf = 0;
+  // Depot draws for as long as it is played; 30 frames a second is plenty for a calm walk, and half
+  // the work (battery) of 60.
+  if (game.kind === "depot" && last && ts / 1000 - last < 1 / 31) { raf = requestAnimationFrame(frame); return; }
   inFrame = true;
   const t = ts / 1000, dt = Math.min(0.1, t - (last || t));
   last = t;
   if (state === "play") repeatStep();
-  const running = state === "play" && game.status !== "lost" && !game.idle; // after a win, let the loop run empty
+  const walk = game.kind === "depot" && game.status === "play";
+  const running = state === "play" && game.status !== "lost" && (walk || !game.idle); // after a win, let the loop run empty
   if (running) {
     acc += dt;
     const DT = tickDT();
     let k = 0;
-    while (acc >= DT && k++ < 40 && !game.idle && game.status !== "lost") { game.tick(); acc -= DT; autoStep(); drain(); repeatStep(); }
-    if (game.idle) { acc = 0; afterSettle(); }
+    while (acc >= DT && k++ < 40 && (walk || !game.idle) && game.status !== "lost") { game.tick(); acc -= DT; autoStep(); drain(); repeatStep(); }
+    if (!walk && game.idle) acc = 0;
   }
+  const idle = game.idle;
+  if (state === "play" && idle && !wasIdle) afterSettle();
+  wasIdle = idle;
   if (state === "play") checkSure(t);
-  R.draw(game.idle ? 0 : Math.min(1, acc / tickDT()), t);
+  R.draw(running ? Math.min(1, acc / tickDT()) : 0, t);
   if (endAt >= 0 && t >= endAt && (endKind !== "won" || game.idle)) finish();
-  if (!raf && ((state === "play" && !game.idle && game.status !== "lost") || R.busy(t) || endAt >= 0 || sureAt >= 0)) raf = requestAnimationFrame(frame); // a kick() during this frame may have asked already
+  if (!raf && ((state === "play" && (walk || !game.idle) && game.status !== "lost") || R.busy(t) || endAt >= 0 || sureAt >= 0)) raf = requestAnimationFrame(frame); // a kick() during this frame may have asked already
   inFrame = false;
 }
 function kick() { if (!raf) { if (!inFrame) last = 0; raf = requestAnimationFrame(frame); } } // inside a frame, keep its clock
@@ -357,7 +375,7 @@ function spend(item) {
 }
 function setArmed(p) {
   armed = p;
-  R2.armed = p; if (R3) R3.armed = p;
+  R2.armed = p; RD.armed = p; if (R3) R3.armed = p;
   document.body.dataset.armed = p || "";
   updateTools();
   if (game) kick();
@@ -433,7 +451,7 @@ function undo() {
   setArmed(null);
   sound.undo();
   R.clearFx();
-  acc = 0; endAt = -1; endKind = ""; wantHint = false;
+  acc = 0; endAt = -1; endKind = ""; wantHint = false; wasIdle = false;
   if (state !== "play") setState("play");
   updateHud(); updateLoopbar();
   redraw();
@@ -709,5 +727,5 @@ window.Loopline = {
   power, get armed() { return armed; },
   point: (m) => R.yardPoint(m), bayPoint: (b) => R.bayPoint(b),
   /** Where the board and the yard ended up, for the layout check in the tests. */
-  layoutInfo: () => mode === "orbit" ? { view: R.view, slots: R.slots, yard: R.yard, H: innerHeight, W: innerWidth } : ({ cs: R.cs, bottom: R.yard.y + R.yard.h + (mode === "depot" ? 10 : 6), left: Math.min(R.yard.x, R.px - R.ringOut), right: Math.max(R.yard.x + R.yard.w, R.px + R.pw + R.ringOut) }),
+  layoutInfo: () => mode === "depot" ? { zone: R.zone, slots: R.slots, lot: R.lotBox, u: R.u, ps: R.ps, H: innerHeight, W: innerWidth } : mode === "orbit" ? { view: R.view, slots: R.slots, yard: R.yard, H: innerHeight, W: innerWidth } : ({ cs: R.cs, bottom: R.yard.y + R.yard.h + (mode === "depot" ? 10 : 6), left: Math.min(R.yard.x, R.px - R.ringOut), right: Math.max(R.yard.x + R.yard.w, R.px + R.pw + R.ringOut) }),
 };

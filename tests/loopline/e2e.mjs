@@ -2,7 +2,8 @@
 // Loopline end to end, in a headless phone-sized Chromium, through real taps: the lobby with its modes
 // and difficulties, a blocked bus, clearing a level in each mode by tapping the movers the solver
 // picks (Orbit, the 3D mode, fast-forwarded up to the last tap), the result screen and the saved progress, undo, hints, the toolbar and the menu drawer,
-// the loop bar and Repeat, a sure win finishing itself, buddies, and the model gallery with its test levels. Serves dist/ (run `npm run build` first;
+// the loop bar and Repeat, a sure win finishing itself, buddies, and the model gallery with its test levels.
+// Depot's crowd walks at its real pace, so clearing a Depot level takes a while. Serves dist/ (run `npm run build` first;
 // `npm test` does it), or the source with --src.
 //
 //   node tests/loopline/e2e.mjs [--src]
@@ -38,7 +39,7 @@ async function check(name, fn) {
 }
 function ok(v, msg) { if (!v) throw new Error(msg); }
 const ll = (fn, arg) => page.evaluate(fn, arg);
-const idle = () => page.waitForFunction(() => Loopline.game.idle && Loopline.game.events.length === 0, null, { timeout: 15000 });
+const idle = () => page.waitForFunction(() => Loopline.game.idle && Loopline.game.events.length === 0, null, { timeout: 30000 });
 
 /** Where on screen mover m can be tapped now (a critter in a bay, or in the yard). */
 const spot = (m) => ll((m) => {
@@ -73,15 +74,23 @@ await check("the start screen offers three modes, three difficulties and level 1
   await page.screenshot({ path: join(OUT, "loopline-lobby.png") });
 });
 
-await check("Play starts Depot Easy level 1 with a tip, a loop that fills, docks and a car park", async () => {
+await check("Play starts Depot Easy level 1 with a tip, a crowd that fills the loop, bays and a car park", async () => {
   await page.locator(".lob-play .lob-go").click();
   await page.waitForTimeout(300);
   ok((await ll(() => Loopline.state)) === "play", "playing");
   ok(await page.locator("#tip").isVisible(), "a tip for the first level");
-  ok(await ll(() => Loopline.game.kind === "depot" && Loopline.game.level.lot && Loopline.game.docks.length === 4), "a car park and four docks");
+  ok(await ll(() => Loopline.game.kind === "depot" && Loopline.game.level.lot && Loopline.game.docks.length === 5), "a car park and five bays");
   await idle();
-  ok(await ll(() => Loopline.game.filled > 0), "pixels ride the loop");
+  ok(await ll(() => Loopline.game.filled > 0), "people walk the loop");
+  const ticks = await ll(() => Loopline.game.ticks);
+  await page.waitForTimeout(400);
+  ok((await ll(() => Loopline.game.ticks)) > ticks, "the crowd keeps walking while it waits");
   ok(await page.locator("#tools").isVisible(), "the toolbar");
+  const L = await ll(() => Loopline.layoutInfo());
+  const toolsTop = await page.locator("#tools").evaluate((e) => e.getBoundingClientRect().top);
+  ok(L.zone.y + L.zone.h <= L.slots[0].y && L.slots[0].y + L.slots[0].h <= L.lot.y, "crowd, then bays, then the car park");
+  ok(L.lot.y + L.lot.h <= toolsTop + 1, "the car park clears the toolbar");
+  ok(L.u >= 24 && L.ps >= 11, "vehicles and people big enough to see and tap");
 });
 
 await check("tapping a blocked bus doesn't send it and says why", async () => {
@@ -274,7 +283,29 @@ await check("Powers: +1 Bay adds a bay at once; Pick sends a critter from the ba
   await page.screenshot({ path: join(OUT, "loopline-powers.png") });
 });
 
+await check("Depot powers: Tow pulls a jammed vehicle out; Magnet fills a vehicle from the loop and the streams", async () => {
+  await ll(() => { Loopline.coins = 1000; Loopline.setMode("depot"); Loopline.setDiff("medium"); Loopline.start(4); });
+  await page.waitForTimeout(400);
+  const m = await ll(() => { const g = Loopline.game; return g.level.movers.findIndex((_, m) => g.where[m] === 0 && !g.free(m)); });
+  ok(m >= 0, "a vehicle that is jammed in");
+  await page.locator("#pickBtn").click();
+  ok((await ll(() => Loopline.armed)) === "pick", "Tow waits for a tap");
+  let [x, y] = await spot(m);
+  await page.touchscreen.tap(x, y);
+  await page.waitForTimeout(100);
+  ok((await ll((m) => Loopline.game.where[m], m)) !== 0, "the tow truck pulled it out");
+  ok((await ll(() => Loopline.armed)) === null && (await ll(() => Loopline.coins)) < 1000, "paid when it went");
+  await page.locator("#zapBtn").click();
+  const v = await ll(() => Loopline.game.ready()[0]);
+  [x, y] = await spot(v);
+  await page.touchscreen.tap(x, y);
+  await page.waitForFunction((v) => Loopline.game.where[v] === 4, v, { timeout: 8000 });
+  ok(true, "the magnet vehicle filled up as it parked, and left");
+  await page.screenshot({ path: join(OUT, "loopline-depot-powers.png") });
+});
+
 await check("Hard: undo costs coins", async () => {
+  await ll(() => { Loopline.setMode("critters"); });
   await ll(() => { Loopline.setDiff("hard"); Loopline.start(1); });
   await page.waitForTimeout(300);
   ok((await page.locator("#undoCost").innerText()).trim() === "30", "the price is on the button");

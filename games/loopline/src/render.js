@@ -1,13 +1,12 @@
 // Drawing Loopline on a 2D canvas, in a chunky pixel style: the picture as little voxel blocks on a
-// dark board, the loop as a light rail with running chevrons, the critters and buses as pixel sprites.
+// dark board, the loop as a light rail with running chevrons, the critters as pixel sprites.
 // Nothing here changes the game; game.js calls draw() only while something moves, so an idle board
 // costs no battery.
 //
-// Critters: picture with the track round it, the bays under it, the lanes under those.
-// Depot:    picture with the ring of trays round it, the stop and its docks under it, the car park under those.
+// Critters: picture with the track round it, the bays under it, the lanes under those. (Depot has its
+// own renderer, renderDepot.js, which borrows the helpers at the bottom of this file.)
 import { PALETTE } from "./config.js";
-import { DIRS, BAY, YARD, carCells } from "./engine.js";
-import { DOCKED } from "./depot.js";
+import { BAY, YARD } from "./engine.js";
 
 const TAU = Math.PI * 2;
 const ease = (t) => (t >= 1 ? 1 : 1 - Math.pow(1 - t, 3));
@@ -54,31 +53,6 @@ const CRITTER = [
   "...oo......oo...",
 ];
 const HIDDEN = CRITTER.map((r) => r.replace(/[wkp]/g, "b"));
-
-/** A bus from above, nose to the right: 17 or 30 pixels long, 13 wide (wheels included). */
-function busRows(len) {
-  const L = len === 2 ? 30 : 17, H = 13, rows = [];
-  const wheels = len === 2 ? [3, 4, 5, 6, L - 9, L - 8, L - 7, L - 6] : [3, 4, 5, L - 6, L - 5, L - 4];
-  for (let y = 0; y < H; y++) {
-    let r = "";
-    for (let x = 0; x < L; x++) {
-      let ch;
-      if (y === 0 || y === H - 1) ch = wheels.includes(x) ? "k" : ".";
-      else if ((x === 0 || x === L - 1) && (y === 1 || y === H - 2)) ch = ".";
-      else if (x === 0 || x === L - 1 || y === 1 || y === H - 2) ch = "o";
-      else if (x >= L - 5 && x <= L - 4 && y >= 3 && y <= H - 4) ch = y === 3 ? "G" : "g";
-      else if (x === L - 2 && (y === 2 || y === H - 3)) ch = "w";
-      else if (x === 2 && y >= 4 && y <= H - 5) ch = "g";
-      else if (y === 2 || y === H - 3) ch = "s";
-      else if (y >= 5 && y <= H - 6 && x >= 4 && x <= L - 8) ch = (x - 4) % 5 === 4 ? "s" : "h";
-      else ch = "b";
-      r += ch;
-    }
-    rows.push(r);
-  }
-  return rows;
-}
-const BUS = { 1: busRows(1), 2: busRows(2) };
 
 const sprites = new Map();
 function sprite(key, rows, hex) {
@@ -215,7 +189,6 @@ export class Renderer {
     this.ghosts = new Map();  // Critters: cell -> { until, color } (shows until the pellet lands)
     this.tweens = new Map();  // mover -> { pts, t0, dur }
     this.shakes = new Map();  // mover -> t0
-    this.flyIn = new Map();   // Depot: cell -> { t0, from } (a pixel on its way to the ring)
     this.hint = -1; this.hintT0 = 0;
     this.game = null;
     this.top = 64; this.bottom = 0;
@@ -227,7 +200,7 @@ export class Renderer {
     this.clearFx();
     this.layout();
   }
-  clearFx() { this.fx = []; this.ghosts.clear(); this.tweens.clear(); this.shakes.clear(); this.flyIn.clear(); this.hint = -1; }
+  clearFx() { this.fx = []; this.ghosts.clear(); this.tweens.clear(); this.shakes.clear(); this.hint = -1; }
 
   resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -241,30 +214,26 @@ export class Renderer {
 
   // ---- Layout ------------------------------------------------------------------------------------------------
   layout() {
-    const g = this.game, lv = g.level, W = this.W, depot = this.mode === "depot";
+    const g = this.game, lv = g.level, W = this.W;
     const top = this.top, bot = this.H - (this.bottom || 0), pad = 14, avH = bot - top - 2 * pad;
     const wide = W > (bot - top) * 1.15;
     const compact = !wide && avH < 560; // small phones: tighter everything
     const rail = compact ? 16 : 20, Gmin = compact ? 16 : 22;
-    const nS = depot ? g.docks.length : g.bays.length; // the Extra bay power can add one
-    const slotS = compact ? 44 : depot ? 58 : 54, slotGap = compact ? 8 : 10;
-    // Gaps: board to slots (the stop's crossing in Depot; in Critters room for the loop bar: how many ride
-    // and Repeat), slots to yard.
-    const barH = depot ? 0 : compact ? 30 : 34;
-    const gap1 = depot ? (compact ? 26 : 34) : (compact ? 8 : 12) + barH, gap2 = compact ? 14 : 24;
-    // The yard: lanes of critters or the car park. It gives up room if the picture would get too small.
-    let cols, rows, cellY, rowH, yardW, yardH, cs = 30, G = 26;
-    if (depot) { cols = lv.lot.w; rows = lv.lot.h; }
-    else { cols = lv.lanes.length; rows = 4; }
+    const nS = g.bays.length; // the Extra bay power can add one
+    const slotS = compact ? 44 : 54, slotGap = compact ? 8 : 10;
+    // Gaps: board to bays (with room for the loop bar: how many ride, and Repeat), bays to lanes.
+    const barH = compact ? 30 : 34;
+    const gap1 = (compact ? 8 : 12) + barH, gap2 = compact ? 14 : 24;
+    // The lanes of critters. They give up room if the picture would get too small.
+    let cellY, rowH, yardW, yardH, cs = 30, G = 26;
+    const cols = lv.lanes.length, rows = 4;
     const yardMaxW = wide ? W * 0.4 - pad : W - 2 * pad - 12;
-    const yardMaxH = wide ? avH - 20 : avH * (depot ? 0.36 : 0.3);
+    const yardMaxH = wide ? avH - 20 : avH * 0.3;
     for (let shrink = 1, k = 0; k < 12; k++, shrink *= 0.9) {
-      if (depot) { cellY = Math.floor(Math.min(wide ? 60 : 50, yardMaxW / cols, (yardMaxH * shrink) / rows)); rowH = cellY; }
-      else { cellY = Math.floor(Math.min(86, yardMaxW / cols)); rowH = Math.floor(Math.min(64, (yardMaxH * shrink) / rows)); }
+      cellY = Math.floor(Math.min(86, yardMaxW / cols)); rowH = Math.floor(Math.min(64, (yardMaxH * shrink) / rows));
       yardW = cellY * cols; yardH = rowH * rows;
-      // The picture gets the rest. G: picture edge to the middle of the rail. The extra bit is what the
-      // docks' pavement and the car park's frame stick out.
-      const gaps = gap1 + (wide ? 0 : gap2) + (depot ? 12 : 8);
+      // The picture gets the rest. G: picture edge to the middle of the rail.
+      const gaps = gap1 + (wide ? 0 : gap2) + 8;
       const boardW = wide ? W - yardW - 4 * pad - 60 : W - 2 * pad;
       const boardH = wide ? avH - slotS - gaps : avH - yardH - slotS - gaps;
       for (let j = 0; j < 3; j++) {
@@ -272,7 +241,7 @@ export class Renderer {
         cs = Math.floor(Math.min((boardW - ringOut) / lv.w, (boardH - ringOut) / lv.h));
         G = clamp(Math.round(cs * 1.15), Gmin, 32);
       }
-      if (wide || cs >= 9 || (depot ? cellY <= 26 : rowH <= 36)) break;
+      if (wide || cs >= 9 || rowH <= 36) break;
     }
     cs = clamp(cs, 6, 30);
     this.cellY = cellY; this.rowH = rowH;
@@ -297,15 +266,14 @@ export class Renderer {
     }
     Object.assign(this, { cs, px, py, pw, ph, G, rail, wide, compact, ringOut: ring });
     this.path = loopPath(px - G, py - G, pw + 2 * G, ph + 2 * G, Math.min(G, 24));
-    // Slots (bays or docks), centred under the board, or under the stop in Depot.
-    let cx = px + pw / 2;
-    if (depot) cx = this.ringPoint(g.stop)[0];
+    // Bays, centred under the board.
+    const cx = px + pw / 2;
     sx = clamp(Math.round(cx - sw / 2), pad, W - pad - sw);
     if (wide) sx = clamp(Math.round(cx - sw / 2), pad, Math.max(pad, px + pw + ring - sw));
     this.slots = Array.from({ length: nS }, (_, i) => ({ x: sx + i * (slotS + slotGap), y: sy, s: slotS }));
     this.yard = { x: yx, y: yy, w: yardW, h: yardH };
     // The loop bar (HTML, placed by game.js) sits just over the bays.
-    this.bar = depot ? null : { x: sx + sw / 2, y: sy - barH, h: barH - 4 };
+    this.bar = { x: sx + sw / 2, y: sy - barH, h: barH - 4 };
     this.moverSize = clamp(cs * 1.7, compact ? 22 : 26, 38);
   }
 
@@ -327,47 +295,24 @@ export class Renderer {
     }
     return [x, y];
   }
-  /** Depot: screen point [x, y, heading] of ring position p (fractional positions blend). */
-  ringPoint(p) { return this.path.at(p / this.game.R); }
   cellPoint(i) {
     const w = this.game.w;
     return [this.px + ((i % w) + 0.5) * this.cs, this.py + (Math.floor(i / w) + 0.5) * this.cs];
   }
   entrance() { return this.stepPoint(this.game.track[0]); }
   bayPoint(b) { const s = this.slots[b]; return [s.x + s.s / 2, s.y + s.s / 2]; }
-  /** Where mover m stands in the yard now (lane slot or parked bus). */
+  /** Where mover m stands in its lane now. */
   yardPoint(m) {
     const g = this.game, Y = this.yard;
-    if (g.lanes) {
-      for (let k = 0; k < g.lanes.length; k++) {
-        const i = g.lanes[k].indexOf(m);
-        if (i >= 0) return [Y.x + (k + 0.5) * this.cellY, Y.y + (i + 0.5) * this.rowH];
-      }
-      return [Y.x + Y.w / 2, Y.y];
+    for (let k = 0; k < g.lanes.length; k++) {
+      const i = g.lanes[k].indexOf(m);
+      if (i >= 0) return [Y.x + (k + 0.5) * this.cellY, Y.y + (i + 0.5) * this.rowH];
     }
-    return this.carCenter(g.cars[g.carOf.get(m)]);
-  }
-  carCenter(car) {
-    const cells = carCells(car), c = this.cellY;
-    const xs = cells.map((p) => p[0]), ys = cells.map((p) => p[1]);
-    return [this.yard.x + ((Math.min(...xs) + Math.max(...xs)) / 2 + 0.5) * c, this.yard.y + ((Math.min(...ys) + Math.max(...ys)) / 2 + 0.5) * c];
+    return [Y.x + Y.w / 2, Y.y];
   }
 
   // ---- Effects, started by game.js from the engine's events --------------------------------------------------
   onLaunch(m, e, now) {
-    const g = this.game;
-    if (this.mode === "depot") {
-      const car = g.cars[e.from.car], [dx, dy] = DIRS[car.dir], c = this.carCenter(car), Y = this.yard;
-      const ex = dx ? (dx > 0 ? Y.x + Y.w + 18 : Y.x - 18) : c[0], ey = dy ? (dy > 0 ? Y.y + Y.h + 18 : Y.y - 18) : c[1];
-      const d = this.bayPoint(e.dock), s = this.slots[e.dock];
-      const pts = [c, [ex, ey]];
-      // Round the car park's side, then up to the dock.
-      if (ey > Y.y + Y.h) pts.push([ex < Y.x + Y.w / 2 ? Y.x - 18 : Y.x + Y.w + 18, ey]);
-      const side = pts[pts.length - 1][0];
-      pts.push([side, s.y + s.s + 14], [d[0], s.y + s.s + 14], d);
-      this.tweens.set(m, { pts, t0: now, dur: g.level.transit * this.tickDT });
-      return;
-    }
     let pts;
     if (e.from.bay != null) pts = [this.bayPoint(e.from.bay)];
     else pts = [[this.yard.x + (e.from.lane + 0.5) * this.cellY, this.yard.y + ((e.from.row || 0) + 0.5) * this.rowH]];
@@ -384,11 +329,6 @@ export class Renderer {
       this.fx.push({ kind: "spark", x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t0: now + 0.12, dur: 0.4, color, s: Math.max(3, this.cs * 0.32) });
     }
   }
-  onEnter(cell, now) { this.flyIn.set(cell, { t0: now, from: this.cellPoint(cell) }); }
-  onBoard(m, cell, dock, now, at) {
-    const color = colorOf(this.game.level.cells[cell]);
-    this.fx.push({ kind: "hop", dock, x: at[0], y: at[1], t0: now, dur: 0.28, color });
-  }
   onPark(m, bay, now) {
     const e = this.entrance();
     this.tweens.set(m, { pts: [e, this.bayPoint(bay)], t0: now, dur: 0.35 });
@@ -397,12 +337,6 @@ export class Renderer {
     const [x, y] = this.entrance(), color = colorOf(this.game.color(m));
     this.fx.push({ kind: "ring", x, y, t0: now, dur: 0.35, color });
     this.burst(x, y, color, now, 10);
-  }
-  onDepart(m, dock, now) {
-    const [x, y] = this.bayPoint(dock), color = colorOf(this.game.color(m));
-    const len = this.game.level.movers[m].cap >= 8 ? 2 : 1;
-    this.fx.push({ kind: "busOut", m, x, y, len, t0: now, dur: 0.55, color, to: this.W + 60 });
-    this.burst(x, y - 10, color, now, 12);
   }
   burst(x, y, color, now, n) {
     for (let k = 0; k < n; k++) {
@@ -431,7 +365,6 @@ export class Renderer {
     if (this.fx.some((f) => now < f.t0 + f.dur)) return true;
     for (const t of this.tweens.values()) if (now < t.t0 + t.dur) return true;
     for (const t0 of this.shakes.values()) if (now < t0 + 0.4) return true;
-    for (const f of this.flyIn.values()) if (now < f.t0 + 0.25) return true;
     if (this.hint >= 0 && now < this.hintT0 + 4) return true;
     return false;
   }
@@ -441,29 +374,20 @@ export class Renderer {
    *  lane, not just the front one. */
   hit(x, y, any = false) {
     const g = this.game;
-    if (this.mode !== "depot") {
-      for (let b = 0; b < this.slots.length; b++) {
-        const s = this.slots[b];
-        if (g.bays[b] >= 0 && x >= s.x - 4 && x <= s.x + s.s + 4 && y >= s.y - 4 && y <= s.y + s.s + 4) return { m: g.bays[b] };
-      }
+    for (let b = 0; b < this.slots.length; b++) {
+      const s = this.slots[b];
+      if (g.bays[b] >= 0 && x >= s.x - 4 && x <= s.x + s.s + 4 && y >= s.y - 4 && y <= s.y + s.s + 4) return { m: g.bays[b] };
     }
     const Y = this.yard;
     if (x < Y.x - 6 || x > Y.x + Y.w + 6 || y < Y.y - 6 || y > Y.y + Y.h + 6) return null;
-    if (g.lanes) {
-      const k = clamp(Math.floor((x - Y.x) / this.cellY), 0, g.lanes.length - 1);
-      const lane = g.lanes[k], rows = Math.round(Y.h / this.rowH);
-      if (!lane.length) return null;
-      if (any) {
-        const i = clamp(Math.floor((y - Y.y) / this.rowH), 0, rows - 1);
-        if (i < lane.length && !(i === rows - 1 && lane.length > rows)) return { m: lane[i], lane: k };
-      }
-      return { m: lane[0], lane: k };
+    const k = clamp(Math.floor((x - Y.x) / this.cellY), 0, g.lanes.length - 1);
+    const lane = g.lanes[k], rows = Math.round(Y.h / this.rowH);
+    if (!lane.length) return null;
+    if (any) {
+      const i = clamp(Math.floor((y - Y.y) / this.rowH), 0, rows - 1);
+      if (i < lane.length && !(i === rows - 1 && lane.length > rows)) return { m: lane[i], lane: k };
     }
-    const lw = g.level.lot.w;
-    const cx = Math.floor((x - Y.x) / this.cellY), cy = Math.floor((y - Y.y) / this.cellY);
-    if (cx < 0 || cy < 0 || cx >= lw || cy >= g.level.lot.h) return null;
-    const i = g.occ[cy * lw + cx];
-    return i >= 0 ? { m: g.cars[i].m } : null;
+    return { m: lane[0], lane: k };
   }
 
   // ---- Drawing -----------------------------------------------------------------------------------------------
@@ -471,17 +395,12 @@ export class Renderer {
     const ctx = this.ctx, g = this.game;
     ctx.clearRect(0, 0, this.W, this.H);
     if (!g) return;
-    const depot = this.mode === "depot";
     this.drawBoard(now, frac);
     this.drawPicture(now);
-    if (depot) { this.drawDoors(now); this.drawStop(); }
     this.drawSlots(now);
     this.drawYard(now);
-    if (depot) this.drawRing(frac, now);
-    else {
-      g.queue.forEach((m, i) => { const e = this.entrance(); this.drawMover(m, [e[0] - 4 - i * 8, e[1] + 26], now, "queue"); });
-      for (const b of g.belt) this.drawMover(b.m, this.trackPoint(Math.min(b.pos + frac, g.L)), now, "belt");
-    }
+    g.queue.forEach((m, i) => { const e = this.entrance(); this.drawMover(m, [e[0] - 4 - i * 8, e[1] + 26], now, "queue"); });
+    for (const b of g.belt) this.drawMover(b.m, this.trackPoint(Math.min(b.pos + frac, g.L)), now, "belt");
     this.drawFx(now);
     if (this.hint >= 0) this.drawHint(now);
   }
@@ -501,9 +420,9 @@ export class Renderer {
     ctx.strokeStyle = UI.rail; ctx.lineWidth = rail; ctx.stroke();
     ctx.strokeStyle = UI.railIn; ctx.lineWidth = rail - 10; ctx.stroke();
     // Chevrons that run while the loop runs.
-    const g = this.game, running = this.mode === "depot" ? !g.idle : g.belt.length > 0;
+    const g = this.game, running = g.belt.length > 0;
     const step = 26, n = Math.floor(this.path.len / step);
-    const off = this.mode === "depot" ? (running ? ((g.ticks + frac) / g.R) * (this.path.len / step) : (g.ticks / g.R) * (this.path.len / step)) : (running ? now * 2.2 : 0);
+    const off = running ? now * 2.2 : 0;
     ctx.strokeStyle = UI.chevron; ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.globalAlpha = 0.75;
     ctx.beginPath();
@@ -514,7 +433,7 @@ export class Renderer {
     }
     ctx.stroke();
     ctx.globalAlpha = 1;
-    if (this.mode !== "depot") this.drawFinish();
+    this.drawFinish();
   }
 
   /** Critters: a chequered start and finish line across the rail where every lap starts and ends. */
@@ -550,153 +469,45 @@ export class Renderer {
     }
   }
 
-  // ---- Depot -------------------------------------------------------------------------------------------------
-  /** The two doors (chutes from the picture's sides onto the ring) and the next pixel out of each. */
-  drawDoors(now) {
-    const ctx = this.ctx, g = this.game, { px, pw, cs } = this;
-    const pulse = 0.55 + 0.45 * Math.sin(now * 6);
-    for (let side = 0; side < 2; side++) {
-      const [dx, dy] = this.ringPoint(g.doors[side]);
-      const edge = side === 0 ? px - 5 : px + pw + 5;
-      ctx.fillStyle = UI.plate;
-      ctx.fillRect(Math.min(edge, dx), dy - cs * 0.6, Math.abs(dx - edge), cs * 1.2);
-      ctx.fillStyle = UI.chevron; ctx.globalAlpha = 0.6;
-      const dir = side === 0 ? -1 : 1, mx = (edge + dx) / 2;
-      ctx.beginPath(); ctx.moveTo(mx - dir * 4, dy - 5); ctx.lineTo(mx + dir * 3, dy); ctx.lineTo(mx - dir * 4, dy + 5); ctx.closePath(); ctx.fill();
-      ctx.globalAlpha = 1;
-      // The next pixels to leave this side: the very next one pulses, the few after it are marked.
-      const q = g.feeds[side], k = g.fed[side];
-      if (g.status !== "play") continue;
-      for (let j = Math.min(q.length - 1, k + 3); j >= k; j--) {
-        const [x, y] = this.cellPoint(q[j]);
-        ctx.strokeStyle = j === k ? `rgba(255,255,255,${pulse})` : `rgba(255,255,255,${0.42 - (j - k) * 0.11})`;
-        ctx.lineWidth = j === k ? 2.5 : 1.5;
-        ctx.strokeRect(Math.round(x - cs / 2) + 1, Math.round(y - cs / 2) + 1, cs - 2, cs - 2);
-      }
-    }
-  }
-
-  /** The stop under the ring: a gold frame on the rail, a crossing down to the kerb, and the docks' pavement. */
-  drawStop() {
-    const ctx = this.ctx, g = this.game;
-    const [x, y] = this.ringPoint(g.stop);
-    const s0 = this.slots[0], sN = this.slots[this.slots.length - 1];
-    const left = s0.x - 12, w = sN.x + sN.s - s0.x + 24, top = s0.y - 14;
-    // Pavement behind the docks, with a gold kerb.
-    ctx.fillStyle = UI.panelLip;
-    ctx.beginPath(); rr(ctx, left, top + 5, w, s0.s + 24, 16); ctx.fill();
-    ctx.fillStyle = "#353a78";
-    ctx.beginPath(); rr(ctx, left, top, w, s0.s + 24, 16); ctx.fill();
-    ctx.fillStyle = "#ffcf3f";
-    ctx.beginPath(); rr(ctx, left, top, w, 5, 3); ctx.fill();
-    // A zebra crossing from the stop to the kerb.
-    const y0 = y + this.rail / 2 + 3;
-    for (let yy = y0, k = 0; yy < top - 1; yy += 5, k++) {
-      ctx.fillStyle = k % 2 ? UI.panelLip : "#e3e6ff";
-      ctx.fillRect(Math.round(x - 10), Math.round(yy), 20, Math.min(5, top - 1 - yy));
-    }
-    // The stop on the rail.
-    ctx.strokeStyle = UI.ink; ctx.lineWidth = 6;
-    ctx.beginPath(); rr(ctx, x - 14, y - 14, 28, 28, 7); ctx.stroke();
-    ctx.strokeStyle = "#ffcf3f"; ctx.lineWidth = 3;
-    ctx.stroke();
-    // The sign on its post.
-    const sx = x + 30, sy = y + 24;
-    ctx.fillStyle = UI.ink; ctx.fillRect(sx - 2.5, sy - 8, 5, 22);
-    ctx.fillStyle = "#c9cdf5"; ctx.fillRect(sx - 1, sy - 8, 2, 21);
-    ctx.fillStyle = "#ffcf3f"; ctx.strokeStyle = UI.ink; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.arc(sx, sy - 12, 9, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = UI.ink; ctx.fillRect(sx - 5, sy - 14, 10, 4);
-  }
-
-  drawRing(frac, now) {
-    const ctx = this.ctx, g = this.game, R = g.R;
-    const gapPx = this.path.len / R;
-    const s = clamp(Math.min(this.cs * 0.95, gapPx * 0.78), 8, 20);
-    const moving = !g.idle;
-    for (let i = 0; i < R; i++) {
-      const p = g.posOf(i) + (moving ? frac : 0);
-      const [x, y] = this.ringPoint(p);
-      ctx.fillStyle = UI.slot; ctx.globalAlpha = 0.55;
-      ctx.fillRect(Math.round(x - s / 2 - 2), Math.round(y - s / 2 - 2), Math.round(s + 4), Math.round(s + 4));
-      ctx.globalAlpha = 1;
-    }
-    for (let i = 0; i < R; i++) {
-      const cell = g.ring[i];
-      if (cell < 0) continue;
-      const p = g.posOf(i) + (moving ? frac : 0);
-      let [x, y] = this.ringPoint(p);
-      const f = this.flyIn.get(cell);
-      if (f) {
-        const t = (now - f.t0) / 0.22;
-        if (t < 1) { const e = ease(t); x = lerp(f.from[0], x, e); y = lerp(f.from[1], y, e) - Math.sin(t * Math.PI) * 10; }
-        else this.flyIn.delete(cell);
-      }
-      voxel(ctx, x, y, s, colorOf(g.level.cells[cell]));
-    }
-  }
-
-  // ---- Slots: bays (Critters) or docks (Depot) ----------------------------------------------------------------
+  // ---- Bays ---------------------------------------------------------------------------------------------------
   drawSlots(now) {
-    const ctx = this.ctx, g = this.game, depot = this.mode === "depot";
+    const ctx = this.ctx, g = this.game;
     this.slots.forEach((s, b) => {
       ctx.fillStyle = UI.slotEdge;
       ctx.beginPath(); rr(ctx, s.x, s.y, s.s, s.s, 12); ctx.fill();
       ctx.fillStyle = UI.slot;
       ctx.beginPath(); rr(ctx, s.x + 3, s.y + 4, s.s - 6, s.s - 6, 10); ctx.fill();
-      const m = depot ? g.docks[b] : g.bays[b];
-      if (m < 0) return;
-      if (depot) { if (g.where[m] === DOCKED) this.drawMover(m, this.bayPoint(b), now, "dock"); }
-      else this.drawMover(m, this.bayPoint(b), now, "bay");
+      const m = g.bays[b];
+      if (m >= 0) this.drawMover(m, this.bayPoint(b), now, "bay");
     });
-    // Depot: buses on their way to a dock.
-    if (depot) for (const d of g.driving) this.drawMover(d.m, this.bayPoint(g.docks.indexOf(d.m)), now, "driving");
   }
 
-  // ---- The yard ----------------------------------------------------------------------------------------------
+  // ---- The lanes ---------------------------------------------------------------------------------------------
   drawYard(now) {
-    const ctx = this.ctx, g = this.game, Y = this.yard;
-    if (g.lanes) {
-      const c = this.cellY, rows = Math.round(Y.h / this.rowH);
-      for (let k = 0; k < g.lanes.length; k++) {
-        ctx.fillStyle = UI.lane;
-        ctx.beginPath(); rr(ctx, Y.x + k * c + 5, Y.y - 6, c - 10, Y.h + 12, 16); ctx.fill();
-      }
-      const at = (m) => { // where m stands, if it shows (not behind the "+n" of a long lane)
+    const ctx = this.ctx, g = this.game, Y = this.yard, c = this.cellY, rows = Math.round(Y.h / this.rowH);
+    for (let k = 0; k < g.lanes.length; k++) {
+      ctx.fillStyle = UI.lane;
+      ctx.beginPath(); rr(ctx, Y.x + k * c + 5, Y.y - 6, c - 10, Y.h + 12, 16); ctx.fill();
+    }
+    const at = (m) => { // where m stands, if it shows (not behind the "+n" of a long lane)
       const lane = g.lanes.find((l) => l.includes(m)), i = lane.indexOf(m);
       return i < rows - 1 || (i === rows - 1 && lane.length === rows) ? this.yardPoint(m) : null;
     };
-      const size = Math.min(c * 0.72, this.rowH * 0.92);
-      drawBuddies(ctx, g, at, size, true);
-      for (let k = 0; k < g.lanes.length; k++) {
-        const lane = g.lanes[k];
-        for (let i = Math.min(lane.length, rows) - 1; i >= 0; i--) {
-          const m = lane[i];
-          const at = [Y.x + (k + 0.5) * c, Y.y + (i + 0.5) * this.rowH];
-          if (i === rows - 1 && lane.length > rows) { label(ctx, "+" + (lane.length - rows + 1), at[0], at[1], 18); continue; }
-          this.drawMover(m, at, now, i === 0 || this.armed === "pick" ? "front" : "lane", g.level.hidden && i > 0 && this.armed !== "pick");
-        }
+    const size = Math.min(c * 0.72, this.rowH * 0.92);
+    drawBuddies(ctx, g, at, size, true);
+    for (let k = 0; k < g.lanes.length; k++) {
+      const lane = g.lanes[k];
+      for (let i = Math.min(lane.length, rows) - 1; i >= 0; i--) {
+        const m = lane[i];
+        const at = [Y.x + (k + 0.5) * c, Y.y + (i + 0.5) * this.rowH];
+        if (i === rows - 1 && lane.length > rows) { label(ctx, "+" + (lane.length - rows + 1), at[0], at[1], 18); continue; }
+        this.drawMover(m, at, now, i === 0 || this.armed === "pick" ? "front" : "lane", g.level.hidden && i > 0 && this.armed !== "pick");
       }
-      drawBuddies(ctx, g, at, size, false);
-      if (this.armed === "pick") this.armedFrame(Y.x - 2, Y.y - 10, Y.w + 4, Y.h + 20, now);
-      return;
     }
-    // The car park.
-    const lot = g.level.lot, c = this.cellY;
-    ctx.fillStyle = UI.panelLip;
-    ctx.beginPath(); rr(ctx, Y.x - 10, Y.y - 10 + 5, Y.w + 20, Y.h + 20, 16); ctx.fill();
-    ctx.fillStyle = UI.lot; ctx.strokeStyle = UI.lotEdge; ctx.lineWidth = 2.5;
-    ctx.beginPath(); rr(ctx, Y.x - 10, Y.y - 10, Y.w + 20, Y.h + 20, 16); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = UI.lotLine; ctx.lineWidth = 1.5; ctx.setLineDash([5, 6]);
-    for (let x = 1; x < lot.w; x++) { ctx.beginPath(); ctx.moveTo(Y.x + x * c, Y.y + 4); ctx.lineTo(Y.x + x * c, Y.y + Y.h - 4); ctx.stroke(); }
-    ctx.setLineDash([]);
-    g.cars.forEach((car) => {
-      if (g.where[car.m] !== YARD) return;
-      this.drawMover(car.m, this.carCenter(car), now, "lot", false, car);
-    });
-    if (this.armed === "pick") this.armedFrame(Y.x - 14, Y.y - 14, Y.w + 28, Y.h + 28, now);
+    drawBuddies(ctx, g, at, size, false);
+    if (this.armed === "pick") this.armedFrame(Y.x - 2, Y.y - 10, Y.w + 4, Y.h + 20, now);
   }
-  /** A pulsing gold frame round the yard while the Pick or Tow power waits for a tap. */
+  /** A pulsing gold frame round the lanes while the Pick power waits for a tap. */
   armedFrame(x, y, w, h, now) {
     const ctx = this.ctx;
     ctx.save();
@@ -706,16 +517,15 @@ export class Renderer {
     ctx.restore();
   }
 
+
   // ---- Movers ------------------------------------------------------------------------------------------------
-  /** Mover m at point p. where: belt | queue | front | lane | bay (Critters), lot | driving | dock (Depot). */
-  drawMover(m, p, now, where, hidden = false, car = null) {
+  /** Critter m at point p. where: belt | queue | front | lane | bay. */
+  drawMover(m, p, now, where, hidden = false) {
     const g = this.game, tw = this.tweens.get(m);
-    let [x, y] = p, angle = -Math.PI / 2;
-    if (tw && now < tw.t0 + tw.dur && where !== "lot" && where !== "front" && where !== "lane") {
+    let [x, y] = p;
+    if (tw && now < tw.t0 + tw.dur && where !== "front" && where !== "lane") {
       const t = ease((now - tw.t0) / tw.dur), pts = where === "belt" ? tw.pts.concat([p]) : tw.pts;
-      const q = along(pts, t), q2 = along(pts, Math.min(1, t + 0.02));
-      x = q[0]; y = q[1];
-      if (q2[0] !== q[0] || q2[1] !== q[1]) angle = Math.atan2(q2[1] - q[1], q2[0] - q[0]);
+      [x, y] = along(pts, t);
     }
     const sh = this.shakes.get(m);
     if (sh != null && now < sh + 0.4) x += Math.sin((now - sh) * 50) * 5 * (1 - (now - sh) / 0.4);
@@ -724,36 +534,21 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(x, y);
-    if (this.mode === "depot") {
-      const c = this.cellY;
-      let len = car ? car.len : g.level.movers[m].cap >= 8 ? 2 : 1, size;
-      if (car) { angle = Math.atan2(DIRS[car.dir][1], DIRS[car.dir][0]); size = len * c - 6; }
-      else { const s = this.slots[0].s; size = len === 2 ? s * 0.95 : s * 0.62; if (where === "dock") angle = -Math.PI / 2; }
-      ctx.rotate(angle);
-      ctx.fillStyle = "rgba(0,0,0,.28)";
-      const img = sprite("bus" + len, BUS[len], hex), k = size / img.width;
-      ctx.fillRect(-size / 2 + 2, -img.height * k / 2 + 3, size, img.height * k);
-      blit(ctx, img, size);
-      ctx.rotate(-angle);
-      label(ctx, text, 0, 0, clamp(c * 0.42, 14, 20));
-    } else {
-      const big = where === "front" ? 1.08 : where === "lane" ? 0.9 : 1;
-      let size = (where === "bay" ? this.slots[0].s * 0.78 : where === "belt" || where === "queue" ? this.moverSize : Math.min(this.cellY * 0.72, this.rowH * 0.92)) * big;
-      if (where === "belt") y = Math.sin(now * 14 + m) * 1.2;
-      else y = 0;
-      ctx.translate(0, y);
-      const img = sprite(hidden ? "hid" : "crit", hidden ? HIDDEN : CRITTER, hex);
-      // The Laser power: a glow round the critter riding with it, or the one it's waiting for.
-      if (g.zap[m] || (this.armed === "zap" && (where === "front" || where === "bay"))) {
-        ctx.globalAlpha = 0.55 + 0.3 * Math.sin(now * 10); ctx.fillStyle = UI.glow;
-        ctx.beginPath(); ctx.arc(0, 0, size * 0.62, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
-      }
-      blit(ctx, img, size);
-      label(ctx, text, 0, hidden ? 0 : size * 0.2, clamp(size * 0.38, 12, 22));
-      if (where === "lane" && !hidden) { ctx.globalAlpha = 0.28; ctx.fillStyle = UI.panel; ctx.beginPath(); ctx.arc(0, 0, size * 0.56, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
+    const big = where === "front" ? 1.08 : where === "lane" ? 0.9 : 1;
+    const size = (where === "bay" ? this.slots[0].s * 0.78 : where === "belt" || where === "queue" ? this.moverSize : Math.min(this.cellY * 0.72, this.rowH * 0.92)) * big;
+    if (where === "belt") ctx.translate(0, Math.sin(now * 14 + m) * 1.2);
+    const img = sprite(hidden ? "hid" : "crit", hidden ? HIDDEN : CRITTER, hex);
+    // The Laser power: a glow round the critter riding with it, or the one it's waiting for.
+    if (g.zap[m] || (this.armed === "zap" && (where === "front" || where === "bay"))) {
+      ctx.globalAlpha = 0.55 + 0.3 * Math.sin(now * 10); ctx.fillStyle = UI.glow;
+      ctx.beginPath(); ctx.arc(0, 0, size * 0.62, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
     }
+    blit(ctx, img, size);
+    label(ctx, text, 0, hidden ? 0 : size * 0.2, clamp(size * 0.38, 12, 22));
+    if (where === "lane" && !hidden) { ctx.globalAlpha = 0.28; ctx.fillStyle = UI.panel; ctx.beginPath(); ctx.arc(0, 0, size * 0.56, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
     ctx.restore();
   }
+
 
   drawFx(now) {
     const ctx = this.ctx;
@@ -763,12 +558,7 @@ export class Renderer {
       if (t >= 1) continue;
       keep.push(f);
       if (t < 0) continue;
-      if (f.kind === "hop") {
-        // A pixel hops from the stop onto its bus.
-        const to = this.bayPoint(f.dock);
-        const e = ease(t), x = lerp(f.x, to[0], e), y = lerp(f.y, to[1], e) - Math.sin(t * Math.PI) * 22;
-        voxel(ctx, x, y, Math.max(6, this.cs * 0.9 * (1 - 0.5 * t)), f.color);
-      } else if (f.kind === "pellet") {
+      if (f.kind === "pellet") {
         const x = lerp(f.x0, f.x, t), y = lerp(f.y0, f.y, t);
         voxel(ctx, x, y, 7, f.color);
       } else if (f.kind === "spark") {
@@ -778,15 +568,6 @@ export class Renderer {
       } else if (f.kind === "ring") {
         ctx.globalAlpha = 1 - t; ctx.strokeStyle = f.color; ctx.lineWidth = 3;
         ctx.strokeRect(f.x - 10 - t * 22, f.y - 10 - t * 22, 20 + t * 44, 20 + t * 44); ctx.globalAlpha = 1;
-      } else if (f.kind === "busOut") {
-        // A full bus pulls away: up out of the dock, then off to the side.
-        const s = this.slots[0].s, size = f.len === 2 ? s * 0.95 : s * 0.62;
-        const e = t * t, up = Math.min(1, t * 3);
-        const x = f.x + e * (f.to - f.x), y = f.y - up * (s * 0.55);
-        ctx.save(); ctx.translate(x, y); ctx.rotate(t < 0.3 ? -Math.PI / 2 : lerp(-Math.PI / 2, 0, Math.min(1, (t - 0.3) * 4)));
-        blit(ctx, sprite("bus" + f.len, BUS[f.len], f.color), size);
-        ctx.restore();
-        if (t < 0.3) label(ctx, "✓", x, y, 18);
       }
     }
     this.fx = keep;
@@ -795,16 +576,11 @@ export class Renderer {
   drawHint(now) {
     const g = this.game, m = this.hint, t = now - this.hintT0;
     if (t > 4 || g.where[m] === undefined) { this.hint = -1; return; }
-    let p, rx = 30, ry = 30;
-    if (this.mode !== "depot" && g.where[m] === BAY) p = this.bayPoint(g.bays.indexOf(m));
-    else if (g.where[m] === YARD) {
-      p = this.yardPoint(m);
-      if (g.cars) {
-        // Hug the bus: its cells in the car park.
-        const car = g.cars[g.carOf.get(m)], c = this.cellY, vertical = car.dir === "up" || car.dir === "down";
-        rx = ((vertical ? 1 : car.len) * c) / 2 + 4; ry = ((vertical ? car.len : 1) * c) / 2 + 4;
-      }
-    } else { this.hint = -1; return; }
+    let p;
+    const rx = 30, ry = 30;
+    if (g.where[m] === BAY) p = this.bayPoint(g.bays.indexOf(m));
+    else if (g.where[m] === 0) p = this.yardPoint(m);
+    else { this.hint = -1; return; }
     const ctx = this.ctx, k = 3 * Math.sin(t * 7);
     ctx.globalAlpha = Math.min(1, 4 - t);
     ctx.strokeStyle = UI.ink; ctx.lineWidth = 7;

@@ -8,18 +8,21 @@
 //      sends is a solution:
 //      - Critters: pick a colour that shows, send a critter of it round; its capacity is what it took.
 //        Sometimes it parks and comes back later for more (that's what makes bays matter).
-//      - Depot: when the loop stops, pick a colour riding it and send a bus of that colour; its seats are
-//        what gets on. Sometimes it gets more seats, so it waits at its dock for pixels still in the
-//        picture (that's what makes docks matter).
 //   3. Put the movers in the yard so the solution can be played: in Critters each lane keeps the
-//      order; in Depot the car park is filled from the last bus to leave to the first, each with a clear
-//      way out past the ones already there (but often in their way: that's the jam).
+//      order.
 //   4. Replay the solution with the real rules. Only a level that passes is used.
 //   5. Critters and Orbit: link a few pairs of critters as buddies, which leave the lanes together
 //      (buddyUp(); the level stays the same otherwise).
+//
+// Depot has no picture. Its vehicles are picked first (colours and kinds); then the crowd is made up
+// while the level is played forwards: each time the loop stops, send a vehicle whose colour walks the
+// loop, and pick the colour of each person as they step in, from the seats still unclaimed. Then the car
+// park is filled from the last vehicle to leave to the first, each with a clear way out past the ones
+// already there (but often in their way: that's the jam). It is replayed too.
 import { Rng, hashSeed } from "./rng.js";
-import { Game, makeTrack, lap, carCells, carPath } from "./engine.js";
-import { Depot, trayCount } from "./depot.js";
+import { Game, makeTrack, lap } from "./engine.js";
+import { Depot, DOCKED, DRIVING } from "./depot.js";
+import { KINDS, KIND_OF_SEATS, latticesFor, fit, body, sweep, overlap } from "./lot.js";
 import { DRAWN, LARGE, artOf, fromArt, madePicture } from "./pictures.js";
 import { Orbit, lap3 } from "./orbit.js";
 import { SCULPTS, sculptById, sculptFor, madeSculpture } from "./sculptures.js";
@@ -31,11 +34,6 @@ export const DIFFS = ["easy", "medium", "hard"];
 
 // The drawn pictures, in the order each track meets them.
 const ORDER = {
-  depot: {
-    easy: ["heart", "fish", "mushroom", "tree", "apple", "house", "cactus", "duck", "flower", "boat", "cat", "icecream", "butterfly", "bus", "rocket"],
-    medium: ["cactus2", "house2", "fox", "frog", "strawberry", "snail", "cupcake", "whale", "penguin", "rocket2", "owl", "robot", "balloon", "ladybug"],
-    hard: ["frog", "rocket2", "ladybug", "owl", "whale", "balloon", "penguin", "robot", "cupcake", "fox", "strawberry", "snail"],
-  },
   critters: {
     easy: ["heart", "apple", "fish", "tree", "flower", "cat", "mushroom", "icecream", "house", "butterfly", "cactus", "duck", "rocket", "boat", "bus"],
     medium: ["house2", "cactus2", "strawberry", "fox", "whale", "frog", "rocket2", "snail", "cupcake", "penguin", "robot", "owl", "ladybug", "balloon"],
@@ -85,15 +83,20 @@ export function params(mode, diff, n) {
     };
   }
   if (mode === "depot") {
+    const g = Math.min(8, Math.floor((n - 1) / 3)); // grows a little every three levels
     return {
-      ...base,
-      docks: [4, 3, 3][D] - (tight ? 1 : 0),
-      density: [0.5, 0.36, 0.26][D], // trays per cell of loop length
-      maxCap: [12, 18, 24][D],
-      minCap: [3, 5, 6][D],
-      keep: [0.15, 0.4, 0.55][D],
-      open: [1, 2, tight ? 1 : 2][D], // buses the made solution may keep waiting at a dock at once
-      jam: [0.6, 1.2, 1.8][D], // how much the car park is packed in each other's way
+      D,
+      streams: [n <= 4 ? 1 : 2, n % 3 === 0 ? 3 : 2, n % 4 === 1 ? 2 : 3][D],
+      colors: Math.min([5, 6, 7][D], [3, 5, 6][D] + Math.floor((n - 1) / [4, 6, 8][D])),
+      vehicles: [10, 18, 24][D] + g,
+      kinds: [[4, 3, 2], [3, 3, 3], [3, 3, 4]][D], // how often a car, a van, a bus
+      loop: [44, 38, 34][D],                       // spots on the loop
+      docks: [5, 3, 3][D] - (tight ? 1 : 0),
+      open: [1, 2, 2][D],     // vehicles the made solution may keep waiting at a bay at once
+      keep: [0.1, 0.3, 0.45][D],
+      clump: [0.72, 0.62, 0.52][D], // how often a person has the colour of the one before them in their stream
+      jam: [0.7, 1.3, 1.9][D],      // how much the car park is packed in each other's way
+      shape: depotShape(D, n),
       bias: [1.5, 1.5, 0.5][D],
       pick: [1, 1, 6][D],
     };
@@ -110,6 +113,13 @@ export function params(mode, diff, n) {
     hidden: D === 2 || (D === 1 && n >= 12), // only the front critter of a lane shows its colour
     buddies: [n < 4 ? 0 : n < 10 ? 1 : 2, 2, 3][D], // pairs of critters that leave together
   };
+}
+
+/** Straight, diagonal or mixed car parks, in turns that get busier on harder tracks. */
+function depotShape(D, n) {
+  const turns = [["straight", "straight", "diagonal", "straight", "mixed"], ["straight", "diagonal", "mixed"], ["mixed", "diagonal", "straight", "mixed"]][D];
+  if (D === 0 && n <= 3) return "straight";
+  return turns[(n - 1) % turns.length];
 }
 
 function sculptureFor(diff, n, rng, P) {
@@ -287,83 +297,115 @@ function laneUp(order, nLanes, rng) {
 }
 
 // ---- Depot -------------------------------------------------------------------------------------------------
-/** The buses and a solution (each bus is sent once), played forwards on a Depot without a car park. */
-function constructDepot(pic, P, rng) {
-  const level = {
-    mode: "depot", w: pic.w, h: pic.h, cells: pic.cells, movers: [],
-    ring: trayCount(pic.w, pic.h, P.density), docks: P.docks, transit: CONFIG.depot.transit, lot: null,
-  };
+// Colours that stay easy to tell apart in a crowd, best first (palette index + 1).
+const CROWD = [1, 8, 3, 5, 10, 9, 2, 7, 13, 11];
+
+/** The vehicles, the crowd and a solution (each vehicle is sent once), played forwards on a Depot
+ *  without a car park. */
+function constructDepot(P, rng) {
+  // The vehicles: every colour gets at least two.
+  const pool = CROWD.slice(0, P.colors + 2);
+  for (let i = pool.length - 1; i > 0; i--) { const j = rng.int(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const colors = pool.slice(0, P.colors);
+  const kinds = ["car", "van", "bus"], kw = P.kinds.reduce((a, b) => a + b, 0);
+  const fleet = [];
+  for (let v = 0; v < P.vehicles; v++) {
+    let r = rng.int(kw), k = 0;
+    while (r >= P.kinds[k]) r -= P.kinds[k++];
+    fleet.push({ color: colors[v % colors.length], seats: KINDS[kinds[k]].seats });
+  }
+  const total = new Map(colors.map((c) => [c, 0])), made = new Map(colors.map((c) => [c, 0]));
+  for (const v of fleet) total.set(v.color, total.get(v.color) + v.seats);
+  const N = fleet.reduce((a, v) => a + v.seats, 0);
+  // The streams: the zip deals people out in turn.
+  const streams = Array.from({ length: P.streams }, (_, j) => new Array(Math.floor(N / P.streams) + (j < N % P.streams ? 1 : 0)).fill(0));
+  const level = { mode: "depot", streams, loop: P.loop, docks: P.docks, transit: CONFIG.depot.transit, movers: [], lot: null };
   const g = new Depot(level, { history: false });
-  const unassigned = new Map();
-  for (const c of pic.cells) if (c) unassigned.set(c, (unassigned.get(c) || 0) + 1);
+  const last = new Array(P.streams).fill(0);
+  // Someone steps in: a colour from the seats still unclaimed, often the colour of the one in front
+  // of them, and more often a colour a parked vehicle is waiting for.
+  g.draw = (j) => {
+    const need = (c) => total.get(c) - made.get(c);
+    let pick = 0;
+    if (last[j] && need(last[j]) > 0 && rng.chance(P.clump)) pick = last[j];
+    else {
+      const want = new Map();
+      for (const m of g.docks) if (m >= 0 && (g.where[m] === DOCKED || g.where[m] === DRIVING)) {
+        const c = g.color(m);
+        want.set(c, (want.get(c) || 0) + g.left[m]);
+      }
+      const w = colors.map((c) => need(c) * ((want.get(c) || 0) > g.onRing[c] ? 4 : 1));
+      let r = rng.float() * w.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < colors.length; i++) { if (w[i] > 0) { pick = colors[i]; if ((r -= w[i]) <= 0) break; } }
+    }
+    made.set(pick, made.get(pick) + 1);
+    last[j] = pick;
+    return pick;
+  };
   const solution = [];
   g.settle();
-  for (let guard = 0; g.status === "play" && guard < 400; guard++) {
-    // Colours riding the loop with no bus for them (the loop has stopped, so none has one).
-    const opts = [];
-    for (let c = 1; c < g.onRing.length; c++) if (g.onRing[c] > 0) opts.push({ c, w: Math.pow(g.onRing[c], P.bias) });
+  while (g.status === "play" && fleet.length) {
+    // The loop has stopped: no one on it has a vehicle. Send one whose colour walks the loop: one that
+    // fills up at once, or now and then one that has to wait at its bay for more.
+    const on = g.onRing, waiting = g.docks.filter((m) => m >= 0).length;
+    const now = [], later = [];
+    fleet.forEach((v, i) => {
+      if (on[v.color] >= v.seats) now.push(i);
+      else if (on[v.color] > 0) later.push(i);
+    });
+    const canWait = later.length > 0 && waiting < P.open && P.docks - waiting >= 2;
+    let opts = now;
+    if (!now.length || (canWait && rng.chance(P.keep))) opts = canWait ? later : [];
     if (!opts.length) return null;
-    let r = rng.float() * opts.reduce((a, o) => a + o.w, 0), pick = opts[0];
-    for (const o of opts) { if ((r -= o.w) <= 0) { pick = o; break; } }
-    const c = pick.c, have = unassigned.get(c);
-    // How many would get on a bus with endless seats?
-    const probe = g.clone();
-    const pm = probe.addMover(c, have);
-    probe.launch(pm); probe.settle();
-    level.movers.pop();
-    const took = have - probe.left[pm];
-    const waiting = g.docks.filter((m) => m >= 0).length;
-    let cap = Math.min(took, P.maxCap);
-    if (have > took && waiting < P.open && (took < P.minCap || rng.chance(P.keep))) {
-      cap = Math.min(have, P.maxCap, Math.max(took + 1 + rng.int(Math.max(1, Math.round(took * 0.6))), P.minCap));
-    }
-    const m = g.addMover(c, cap);
-    unassigned.set(c, have - cap);
+    const ws = opts.map((i) => Math.pow(on[fleet[i].color], P.bias));
+    let r = rng.float() * ws.reduce((a, b) => a + b, 0), pick = opts[0];
+    for (let k = 0; k < opts.length; k++) { if ((r -= ws[k]) <= 0) { pick = opts[k]; break; } }
+    const v = fleet.splice(pick, 1)[0];
+    const m = g.addMover(v.color, v.seats);
     if (g.launch(m) !== "ok") return null;
     g.settle();
     solution.push(m);
   }
   if (g.status !== "won") return null;
-  return { movers: level.movers, solution, ring: level.ring };
+  return { streams, movers: level.movers, solution };
 }
 
-/** Depot's car park for the buses in the order they leave. Returns { w, h, cars } or null if it doesn't fit. */
+/** Depot's car park for the vehicles in the order they leave. Returns { shape, cars } or null if they
+ *  don't fit. The last to leave is placed first; each next one needs a clear way out past the ones
+ *  already there, and is preferably put in their way. */
 function park(order, movers, P, rng, grow) {
-  const big = Math.max(8, Math.round(P.maxCap * 0.6));
-  const lens = order.map((m) => (movers[m].cap >= big ? 2 : 1));
-  const need = lens.reduce((a, b) => a + b, 0);
-  const lw = order.length > 14 ? 7 : order.length > 9 ? 6 : 5;
-  const lh = Math.max(3, Math.min(8, Math.ceil((need * 1.4) / lw) + grow));
-  const occ = new Int16Array(lw * lh).fill(-1);
-  const cars = [];
-  const inside = ([x, y]) => x >= 0 && y >= 0 && x < lw && y < lh;
+  const kindOf = (m) => KIND_OF_SEATS[movers[m].cap];
+  const need = order.reduce((a, m) => a + KINDS[kindOf(m)].cells, 0);
+  const Ls = latticesFor(P.shape, need, grow);
+  const used = Ls.map(() => new Set());
+  const cars = [], bodies = [], sweeps = [];
   for (let k = order.length - 1; k >= 0; k--) {
-    const m = order[k];
-    let placed = null;
-    for (const len of lens[k] === 2 ? [2, 1] : [1]) {
-      const cands = [];
-      for (let y = 0; y < lh; y++) for (let x = 0; x < lw; x++) for (const dir of ["up", "down", "left", "right"]) {
-        const car = { m, x, y, len, dir };
-        const body = carCells(car);
-        if (!body.every((p) => inside(p) && occ[p[1] * lw + p[0]] === -1)) continue;
-        if (!carPath(car, lw, lh).every(([px, py]) => occ[py * lw + px] === -1)) continue;
-        // Jam: how many parked buses (which leave later) this one stands in the way of.
-        const keys = new Set(body.map(([bx, by]) => by * lw + bx));
-        let blocks = 0;
-        for (const c of cars) if (carPath(c, lw, lh).some(([px, py]) => keys.has(py * lw + px))) blocks++;
-        cands.push({ car, score: blocks * 3 * P.jam + rng.float() * 2.5 + (dir === "down" || dir === "up" ? 0.4 : 0) });
+    const m = order[k], kind = kindOf(m);
+    const cands = [];
+    Ls.forEach((L, li) => {
+      for (const [i, j] of L.cells) for (let d = 0; d < 4; d++) {
+        const f = fit(L, kind, i, j, d);
+        if (!f || f.cells.some(([a, b]) => used[li].has(a + "," + b))) continue;
+        const b = body(f.car);
+        if (bodies.some((o) => overlap(b, o))) continue;
+        const s = sweep(f.car);
+        if (bodies.some((o) => overlap(s, o))) continue;
+        let blocks = 0, near = 0;
+        for (const sw of sweeps) if (overlap(sw, b)) blocks++;
+        for (const o of bodies) if (Math.hypot(o.cx - b.cx, o.cy - b.cy) < 1.7) near++;
+        // Jam, then a tight pack round the middle, with a little chance.
+        const score = blocks * 1.2 * P.jam + near * 1.4 - Math.hypot(b.cx, b.cy) * 2.0 + rng.float() * 1.2;
+        cands.push({ f, li, b, s, score });
       }
-      if (cands.length) {
-        cands.sort((a, b) => b.score - a.score);
-        placed = cands[rng.int(Math.min(3, cands.length))].car;
-        break;
-      }
-    }
-    if (!placed) return null;
-    for (const [x, y] of carCells(placed)) occ[y * lw + x] = cars.length;
-    cars.push(placed);
+    });
+    if (!cands.length) return null;
+    cands.sort((a, b) => b.score - a.score);
+    const c = cands[rng.int(Math.min(3, cands.length))];
+    for (const [a, b] of c.f.cells) used[c.li].add(a + "," + b);
+    cars.push({ m, ...c.f.car });
+    bodies.push(c.b); sweeps.push(c.s);
   }
-  return { w: lw, h: lh, cars: cars.reverse() };
+  return { shape: P.shape, cars: cars.reverse() };
 }
 
 // ---- Both --------------------------------------------------------------------------------------------------
@@ -401,7 +443,7 @@ export function makeLevel(mode, diff, n) {
   let best = null, bestScore = Infinity, found = 0;
   for (let attempt = 0; attempt < 40 && found < want; attempt++) {
     const rng = new Rng(hashSeed(`${key}:${attempt}`));
-    const pic = mode === "orbit" ? null : pictureFor(mode, diff, n, rng, P);
+    const pic = mode === "critters" ? pictureFor(mode, diff, n, rng, P) : null;
     let level;
     if (mode === "orbit") {
       level = orbitLevel(sculptureFor(diff, n, rng, P), P, rng, { mode, diff, n });
@@ -421,13 +463,13 @@ export function makeLevel(mode, diff, n) {
       }
       level.lanes = lanes;
     } else {
-      const made = constructDepot(pic, P, rng);
+      const made = constructDepot(P, rng);
       if (!made) continue;
       const lot = park(made.solution, made.movers, P, rng, attempt >> 2);
       if (!lot) continue;
       level = {
-        mode, diff, n, picture: pic.id, w: pic.w, h: pic.h, cells: pic.cells, movers: made.movers, solution: made.solution,
-        ring: made.ring, docks: P.docks, transit: CONFIG.depot.transit, lot,
+        mode, diff, n, streams: made.streams, movers: made.movers, solution: made.solution,
+        loop: P.loop, docks: P.docks, transit: CONFIG.depot.transit, lot,
       };
     }
     if (!replay(level)) continue;

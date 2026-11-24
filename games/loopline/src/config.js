@@ -16,8 +16,8 @@ export const CONFIG = {
     lapSeconds: 3.4, // Orbit: one lap round the sculpture
   },
   depot: {
-    tick: 0.075,     // seconds per tray the loop turns
-    transit: 7,      // ticks a bus takes from the car park to its dock
+    tick: 0.15,      // seconds per spot the crowd walks round the loop (a calm walk, not a rush)
+    transit: 7,      // ticks a vehicle takes from the car park to its bay
   },
 };
 

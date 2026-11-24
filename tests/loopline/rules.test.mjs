@@ -1,11 +1,12 @@
 // Loopline's rules (games/loopline/src/engine.js for Critters, src/orbit.js for Orbit, src/depot.js for
 // Depot) and levels (src/levels.js), checked in Node: what a critter sees and takes, parking, losing,
-// undo, lanes; the depot's doors, stop, docks and car park; the powers bought with coins; that Hard is
-// harder; and that every level of every track can be solved and stays the same level.
+// undo, lanes; the depot's streams, loop, stop, bays and car park; the powers bought with coins; that
+// Hard is harder; and that every level of every track can be solved and stays the same level.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Game, makeTrack, takeAlong, lap, YARD, BAY, DONE } from "../../games/loopline/src/engine.js";
-import { Depot, feedsOf, ringShape, DRIVING, DOCKED } from "../../games/loopline/src/depot.js";
+import { Depot, DRIVING, DOCKED } from "../../games/loopline/src/depot.js";
+import { blockersOf } from "../../games/loopline/src/lot.js";
 import { makeLevel, replay, newGame, params, MODES, DIFFS, MODELS, modelView, makeTestLevel } from "../../games/loopline/src/levels.js";
 import { solve } from "../../games/loopline/src/solver.js";
 import { Orbit, look3, lap3 } from "../../games/loopline/src/orbit.js";
@@ -20,10 +21,9 @@ function level(rows, movers, extra = {}) {
   const h = rows.length, w = rows[0].length;
   return { mode: "critters", w, h, cells: cellsOf(rows), movers: movers.map(([color, cap]) => ({ color, cap })), bays: 2, belt: 4, spacing: 2, lanes: [movers.map((_, i) => i)], ...extra };
 }
-/** A Depot level: rows, buses [[color, cap]], an optional car park. */
-function depot(rows, buses, extra = {}) {
-  const h = rows.length, w = rows[0].length;
-  return { mode: "depot", w, h, cells: cellsOf(rows), movers: buses.map(([color, cap]) => ({ color, cap })), ring: 12, docks: 2, transit: 2, lot: null, ...extra };
+/** A Depot level: streams of people (colours), vehicles [[color, seats]], an optional car park. */
+function depot(streams, buses, extra = {}) {
+  return { mode: "depot", streams: streams.map((q) => q.slice()), movers: buses.map(([color, cap]) => ({ color, cap })), loop: 12, docks: 2, transit: 2, lot: null, ...extra };
 }
 const play = (g, m) => { const r = g.launch(m); g.settle(); return r; };
 
@@ -126,48 +126,38 @@ test("critters: one lap of a lone critter is what the engine does with it", () =
 });
 
 // ---- Depot -----------------------------------------------------------------------------------------------
-test("depot: the left half leaves by the left door, the right half by the right, outside columns first, top down", () => {
-  // 1 2 | 3 0
-  // 2 1 | 0 3
-  const [l, r] = feedsOf(4, 2, cellsOf(["1230", "2103"]));
-  assert.deepEqual(l, [0, 4, 1, 5]);
-  assert.deepEqual(r, [7, 2], "empty cells don't queue");
-  assert.deepEqual(feedsOf(3, 1, cellsOf(["123"])), [[0, 1], [2]], "an odd middle column goes left");
-  const s = ringShape(4, 2);
-  assert.ok(s.stop > 0.5 && s.stop < 0.75, "the stop is on the bottom side");
-  assert.ok(s.doors[0] > 0.75 && s.doors[1] < 0.5, "doors on the left and right sides");
+test("depot: the streams take turns at their gates, and wait when the loop is full", () => {
+  const g = new Depot(depot([[R, R, R], [B, B, B]], [[R, 3], [B, 3]], { loop: 4 }));
+  assert.equal(g.idle, false, "people are waiting to step in");
+  g.settle();
+  assert.equal(g.filled, 4, "the loop is full");
+  assert.deepEqual(g.fed, [2, 2], "two from each stream: they took turns");
+  assert.equal(g.onRing[R], 2);
+  assert.equal(g.onRing[B], 2);
+  assert.equal(g.idle, true, "nothing can happen until a vehicle comes");
+  assert.equal(g.status, "play", "a free bay: not lost");
 });
 
-test("depot: the loop fills from both doors and stops when nothing can happen", () => {
-  const g = new Depot(depot(["1122"], [[R, 2], [B, 2]]));
-  assert.equal(g.idle, false, "pixels are waiting to get on");
+test("depot: people get on a parked vehicle of their colour at the stop; that frees spots for the streams; a full one leaves", () => {
+  // One stream: red, red, blue, blue, red, red. The loop holds four.
+  const g = new Depot(depot([[R, R, B, B, R, R]], [[R, 4], [B, 2]], { loop: 4 }));
   g.settle();
-  assert.equal(g.filled, 4, "all four pixels ride the loop");
-  assert.equal(g.cells.every((c) => c === 0), true, "the picture is empty");
-  assert.equal(g.remaining, 4, "but nobody is on a bus yet");
-  assert.equal(g.idle, true);
-  assert.equal(g.status, "play", "a free dock: not lost");
-});
-
-test("depot: pixels get on a docked bus of their colour at the stop; a full bus leaves and frees its dock", () => {
-  const g = new Depot(depot(["1122"], [[R, 2], [B, 2]]));
-  g.settle();
+  assert.deepEqual(g.fed, [4], "two reds still wait in the stream");
   assert.equal(play(g, 0), "ok");
-  assert.equal(g.where[0], 4, "red bus full and gone");
-  assert.deepEqual(g.docks, [-1, -1]);
-  assert.equal(g.remaining, 2);
-  assert.equal(g.onRing[R], 0);
-  assert.equal(g.onRing[B], 2, "blue rides on: no bus for it");
+  assert.equal(g.where[0], DONE, "the red vehicle filled up, with the two who stepped in after the first two got on");
+  assert.deepEqual(g.fed, [6]);
+  assert.deepEqual(g.docks, [-1, -1], "and it left, freeing its bay");
+  assert.equal(g.onRing[B], 2, "blue walks on: no vehicle for it");
   play(g, 1);
   assert.equal(g.status, "won");
 });
 
-test("depot: a bus drives a few ticks to its dock before anyone gets on", () => {
-  const g = new Depot(depot(["11"], [[R, 2]], { transit: 3 }));
+test("depot: a vehicle drives a few ticks to its bay before anyone gets on", () => {
+  const g = new Depot(depot([[R, R]], [[R, 2]], { transit: 3 }));
   g.settle();
   g.launch(0);
   assert.equal(g.where[0], DRIVING);
-  assert.equal(g.docks[0], 0, "its dock is taken at once");
+  assert.equal(g.docks[0], 0, "its bay is taken at once");
   g.tick(); g.tick();
   assert.equal(g.where[0], DRIVING);
   g.tick();
@@ -176,42 +166,65 @@ test("depot: a bus drives a few ticks to its dock before anyone gets on", () => 
   assert.equal(g.status, "won");
 });
 
-test("depot: a bus with seats left waits at its dock; every dock taken and nothing to board loses", () => {
-  // Two red and two blue pixels. A red bus with three seats takes both reds and waits with one left.
-  const h = new Depot(depot(["1122"], [[R, 3], [B, 2], [R, 1]], { docks: 2 }));
+test("depot: a vehicle with seats left waits in its bay; every bay taken and nobody to board loses; undo brings it back", () => {
+  const h = new Depot(depot([[R, R, B, B]], [[R, 3], [B, 2], [R, 1]], { loop: 4, docks: 2 }));
   h.settle();
   play(h, 0);
   assert.equal(h.where[0], DOCKED, "two of three seats taken: it waits");
   assert.equal(h.left[0], 1);
-  assert.equal(h.status, "play", "one dock is still free");
-  assert.equal(h.launch(2), "ok", "another red bus takes the second dock");
+  assert.equal(h.status, "play", "one bay is still free");
+  assert.equal(h.launch(2), "ok", "another red one takes the second bay");
   h.settle();
-  assert.equal(h.status, "lost", "both docks hold red buses, only blue rides the loop");
+  assert.equal(h.status, "lost", "both bays hold red vehicles, only blue walks the loop");
   assert.ok(h.undo());
   assert.equal(h.status, "play", "undo brings it back");
   play(h, 1);
   assert.equal(h.remaining, 0);
-  assert.equal(h.status, "won", "the blue bus clears the loop");
+  assert.equal(h.status, "won", "the blue one clears the loop");
 });
 
-test("depot: no free dock means the bus stays put", () => {
-  const g = new Depot(depot(["1122"], [[R, 3], [B, 3], [Y, 1]], { docks: 2 }));
+test("depot: no free bay means the vehicle stays put", () => {
+  const g = new Depot(depot([[R, R, B, B]], [[R, 3], [B, 3], [Y, 1]], { docks: 2 }));
   g.settle();
   g.launch(0); g.launch(1);
   assert.equal(g.launch(2), "full");
-  assert.equal(g.where[2], 0);
+  assert.equal(g.where[2], YARD);
 });
 
-test("depot: a bus leaves the car park only when nothing stands in front of its nose", () => {
-  // Bus 0 at (0,0) facing right, bus 1 at (1,0) facing down: bus 0 is stuck behind bus 1.
-  const lot = { w: 2, h: 2, cars: [{ m: 0, x: 0, y: 0, len: 1, dir: "right" }, { m: 1, x: 1, y: 0, len: 1, dir: "down" }] };
-  const g = new Depot(depot(["1122"], [[R, 2], [B, 2]], { lot }));
+test("depot: a vehicle leaves the car park only if nothing stands in the way of its arrow, at any heading", () => {
+  // 0: a car facing right, with a car facing up just ahead of it (1). 2: a van facing down-right (45°),
+  // with a car on that diagonal (3). 4: a car out of everyone's way.
+  const cars = [
+    { m: 0, kind: "car", x: 0, y: 0, h: 0 }, { m: 1, kind: "car", x: 1, y: 0, h: 6 },
+    { m: 2, kind: "van", x: -1, y: 3, h: 1 }, { m: 3, kind: "car", x: 1.2, y: 5.2, h: 0 },
+    { m: 4, kind: "car", x: 4, y: 3, h: 0 },
+  ];
+  assert.deepEqual(blockersOf(cars), [[1], [], [3], [], []]);
+  const g = new Depot(depot([[R, R, B, B, Y, Y, R, R, B, B]], [[R, 2], [B, 2], [Y, 2], [R, 2], [B, 2]], { lot: { cars }, docks: 5 }));
   g.settle();
   assert.equal(g.launch(0), "blocked");
-  assert.deepEqual(g.ready(), [1]);
+  assert.equal(g.launch(2), "blocked");
+  assert.deepEqual(g.ready(), [1, 3, 4]);
   play(g, 1);
-  assert.equal(play(g, 0), "ok");
-  assert.equal(g.status, "won");
+  assert.equal(g.free(0), true, "the car in the way has gone");
+  play(g, 3);
+  assert.equal(g.free(2), true);
+});
+
+test("depot: the crowd can walk round while you think; it changes nothing", () => {
+  const L = makeLevel("depot", "medium", 3);
+  const a = newGame(L, { history: false }), b = newGame(L, { history: false });
+  a.settle(); b.settle();
+  let k = 1;
+  for (const m of L.solution) {
+    for (let i = 0; i < (k * 7) % 23; i++) b.tick(); // b waits a while (the loop walks) before each send
+    k++;
+    assert.equal(a.launch(m), "ok");
+    assert.equal(b.launch(m), "ok");
+    a.settle(); b.settle();
+    assert.equal(b.key(), a.key(), "the same people walk the loop, the same seats are left");
+  }
+  assert.equal(b.status, "won");
 });
 
 // ---- Orbit (Critters in 3D) -----------------------------------------------------------------------------
@@ -378,11 +391,11 @@ test("powers: an extra bay stays for the rest of the level, undo included", () =
   assert.equal(g.status, "play", "the second blue critter parks in the extra bay instead of losing");
   g.undo();
   assert.equal(g.bays.length, 2, "undo doesn't take the bay away");
-  const d = new Depot(depot(["1122"], [[R, 3], [B, 3], [Y, 1]], { docks: 2 }));
+  const d = new Depot(depot([[R, R, B, B]], [[R, 3], [B, 3], [Y, 1]], { docks: 2 }));
   d.settle(); d.launch(0); d.launch(1);
   assert.equal(d.launch(2), "full");
   d.addBay();
-  assert.equal(d.launch(2), "ok", "an extra dock");
+  assert.equal(d.launch(2), "ok", "an extra bay at the stop");
 });
 
 test("powers: Pick sends any critter from a lane, and undo hands back what it cost", () => {
@@ -413,20 +426,41 @@ test("powers: Laser pops its colour through other colours, for one lap", () => {
   assert.equal(o.left[0], 0, "Orbit: on every layer");
 });
 
-test("powers: Tow takes any bus out of the car park; Magnet fills a bus straight from the loop and the picture", () => {
-  const lot = { w: 2, h: 2, cars: [{ m: 0, x: 0, y: 0, len: 1, dir: "right" }, { m: 1, x: 1, y: 0, len: 1, dir: "down" }] };
-  const g = new Depot(depot(["1122"], [[R, 2], [B, 2]], { lot }));
+test("powers: Tow takes any vehicle out of the car park", () => {
+  // A car facing right with a car facing up just ahead of it.
+  const cars = [{ m: 0, kind: "car", x: 0, y: 0, h: 0 }, { m: 1, kind: "car", x: 1, y: 0, h: 6 }];
+  const g = new Depot(depot([[R, R, B, B]], [[R, 2], [B, 2]], { lot: { cars } }));
   g.settle();
   assert.equal(g.launch(0), "blocked");
-  assert.equal(g.launch(0, { any: true }), "ok", "towed out past the blue bus");
-  // Six red pixels in a tall picture: most still wait inside when a magnet bus docks.
-  const m = new Depot(depot(["1", "1", "1", "1", "1", "1"], [[R, 6]], { ring: 12, transit: 1 }));
+  assert.equal(g.launch(0, { any: true, power: { item: "pick", cost: 40 } }), "ok", "towed out past the other car");
+  assert.equal(g.events.find((e) => e.type === "launch").tow, true);
+  assert.ok(g.undo());
+  assert.deepEqual(g.undone, { item: "pick", cost: 40 }, "undo hands back what it cost");
+  assert.equal(g.where[0], YARD);
+});
+
+test("powers: Magnet fills a vehicle straight from the loop, then from the streams", () => {
+  // Six reds, the loop holds four: two still wait in the stream when the magnet vehicle parks.
+  const m = new Depot(depot([[R, R, R, R, R, R]], [[R, 6]], { loop: 4, transit: 1 }));
+  m.settle();
+  assert.deepEqual(m.fed, [4]);
   m.launch(0, { magnet: true });
   m.tick();
-  assert.equal(m.where[0], 4, "full at once, and gone");
+  assert.equal(m.where[0], DONE, "full at once, and gone");
   assert.equal(m.remaining, 0);
-  m.settle();
   assert.equal(m.status, "won");
+  // Out of the middle of a stream: the queue closes up behind them.
+  const g = new Depot(depot([[B, R, B, R, B]], [[R, 2], [B, 3]], { loop: 2, transit: 1 }));
+  g.settle();
+  assert.deepEqual(g.fed, [2], "blue and red walk the loop");
+  g.launch(0, { magnet: true });
+  g.tick();
+  assert.equal(g.where[0], DONE, "the red on the loop and the red in the stream");
+  assert.equal(g.waiting(0), 2, "two blues still wait");
+  assert.equal(play(g, 1), "ok");
+  assert.equal(g.status, "won");
+  assert.ok(g.undo() && g.undo());
+  assert.equal(g.waiting(0), 3, "undo puts them back");
 });
 
 // ---- Levels ----------------------------------------------------------------------------------------------
@@ -442,10 +476,12 @@ test("difficulty: the stand-in players (judge.js) win Hard levels much less ofte
   }
 });
 
-test("difficulty: Hard has fewer bays and docks than Easy", () => {
+test("difficulty: Hard has fewer bays than Easy, and Depot a tighter loop, more streams and more vehicles", () => {
   assert.ok(params("critters", "hard", 1).bays < params("critters", "easy", 1).bays);
   assert.ok(params("depot", "hard", 1).docks < params("depot", "easy", 1).docks);
-  assert.ok(params("depot", "hard", 1).density < params("depot", "easy", 1).density);
+  assert.ok(params("depot", "hard", 1).loop < params("depot", "easy", 1).loop);
+  assert.ok(params("depot", "hard", 2).streams > params("depot", "easy", 2).streams);
+  assert.ok(params("depot", "hard", 1).vehicles > params("depot", "easy", 1).vehicles);
   assert.ok(params("orbit", "hard", 1).bays < params("orbit", "easy", 1).bays);
   assert.ok(params("orbit", "hard", 1).target > params("orbit", "easy", 1).target);
 });
@@ -454,9 +490,9 @@ test("every level up to 30 of every track is solvable with its own solution, and
   for (const mode of MODES) for (const diff of DIFFS) for (let n = 1; n <= 30; n++) {
     const L = makeLevel(mode, diff, n);
     assert.ok(replay(L), `${mode} ${diff} ${n}: the made solution wins`);
-    // Capacity per colour matches the picture exactly.
+    // Capacity per colour matches the picture (or Depot's crowd) exactly.
     const need = new Map(), have = new Map();
-    for (const c of L.cells) if (c) need.set(c, (need.get(c) || 0) + 1);
+    for (const c of mode === "depot" ? L.streams.flat() : L.cells) if (c) need.set(c, (need.get(c) || 0) + 1);
     for (const m of L.movers) have.set(m.color, (have.get(m.color) || 0) + m.cap);
     assert.deepEqual([...have].sort(), [...need].sort(), `${mode} ${diff} ${n}: capacities add up to the picture`);
     // The solver on its own, without the shortcut of the made solution.
@@ -495,14 +531,14 @@ test("hints: from a position off the made solution, the solver finds a way quick
 test("levels stay the same levels (saved stars point at them)", () => {
   const fp = (L) => {
     let h = 0x811c9dc5;
-    const s = JSON.stringify({ w: L.w, h: L.h, c: [...L.cells], m: L.movers, l: L.lanes, p: L.lot, b: L.bays, d: L.docks, r: L.ring });
+    const s = JSON.stringify({ w: L.w, h: L.h, c: L.cells && [...L.cells], m: L.movers, l: L.lanes, p: L.lot, b: L.bays, d: L.docks, r: L.ring, s: L.streams, o: L.loop });
     for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
     return (h >>> 0).toString(16);
   };
   const want = {
-    "depot:easy": ["aabe4b75", "66019d1c", "53e93992", "76119aa5"],
-    "depot:medium": ["12371afd", "7da66449", "64535801", "8a6b4df4"],
-    "depot:hard": ["521ccff4", "e032dc7", "86c81c70", "1f4636ab"],
+    "depot:easy": ["8a71d17a", "a6b0df3e", "6df439f9", "f93350df"],
+    "depot:medium": ["54b2ee66", "50854c07", "fe77ec6b", "3546a33f"],
+    "depot:hard": ["4981c49f", "63ee199e", "faf4345", "80470cd7"],
     "critters:easy": ["8d5ceb05", "74b8ea80", "d849cec1", "22607ff5"],
     "critters:medium": ["46a3cda8", "325166e7", "a06015bc", "8c55f97"],
     "critters:hard": ["18443bb2", "dd8479fd", "1e6e6c56", "bf68121e"],
@@ -512,5 +548,7 @@ test("levels stay the same levels (saved stars point at them)", () => {
   };
   const got = {};
   for (const mode of MODES) for (const diff of DIFFS) got[`${mode}:${diff}`] = [1, 2, 10, 25].map((n) => fp(makeLevel(mode, diff, n)));
-  assert.deepEqual(got, want, "if you changed the generator on purpose, bump the save key (loopline.v3) and update these (Orbit level 25 changed on purpose in Nov 2026: new models)");
+  // Depot's levels changed when it became the crowd and the car park; game.js drops old Depot progress
+  // (save.depot = 2) and keeps the rest. Orbit level 25 changed on purpose in Nov 2026 (new models).
+  assert.deepEqual(got, want, "if you changed the generator on purpose, drop the changed track's saved progress (see loadSave in game.js) and update these");
 });

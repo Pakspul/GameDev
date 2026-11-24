@@ -1,86 +1,65 @@
-// Depot's rules: the bus stop. No drawing in here; shared by the game, the level generator, the
-// solver and the tests.
+// Depot's rules: a crowd, a bus stop and a jammed car park. No drawing in here; shared by the game,
+// the level generator, the solver and the tests.
 //
-// The picture is a crowd of pixels. Around it runs a loop of trays (the ring) that turns clockwise,
-// one tray per tick. Pixels leave the picture by two doors: the left half by the left door, the right
-// half by the right door, each half from its outside column inwards and each column from the top down.
-// A pixel steps onto an empty tray as it passes its door.
+// People arrive in one, two or three streams (queues). They step into a loop, a walkway with a fixed
+// number of spots that keeps walking round, clockwise, one spot per tick. A stream's front person
+// steps in when an empty spot passes its gate; the streams take turns (a zip), so each keeps moving.
+// When the loop is full, the streams stand still.
 //
-// Under the loop is the one stop, and beside it a row of docks. Tap a bus in the car park (it can only
-// leave if nothing stands in front of its nose) and it drives to a free dock. Each tick the pixel at
-// the stop gets on a docked bus of its own colour, if one has a seat left. A full bus drives away and
-// frees its dock. Pixels with no bus just ride round again.
+// At the bottom of the loop is the stop, with a row of bays beside it. Tap a vehicle in the car park
+// (it can only leave if nothing stands in the strip in front of its nose) and it drives to a free bay.
+// Each tick the person at the stop gets on a parked vehicle of their own colour, if one has a seat
+// left; that frees their spot in the loop for the streams. A full vehicle drives away and frees its bay.
 //
-// When nothing can happen any more (no pixel on the loop has a bus, no pixel can get on the loop) the
-// loop stops and waits for you. If it stops with every dock taken, the level is lost.
-import { carCells, carPath } from "./engine.js";
+// The level is lost when nothing can happen any more (no one on the loop has a vehicle, and the loop is
+// full or the streams are empty) while every bay is taken. The loop keeps walking while it waits for
+// you; that changes nothing, so it can be ticked or not.
+//
+// Powers (bought with coins in game.js): Tow takes a vehicle out of the car park whatever stands in its
+// way; Magnet makes a vehicle, as it parks, take people of its colour off the loop and out of the
+// streams; +1 Bay adds a bay for the rest of the level.
+import { blockersOf } from "./lot.js";
 
 export const YARD = 0, DRIVING = 1, DOCKED = 2, DONE = 4;
 
-/** Where things sit on the ring, as fractions of a lap from the top-left corner, clockwise. The
- *  ring runs `gap` cells outside a w × h picture. */
-export function ringShape(w, h, gap = 1.3) {
-  const W = w + 2 * gap, H = h + 2 * gap, P = 2 * (W + H);
-  return {
-    W, H, P, gap,
-    stop: (W + H + W / 2) / P,          // bottom middle
-    doors: [(2 * W + H + H / 2) / P,     // left side, halfway up
-            (W + H / 2) / P],            // right side, halfway down
-  };
-}
-/** How many trays a ring round a w × h picture holds at a given density (trays per cell of length). */
-export function trayCount(w, h, density) {
-  const s = ringShape(w, h);
-  return Math.max(12, Math.round(s.P * density));
-}
-
-/** The two queues of pixels (cell indices) that leave by the left and the right door. */
-export function feedsOf(w, h, cells) {
-  const half = Math.ceil(w / 2);
-  const left = [], right = [];
-  for (let k = 0; k < half; k++) {
-    for (let y = 0; y < h; y++) { const i = y * w + k; if (cells[i]) left.push(i); }
-    const x = w - 1 - k;
-    if (x >= half) for (let y = 0; y < h; y++) { const i = y * w + x; if (cells[i]) right.push(i); }
-  }
-  return [left, right];
-}
+/** Where the gates and the stop sit, as fractions of a lap from the top middle, clockwise: one stream
+ *  comes in at the top, two at the left and right, three at the left, top and right. */
+export const GATES = { 1: [0], 2: [0.75, 0.25], 3: [0.75, 0, 0.25] };
+export const STOP = 0.5;
 
 export class Depot {
-  /** level: { w, h, cells, ring, docks, transit, movers: [{ color, cap }], lot?: { w, h, cars } } */
+  /** level: { streams: [[colour]], loop, docks, transit, movers: [{ color, cap }], lot?: { cars } } */
   constructor(level, { history = true } = {}) {
     this.level = level;
     this.kind = "depot";
-    this.w = level.w; this.h = level.h;
-    this.R = level.ring;
-    const s = ringShape(level.w, level.h);
-    this.stop = Math.round(s.stop * this.R) % this.R;
-    this.doors = s.doors.map((d) => Math.round(d * this.R) % this.R);
-    this.feeds = feedsOf(level.w, level.h, level.cells);
+    this.R = level.loop;
+    this.nS = level.streams.length;
+    this.stop = Math.round(STOP * this.R) % this.R;
+    this.gates = GATES[this.nS].map((f) => Math.round(f * this.R) % this.R);
+    this.N = level.streams.reduce((a, s) => a + s.length, 0);
     this.keepHistory = history;
     this.cars = level.lot ? level.lot.cars : null;
     this.carOf = level.lot ? new Map(level.lot.cars.map((c, i) => [c.m, i])) : null;
+    this.blockers = level.lot ? blockersOf(level.lot.cars) : null;
+    this.draw = null; // the level generator's hook: picks the colour of a person when they step in
     this.reset();
   }
 
   reset() {
     const lv = this.level;
-    this.cells = Uint8Array.from(lv.cells);                // what is still in the picture
-    this.remaining = this.cells.reduce((a, v) => a + (v ? 1 : 0), 0); // not yet on a bus
-    this.ring = new Int16Array(this.R).fill(-1);           // a cell index per tray, or -1
-    this.rot = 0;                                          // the tray at position p is ring[(p - rot) mod R]
-    this.fed = [0, 0];                                     // how far each door's queue has gone
-    this.onRing = new Int16Array(16);                      // pixels on the ring per colour
+    this.remaining = this.N;                     // people not on a vehicle yet
+    this.ring = new Int16Array(this.R).fill(-1); // a person per spot, or -1
+    this.rot = 0;                                // the spot at position p is ring[(p - rot) mod R]
+    this.fed = new Array(this.nS).fill(0);       // how many of each stream have stepped in
+    this.turn = 0;                               // whose turn it is at the gates
+    this.onRing = new Int16Array(16);            // people on the loop per colour
     this.filled = 0;
     this.left = lv.movers.map((m) => m.cap);
     this.where = lv.movers.map(() => YARD);
-    this.magnet = lv.movers.map(() => 0); // 1 for a bus sent with the Magnet power, until it docks
-    if (lv.lot) {
-      this.occ = new Int16Array(lv.lot.w * lv.lot.h).fill(-1);
-      lv.lot.cars.forEach((c, i) => { for (const [x, y] of carCells(c)) this.occ[y * lv.lot.w + x] = i; });
-    } else this.occ = null;
+    this.magnet = lv.movers.map(() => 0);        // 1 for a vehicle sent with the Magnet power, until it parks
+    this.gone = lv.streams.map((q) => new Uint8Array(q.length)); // people the Magnet took out of a stream
     this.docks = new Array(lv.docks).fill(-1);
-    this.driving = [];   // [{ m, t }]: on the way to their dock
+    this.driving = [];   // [{ m, t }]: on the way to their bay
     this.status = "play";
     this.ticks = 0;
     this.events = [];
@@ -88,29 +67,29 @@ export class Depot {
   }
 
   color(m) { return this.level.movers[m].color; }
-  /** The tray index at ring position p. */
+  /** Person `id` is number floor(id / nS) of stream id % nS (the zip deals them out in turn). */
+  personColor(id) { return this.level.streams[id % this.nS][Math.floor(id / this.nS)]; }
+  /** The spot index at loop position p, and the loop position of spot i. */
   slot(p) { const R = this.R; return (((p - this.rot) % R) + R) % R; }
-  /** Ring position of tray index i. */
   posOf(i) { return (i + this.rot) % this.R; }
   freeBays() { return this.docks.filter((d) => d < 0).length; }
-  get beltFull() { return this.freeBays() === 0; }
   get idle() { return this.status !== "play" || this.quiet(); }
+  streamsLeft() { for (let j = 0; j < this.nS; j++) if (this.fed[j] < this.level.streams[j].length) return true; return false; }
 
-  /** Nothing can happen any more until you send a bus. */
+  /** Nothing can happen any more until you send a vehicle. */
   quiet() {
     if (this.driving.length) return false;
     for (const m of this.docks) if (m >= 0 && this.where[m] === DOCKED && this.left[m] > 0 && this.onRing[this.color(m)] > 0) return false;
-    if (this.filled < this.R && (this.fed[0] < this.feeds[0].length || this.fed[1] < this.feeds[1].length)) return false;
+    if (this.filled < this.R && this.streamsLeft()) return false;
     return true;
   }
 
-  /** Can bus m leave the car park now (ignoring whether a dock is free)? `any`: the tow truck (the
+  /** Can vehicle m leave the car park now (ignoring whether a bay is free)? `any`: the tow truck (the
    *  Tow power) pulls it out whatever stands in its way. */
   free(m, any = false) {
     if (this.status !== "play" || this.where[m] !== YARD) return false;
     if (!this.cars || any) return true;
-    const lot = this.level.lot;
-    return carPath(this.cars[this.carOf.get(m)], lot.w, lot.h).every(([x, y]) => this.occ[y * lot.w + x] === -1);
+    return this.blockers[this.carOf.get(m)].every((j) => this.where[this.cars[j].m] !== YARD);
   }
   ready() {
     const out = [];
@@ -118,117 +97,126 @@ export class Depot {
     return out;
   }
 
-  /** Send bus m to a free dock. Returns "ok", "blocked", "full" (no free dock) or "over".
-   *  Powers: { any } tows it out of the car park, { magnet } makes it pull its colour off the loop
-   *  and out of the picture as it docks; { power } names the one used, so undo can give it back. */
+  /** Send vehicle m to a free bay. Returns "ok", "blocked", "full" (no free bay) or "over".
+   *  Powers: { any } tows it out of the car park, { magnet } makes it take people of its colour off the
+   *  loop and out of the streams as it parks; { power } names the one used, so undo can give it back. */
   launch(m, { any = false, magnet = false, power = null } = {}) {
     if (this.status !== "play") return "over";
     if (!this.free(m, any)) return "blocked";
+    const towed = any && !this.free(m); // the tow truck was needed
     const d = this.docks.indexOf(-1);
     if (d < 0) return "full";
     if (this.keepHistory) { const s = this.snapshot(); s.used = power; this.history.push(s); }
     if (magnet) this.magnet[m] = 1;
-    let from = null;
-    if (this.cars) {
-      const i = this.carOf.get(m), lw = this.level.lot.w;
-      for (const [x, y] of carCells(this.cars[i])) this.occ[y * lw + x] = -1;
-      from = { car: i };
-    }
     this.docks[d] = m;
     this.where[m] = DRIVING;
     this.driving.push({ m, t: this.level.transit || 1 });
-    this.events.push({ type: "launch", m, from, dock: d });
+    this.events.push({ type: "launch", m, dock: d, car: this.cars ? this.carOf.get(m) : -1, tow: towed });
     return "ok";
+  }
+
+  /** The next stream whose turn it is after stream j (one that still has people), or -1. */
+  nextTurn(j) {
+    for (let k = 1; k <= this.nS; k++) { const s = (j + k) % this.nS; if (this.fed[s] < this.level.streams[s].length) return s; }
+    return -1;
   }
 
   tick() {
     if (this.status !== "play") return;
     const R = this.R;
-    // Buses on their way arrive.
+    // Vehicles on their way arrive.
     for (const d of this.driving) if (--d.t <= 0) { this.where[d.m] = DOCKED; this.events.push({ type: "dock", m: d.m, dock: this.docks.indexOf(d.m) }); }
     this.driving = this.driving.filter((d) => d.t > 0);
     for (let m = 0; m < this.magnet.length; m++) if (this.magnet[m] && this.where[m] === DOCKED) this.pull(m);
-    // The loop turns one tray.
+    // The loop walks one spot.
     this.rot = (this.rot + 1) % R;
-    // The pixel at the stop gets on a bus of its colour.
-    const si = this.slot(this.stop), cell = this.ring[si];
-    if (cell >= 0) {
-      const c = this.level.cells[cell];
+    // The person at the stop gets on a vehicle of their colour.
+    const si = this.slot(this.stop), id = this.ring[si];
+    if (id >= 0) {
+      const c = this.personColor(id);
       for (let d = 0; d < this.docks.length; d++) {
         const m = this.docks[d];
         if (m < 0 || this.where[m] !== DOCKED || this.left[m] === 0 || this.color(m) !== c) continue;
         this.ring[si] = -1; this.onRing[c]--; this.filled--; this.remaining--;
         this.left[m]--;
-        this.events.push({ type: "board", m, cell, dock: d });
+        this.events.push({ type: "board", m, id, dock: d });
         if (this.left[m] === 0) { this.docks[d] = -1; this.where[m] = DONE; this.events.push({ type: "depart", m, dock: d }); }
         break;
       }
     }
-    // Pixels step on at the doors.
-    this.skipFed();
-    for (let side = 0; side < 2; side++) {
-      const q = this.feeds[side];
-      if (this.fed[side] >= q.length) continue;
-      const i = this.slot(this.doors[side]);
+    // The front person of the stream whose turn it is steps in, if an empty spot passes their gate.
+    for (let j = 0; j < this.nS; j++) {
+      if (j !== this.turn) continue;
+      const i = this.slot(this.gates[j]);
       if (this.ring[i] >= 0) continue;
-      const cell = q[this.fed[side]++];
-      this.ring[i] = cell; this.cells[cell] = 0;
-      this.onRing[this.level.cells[cell]]++; this.filled++;
-      this.events.push({ type: "enter", cell, side, tray: i });
+      const k = this.fed[j]++, id = k * this.nS + j;
+      this.skipGone(j);
+      if (!this.level.streams[j][k] && this.draw) this.level.streams[j][k] = this.draw(j, k);
+      const c = this.level.streams[j][k];
+      this.ring[i] = id; this.onRing[c]++; this.filled++;
+      this.turn = this.nextTurn(j);
+      this.events.push({ type: "enter", id, stream: j, tray: i });
     }
     this.ticks++;
     if (this.remaining === 0) { this.status = "won"; this.events.push({ type: "won" }); return; }
     if (this.freeBays() === 0 && this.quiet()) { this.status = "lost"; this.events.push({ type: "lost", why: "docks" }); }
   }
 
-  /** The Magnet power: a bus that just docked takes every pixel of its colour it has seats for, off
-   *  the loop first, then straight out of the picture (next out of the doors first). */
+  /** The Magnet power: a vehicle that just parked takes every person of its colour it has seats for: off
+   *  the loop first (those nearest the stop first), then out of the streams (the next to step in first). */
   pull(m) {
     this.magnet[m] = 0;
-    const c = this.color(m), d = this.docks.indexOf(m);
-    for (let i = 0; i < this.R && this.left[m] > 0; i++) {
-      const cell = this.ring[i];
-      if (cell < 0 || this.level.cells[cell] !== c) continue;
+    const c = this.color(m), d = this.docks.indexOf(m), R = this.R;
+    for (let k = 0; k < R && this.left[m] > 0; k++) {
+      const i = this.slot(this.stop - k), id = this.ring[i];
+      if (id < 0 || this.personColor(id) !== c) continue;
       this.ring[i] = -1; this.onRing[c]--; this.filled--; this.remaining--; this.left[m]--;
-      this.events.push({ type: "board", m, cell, dock: d, tray: i });
+      this.events.push({ type: "board", m, id, dock: d, spot: i });
     }
-    for (let side = 0; side < 2; side++) {
-      const q = this.feeds[side];
-      for (let j = this.fed[side]; j < q.length && this.left[m] > 0; j++) {
-        const cell = q[j];
-        if (this.cells[cell] !== c) continue;
-        this.cells[cell] = 0; this.remaining--; this.left[m]--;
-        this.events.push({ type: "board", m, cell, dock: d, pic: true });
+    const lists = this.level.streams, deep = Math.max(...lists.map((q) => q.length));
+    for (let k = 0; k < deep && this.left[m] > 0; k++) {
+      for (let t = 0; t < this.nS && this.left[m] > 0; t++) {
+        const j = (Math.max(0, this.turn) + t) % this.nS, i = this.fed[j] + k;
+        if (i >= lists[j].length || this.gone[j][i] || lists[j][i] !== c) continue;
+        // `queue`: how many still stand in front of them (for drawing where they came from).
+        let queue = 0;
+        for (let x = this.fed[j]; x < i; x++) if (!this.gone[j][x]) queue++;
+        this.gone[j][i] = 1; this.remaining--; this.left[m]--;
+        this.events.push({ type: "board", m, id: i * this.nS + j, dock: d, stream: j, queue });
       }
     }
-    this.skipFed();
+    for (let j = 0; j < this.nS; j++) this.skipGone(j);
+    if (this.turn >= 0 && this.fed[this.turn] >= lists[this.turn].length) this.turn = this.nextTurn(this.turn);
     if (this.left[m] === 0) { this.docks[d] = -1; this.where[m] = DONE; this.events.push({ type: "depart", m, dock: d }); }
   }
-  /** Door queues pass over pixels the Magnet already took. */
-  skipFed() {
-    for (let side = 0; side < 2; side++) {
-      const q = this.feeds[side];
-      while (this.fed[side] < q.length && this.cells[q[this.fed[side]]] === 0) this.fed[side]++;
-    }
+  /** A stream's queue passes over people the Magnet already took. */
+  skipGone(j) {
+    const q = this.level.streams[j], gone = this.gone[j];
+    while (this.fed[j] < q.length && gone[this.fed[j]]) this.fed[j]++;
   }
-  /** The Extra dock power: one more dock for the rest of this level (undo keeps it). */
+  /** How many still wait in stream j. */
+  waiting(j) {
+    let n = 0;
+    for (let i = this.fed[j]; i < this.level.streams[j].length; i++) if (!this.gone[j][i]) n++;
+    return n;
+  }
+  /** The Extra bay power: one more bay for the rest of this level (undo keeps it). */
   addBay() {
     this.docks.push(-1);
     for (const s of this.history) s.docks.push(-1);
   }
 
   settle(max = 200000) { let n = 0; while (!this.idle && n++ < max) this.tick(); }
-  /** Depot never gets stuck without losing: with a free dock there is always a bus that can leave. */
+  /** Depot never gets stuck without losing: with a free bay there is always a vehicle that can leave. */
   stuck() { return false; }
 
-  /** For the solver: the position as text (colours by ring position, not which pixel it is). */
+  /** For the solver: the position as text. Only how many of each colour walk the loop matters, not
+   *  where they walk: everyone on the loop passes the stop within a lap. */
   key() {
-    let s = "";
-    for (let p = 0; p < this.R; p++) { const c = this.ring[this.slot(p)]; s += c < 0 ? "." : String.fromCharCode(64 + this.level.cells[c]); }
-    return s + "|" + this.fed.join(",") + "|" + this.remaining + "|" + this.left.join(",") + "|" + this.where.join("") + "|" + this.docks.join(",");
+    return Array.from(this.onRing).join(",") + "|" + this.fed.join(",") + "|" + this.turn + "|" + this.remaining + "|" + this.left.join(",") + "|" + this.where.join("") + "|" + this.docks.join(",");
   }
 
-  /** For the level generator: a bus that wasn't there yet. */
+  /** For the level generator: a vehicle that wasn't there yet. */
   addMover(color, cap) {
     this.level.movers.push({ color, cap });
     this.left.push(cap); this.where.push(YARD); this.magnet.push(0);
@@ -237,17 +225,17 @@ export class Depot {
 
   snapshot() {
     return {
-      cells: this.cells.slice(), remaining: this.remaining, ring: this.ring.slice(), rot: this.rot, fed: this.fed.slice(),
-      onRing: this.onRing.slice(), filled: this.filled, left: this.left.slice(), where: this.where.slice(), magnet: this.magnet.slice(),
-      occ: this.occ && this.occ.slice(), docks: this.docks.slice(), driving: this.driving.map((d) => ({ ...d })),
-      status: this.status, ticks: this.ticks,
+      remaining: this.remaining, ring: this.ring.slice(), rot: this.rot, fed: this.fed.slice(), turn: this.turn,
+      onRing: this.onRing.slice(), filled: this.filled, left: this.left.slice(), where: this.where.slice(),
+      magnet: this.magnet.slice(), gone: this.gone.map((q) => q.slice()),
+      docks: this.docks.slice(), driving: this.driving.map((d) => ({ ...d })), status: this.status, ticks: this.ticks,
     };
   }
   restore(s) {
-    this.cells = s.cells.slice(); this.remaining = s.remaining; this.ring = s.ring.slice(); this.rot = s.rot; this.fed = s.fed.slice();
-    this.onRing = s.onRing.slice(); this.filled = s.filled; this.left = s.left.slice(); this.where = s.where.slice(); this.magnet = s.magnet.slice();
-    this.occ = s.occ && s.occ.slice(); this.docks = s.docks.slice(); this.driving = s.driving.map((d) => ({ ...d }));
-    this.status = s.status; this.ticks = s.ticks;
+    this.remaining = s.remaining; this.ring = s.ring.slice(); this.rot = s.rot; this.fed = s.fed.slice(); this.turn = s.turn;
+    this.onRing = s.onRing.slice(); this.filled = s.filled; this.left = s.left.slice(); this.where = s.where.slice();
+    this.magnet = s.magnet.slice(); this.gone = s.gone.map((q) => q.slice());
+    this.docks = s.docks.slice(); this.driving = s.driving.map((d) => ({ ...d })); this.status = s.status; this.ticks = s.ticks;
     this.events = [];
   }
   undo() {
@@ -260,6 +248,7 @@ export class Depot {
   clone() {
     const g = new Depot(this.level, { history: false });
     g.restore(this.snapshot());
+    g.draw = this.draw;
     return g;
   }
 }
