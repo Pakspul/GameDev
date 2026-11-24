@@ -272,21 +272,22 @@ function repeatStep() {
 }
 
 // ---- A sure win finishes itself ---------------------------------------------------------------------------------
-/** Critters and Orbit: once at least half the critters are done and nothing can go wrong any more
- *  (game.sureWin()), say so and, a moment later, finish the level for the player. */
+/** Every mode: once at least half the movers are done and nothing can go wrong any more
+ *  (game.sureWin(); in Depot: nobody waits in a stream, or every vehicle left fits in the bays), say so
+ *  and, a moment later, finish the level for the player. */
 function checkSure(t) {
-  if (game.kind === "depot" || game.status !== "play" || auto) { sureAt = -1; return; }
+  if (game.status !== "play" || auto) { sureAt = -1; return; }
   if (sureAt < 0) {
     let done = 0;
     for (const w of game.where) if (w === DONE) done++;
-    if (done * 2 >= game.where.length && game.sureWin()) { sureAt = t + 0.6; toast(_t("toast.sure")); }
+    if (done * 2 >= game.where.length && game.sureWin()) { sureAt = t + 0.6; toast(_t(game.kind === "depot" ? "toast.sure.depot" : "toast.sure")); }
     return;
   }
   if (t >= sureAt) { sureAt = -1; autoFinish(t); }
 }
-/** Play the rest out live: every critter that can go goes, as often as it can (game.sendAll(), the same
- *  steps as game.playOut()), at a pace that has the last block pop after about CONFIG.finishPop seconds,
- *  while the celebration runs; the result shows CONFIG.finishSeconds after it started at the earliest.
+/** Play the rest out live: every critter (or vehicle) that can go goes, as often as it can (game.sendAll(),
+ *  the same steps as game.playOut()), at a pace that has the last block pop (or the last person get on)
+ *  after about CONFIG.finishPop seconds, while the celebration runs; the result shows CONFIG.finishSeconds after it started at the earliest.
  *  A copy plays it first, to know how many ticks that takes. */
 function autoFinish(t) {
   const sim = game.clone(), t0 = sim.ticks;
@@ -296,6 +297,7 @@ function autoFinish(t) {
   // Slow motion when little is left, fast forward when a lot is, within limits (a blur shows nothing).
   auto = { dt: clamp(CONFIG.finishPop / ticks, normal / CONFIG.finishMaxSpeed, normal * CONFIG.finishMaxSlow), until: t + CONFIG.finishSeconds };
   game.keepHistory = false; // nothing to undo any more
+  R.tickDT = auto.dt;       // Depot's vehicles drive and its queues step up at the new pace
   setRepeat(false); setArmed(null);
   R.onCelebrate(t, CONFIG.finishSeconds);
   sound.win(); haptic(30);

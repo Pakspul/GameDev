@@ -210,6 +210,39 @@ export class Depot {
   /** Depot never gets stuck without losing: with a free bay there is always a vehicle that can leave. */
   stuck() { return false; }
 
+  /** Can this level no longer be lost? Seats per colour always equal the people of that colour still
+   *  to ride, so a vehicle with seats left always has people of its colour somewhere. Sure when:
+   *  - nobody waits in a stream any more: everyone left walks the loop, so every vehicle you could send
+   *    fills up within a lap or so, and a full yard of bays always empties again; or
+   *  - every vehicle left fits in the bays: send them all and everyone has a ride of their colour.
+   *  With a free bay there is always a vehicle that can leave the car park (it was parked that way). */
+  sureWin() {
+    if (this.status !== "play") return false;
+    let open = 0;
+    for (const w of this.where) if (w !== DONE) open++;
+    return open > 0 && (!this.streamsLeft() || open <= this.docks.length);
+  }
+
+  /** One step of playing a sure win out: fill every free bay with a vehicle that can leave, the colour
+   *  with the most people on the loop who have no seat waiting for them first. (game.js runs this
+   *  before every tick to show a sure win finishing.) */
+  sendAll() {
+    while (this.status === "play" && this.freeBays() > 0) {
+      const want = Array.from(this.onRing);
+      for (let m = 0; m < this.where.length; m++) if (this.where[m] === DRIVING || this.where[m] === DOCKED) want[this.color(m)] -= this.left[m];
+      let best = -1;
+      for (let m = 0; m < this.where.length; m++) if (this.free(m) && (best < 0 || want[this.color(m)] > want[this.color(best)])) best = m;
+      if (best < 0 || this.launch(best) !== "ok") return;
+    }
+  }
+  /** Finish the level with sendAll() before every tick (no history, no undo). For a sure win, on a
+   *  copy: returns true if it won. */
+  playOut(maxTicks = 400000) {
+    for (let t = 0; this.status === "play" && t < maxTicks; t++) { this.sendAll(); this.tick(); this.events.length = 0; }
+    this.events.length = 0;
+    return this.status === "won";
+  }
+
   /** For the solver: the position as text. Only how many of each colour walk the loop matters, not
    *  where they walk: everyone on the loop passes the stop within a lap. */
   key() {

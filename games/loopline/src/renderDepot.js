@@ -4,7 +4,7 @@
 //   - the car park: vehicles with an arrow on their roof, at any of eight headings, inside a road.
 // Nothing here changes the game. The loop keeps walking while the game waits for you, so frames run
 // while a level is played (the people are the point of this mode).
-import { UI, shade, colorOf, sprite, label, rr, ease, lerp, clamp } from "./render.js";
+import { UI, shade, colorOf, sprite, label, rr, ease, lerp, clamp, fireworks } from "./render.js";
 import { YARD, DOCKED, GATES } from "./depot.js";
 import { KINDS, HEAD, body, corners, inside, bounds, reach } from "./lot.js";
 
@@ -122,11 +122,18 @@ function alongH(pts, t) {
   return [p[0], p[1], a];
 }
 
+// A little town at dusk: grass, pavements, asphalt with white markings, yellow for the bus stop.
 const D = {
-  walk: "#3b4185", walkEdge: "#20244c", walkLine: "rgba(255,255,255,.07)",
-  road: "#1d2146", roadLine: "rgba(255,226,120,.35)", pad: "#2c3160", padEdge: "#40468c",
-  bay: "#1c2045", bayEdge: "#5a61b4", kerb: "#ffcf3f", pave: "#353a78",
+  grass: "#2c5b4f", grassLo: "#244c42", grassHi: "#37705f",
+  pave: "#5d6198", paveJoint: "rgba(25,27,51,.16)", kerb: "#b9bde8", kerbLo: "#3a3e70",
+  walk: "#9ca0d3", walkJoint: "rgba(25,27,51,.13)", walkEdge: "#c9ccf2", walkLo: "#4a4e86",
+  road: "#272a4b", roadEdge: "#1b1d36", mark: "rgba(236,238,255,.78)", markSoft: "rgba(236,238,255,.42)",
+  lot: "#30335a", stall: "rgba(236,238,255,.5)",
+  stop: "#ffcf3f", rope: "#e5484d", post: "#1b1d36",
+  tree: "#3c8a5c", treeHi: "#5aa874", treeLo: "#1d3d33",
 };
+/** A tiny seeded random, so the scenery (tufts, trees) stays put between layouts of the same size. */
+function scatter(seed) { let a = seed >>> 0 || 1; return () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; }; }
 
 export class DepotRenderer {
   constructor(canvas) {
@@ -209,6 +216,12 @@ export class DepotRenderer {
     const bw = nD * bayW + (nD - 1) * 10, bx = Math.round(zx + (colW - bw) / 2);
     this.slots = Array.from({ length: nD }, (_, i) => ({ x: bx + i * (bayW + 10), y: by, w: bayW, h: bayH, s: bayW }));
     this.baysBox = { x: bx, y: by, w: bw, h: baysH };
+    // The street: the bus bays are lay-bys on its upper side, its lane runs just under them. On a phone
+    // its lane is the top of the car park's ring road, running on across the screen; side by side, it
+    // runs from the left edge to the ring road's left side (and up or down to meet it).
+    const sy = by + baysH + this.roadW / 2, Rd = this.road;
+    this.street = { y0: by - 4, y: sy, y1: by + baysH + this.roadW, x0: 0, x1: wide ? Rd.x : W, wide };
+    this.join = wide ? [Rd.x, clamp(sy, Rd.y + Rd.r, Rd.y + Rd.h - Rd.r)] : null;
     this.layoutCrowd();
     this.paintStatic();
   }
@@ -276,15 +289,17 @@ export class DepotRenderer {
     let t = 0;
     while (t < 60) { const x = c[0] + ux * t, y = c[1] + uy * t; if (x < P.x - 4 || x > P.x + P.w + 4 || y < P.y - 4 || y > P.y + P.h + 4) break; t += 2; }
     const out = [c[0] + ux * t, c[1] + uy * t];
-    // Round the road to its top, the short way, then up into the bay.
-    const f0 = this.road.nearest(out[0], out[1]), s = this.slots[e.dock], bx = s.x + s.w / 2;
-    const fTop = this.road.nearest(bx, this.road.y);
-    let df = fTop - f0;
+    // Round the ring road, the short way, to where it meets the street; along the street to the bay,
+    // and up into it.
+    const Rd = this.road, St = this.street, f0 = Rd.nearest(out[0], out[1]), s = this.slots[e.dock], bx = s.x + s.w / 2;
+    const fJ = this.join ? Rd.nearest(this.join[0], this.join[1]) : Rd.nearest(clamp(bx, Rd.x + Rd.r, Rd.x + Rd.w - Rd.r), Rd.y);
+    let df = fJ - f0;
     if (df > 0.5) df -= 1; else if (df < -0.5) df += 1;
     const pts = [c, out];
     const n = Math.ceil(Math.abs(df) * 60);
-    for (let k = 0; k <= n; k++) { const p = this.road.at(f0 + (df * k) / Math.max(1, n)); pts.push([p[0], p[1]]); }
-    pts.push([bx, s.y + s.h + 8], [bx, s.y + s.h / 2]);
+    for (let k = 0; k <= n; k++) { const p = Rd.at(f0 + (df * k) / Math.max(1, n)); pts.push([p[0], p[1]]); }
+    if (this.join) pts.push([Rd.x, St.y]);
+    pts.push([bx, St.y], [bx, s.y + s.h * 0.8], [bx, s.y + s.h / 2]);
     this.tweens.set(m, { pts, t0: now, dur: g.level.transit * this.tickDT });
     if (e.tow) this.burst(c[0], c[1], UI.glow, now, 16); // the tow truck pulled it out
   }
@@ -305,8 +320,9 @@ export class DepotRenderer {
     this.fx.push({ kind: "hop", dock, x, y, t0: now, dur: 0.3, color: colorOf(this.game.personColor(id)), id });
   }
   onDepart(m, dock, now) {
-    const s = this.slots[dock], x = s.x + s.w / 2, y = s.y + s.h / 2, ry = this.road.y;
-    const right = x > this.W / 2;
+    // Back out onto the street and drive off the screen along it.
+    const s = this.slots[dock], x = s.x + s.w / 2, y = s.y + s.h / 2, ry = this.street.y;
+    const right = !this.street.wide && x > this.W / 2;
     this.fx.push({ kind: "leave", m, pts: [[x, y], [x, ry], [right ? this.W + 60 : -60, ry]], t0: now, dur: 0.9, color: colorOf(this.game.color(m)), kindOf: kindOf(this.game.level.movers[m].cap) });
     this.burst(x, s.y, colorOf(this.game.color(m)), now, 12);
   }
@@ -315,6 +331,11 @@ export class DepotRenderer {
       const a = Math.random() * TAU, v = 50 + Math.random() * 70;
       this.fx.push({ kind: "spark", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, g: 200, t0: now, dur: 0.55, color, s: 4 });
     }
+  }
+  /** The level finishes itself (a sure win): fireworks over the crowd for `dur` seconds. */
+  onCelebrate(now, dur) {
+    const Z = this.zone;
+    fireworks(this.fx, now, dur, () => [Z.x + 20 + Math.random() * (Z.w - 40), Z.y + 10 + Math.random() * Z.h * 0.7]);
   }
   onWin(now) {
     const L = this.loop, HEX = ["#e5484d", "#3d5fd6", "#ffcb3d", "#2f9e5f", "#f48bbd", "#8f52c9", "#f7802b", "#62b6f0"];
@@ -383,7 +404,8 @@ export class DepotRenderer {
     ctx.restore();
   }
 
-  /** Paint the layer of things that never move. */
+  /** Paint the layer of things that never move: the town (grass, roads, the car park, the plaza with the
+   *  loop round its park, the queues, the bus stop). */
   paintStatic() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const bg = this.bg || document.createElement("canvas");
@@ -392,79 +414,200 @@ export class DepotRenderer {
     this.ctx = bg.getContext("2d");
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.ctx.clearRect(0, 0, this.W, this.H);
-    this.paintCrowd();
+    this.paintGround();
     this.paintLot();
+    this.paintStreet();
+    this.paintCrowd();
     this.paintBays();
+    this.paintTrees();
     this.ctx = main;
     this.bg = bg;
   }
 
+  /** Grass under everything between the HUD and the toolbar, with a few tufts. */
+  paintGround() {
+    const ctx = this.ctx, y0 = this.top, y1 = this.H - (this.bottom || 0), rnd = scatter(this.W * 7 + this.H);
+    ctx.fillStyle = D.grass; ctx.fillRect(0, y0, this.W, y1 - y0);
+    for (let k = Math.round((this.W * (y1 - y0)) / 900); k > 0; k--) {
+      const x = Math.round(rnd() * this.W), y = Math.round(y0 + rnd() * (y1 - y0));
+      ctx.fillStyle = rnd() < 0.5 ? D.grassHi : D.grassLo;
+      ctx.fillRect(x, y, 2, 2); ctx.fillRect(x + 3, y - 2, 2, 2);
+    }
+  }
+
+  /** A path of `w` pixels along a polyline (or the loop when `pts` is null), with kerbs and paving
+   *  joints across it every `step` pixels. */
+  paintPath(pts, w, step) {
+    const ctx = this.ctx, L = this.loop;
+    const trace = () => { ctx.beginPath(); if (pts) { ctx.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) ctx.lineTo(p[0], p[1]); } else rr(ctx, L.x, L.y, L.w, L.h, L.r); };
+    ctx.lineCap = pts ? "round" : "butt"; ctx.lineJoin = "round";
+    trace(); ctx.strokeStyle = D.walkLo; ctx.lineWidth = w + 7; ctx.stroke();
+    ctx.strokeStyle = D.walkEdge; ctx.lineWidth = w + 3; ctx.stroke();
+    ctx.strokeStyle = D.walk; ctx.lineWidth = w - 1; ctx.stroke();
+    // Paving joints across the path.
+    const len = pts ? polyLen(pts) : L.len;
+    ctx.strokeStyle = D.walkJoint; ctx.lineWidth = 1.5; ctx.lineCap = "butt";
+    ctx.beginPath();
+    for (let d = step / 2; d < len; d += step) {
+      let x, y, a;
+      if (pts) { const p = atDist(pts, d), q = atDist(pts, Math.min(len, d + 1)); x = p[0]; y = p[1]; a = Math.atan2(q[1] - p[1], q[0] - p[0]) || 0; }
+      else [x, y, a] = L.at(d / len);
+      const nx = -Math.sin(a) * (w / 2 - 1), ny = Math.cos(a) * (w / 2 - 1);
+      ctx.moveTo(x - nx, y - ny); ctx.lineTo(x + nx, y + ny);
+    }
+    ctx.stroke();
+  }
+
   paintCrowd() {
-    const ctx = this.ctx, Z = this.zone, L = this.loop, ww = this.ww;
-    // The plaza.
-    ctx.fillStyle = UI.panelLip;
-    ctx.beginPath(); rr(ctx, Z.x, Z.y + 5, Z.w, Z.h, 22); ctx.fill();
-    ctx.fillStyle = UI.panel; ctx.strokeStyle = UI.panelEdge; ctx.lineWidth = 2.5;
-    ctx.beginPath(); rr(ctx, Z.x, Z.y, Z.w, Z.h, 22); ctx.fill(); ctx.stroke();
-    // The streams' walkways.
-    ctx.lineCap = "round"; ctx.lineJoin = "round";
-    for (const pass of [0, 1]) {
-      for (const q of this.streams) {
-        ctx.strokeStyle = pass ? D.walk : D.walkEdge; ctx.lineWidth = this.ps + (pass ? 6 : 11);
-        ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (const p of q.slice(1)) ctx.lineTo(p[0], p[1]); ctx.stroke();
-      }
+    const ctx = this.ctx, Z = this.zone, L = this.loop, ww = this.ww, St = this.street;
+    // The plaza: paving from the crowd's zone down to the kerb of the street.
+    const px = St.wide ? Z.x : Z.x - 4, pw = St.wide ? Z.w : Z.w + 8, py = Z.y, ph = St.y0 - Z.y;
+    ctx.fillStyle = D.kerbLo; ctx.beginPath(); rr(ctx, px - 3, py - 3, pw + 6, ph + 3, 22); ctx.fill();
+    ctx.fillStyle = D.pave; ctx.beginPath(); rr(ctx, px, py, pw, ph + 6, 20); ctx.fill();
+    ctx.save(); ctx.beginPath(); rr(ctx, px, py, pw, ph, 20); ctx.clip();
+    ctx.strokeStyle = D.paveJoint; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = px + 9; x < px + pw; x += 18) { ctx.moveTo(x + 0.5, py); ctx.lineTo(x + 0.5, py + ph); }
+    for (let y = py + 9; y < py + ph; y += 18) { ctx.moveTo(px, y + 0.5); ctx.lineTo(px + pw, y + 0.5); }
+    ctx.stroke();
+    ctx.restore();
+    // The park inside the loop: grass, and trees either side of the sign that counts who still waits.
+    const inX = L.x + ww / 2 + 3, inY = L.y + ww / 2 + 3, inW = L.w - ww - 6, inH = L.h - ww - 6;
+    if (inW > 10 && inH > 10) {
+      ctx.fillStyle = D.grass; ctx.beginPath(); rr(ctx, inX, inY, inW, inH, Math.max(0, L.r - ww / 2 - 3)); ctx.fill();
+      ctx.fillStyle = D.grassHi;
+      const rnd = scatter(Math.round(inW * 13 + inH));
+      for (let k = Math.round((inW * inH) / 500); k > 0; k--) ctx.fillRect(Math.round(inX + 8 + rnd() * (inW - 16)), Math.round(inY + 6 + rnd() * (inH - 12)), 2, 2);
+      const r = clamp(inH * 0.26, 6, 15), sign = clamp(inH * 0.6, 12, 30) * 3.2, cx = L.x + L.w / 2, cy = L.y + L.h / 2;
+      if (inH > 2 * r + 4) for (let x = cx + sign / 2 + r + 4; x < inX + inW - r - 6 - (inH < 60 ? r : 0); x += r * 2.6) { this.tree(x, cy + (Math.round(x) % 3 - 1) * r * 0.3, r); this.tree(2 * cx - x, cy - (Math.round(x) % 3 - 1) * r * 0.3, r); }
     }
-    // The loop's walkway.
-    ctx.beginPath(); rr(ctx, L.x, L.y, L.w, L.h, L.r);
-    ctx.strokeStyle = D.walkEdge; ctx.lineWidth = ww + 6; ctx.stroke();
-    ctx.strokeStyle = D.walk; ctx.lineWidth = ww; ctx.stroke();
-    ctx.strokeStyle = D.walkLine; ctx.lineWidth = 2; ctx.stroke();
-    // The stop: a gold frame on the walkway, with a crossing down to the bays.
-    const [sx, sy] = this.stopPoint(), s0 = this.slots[0];
-    const top = sy + ww / 2 + 2;
-    for (let yy = top, k = 0; yy < s0.y - 4; yy += 5, k++) {
-      ctx.fillStyle = k % 2 ? UI.panelLip : "#e3e6ff";
-      ctx.fillRect(Math.round(sx - 9), Math.round(yy), 18, Math.min(5, s0.y - 4 - yy));
-    }
+    // The queues: paved lanes from the edge of the plaza to their gate, lined with posts and a rope.
+    const qw = this.ps + 6;
+    for (const q of this.streams) this.paintPath(q, qw, this.ps * 0.92);
+    for (const q of this.streams) this.paintRopes(q, qw);
+    // The loop: a paved walk round the park.
+    this.paintPath(null, ww, this.loop.len / this.game.R);
+    // The stop: a gold frame on the walk, and the bus stop sign beside it.
+    const [sx, sy] = this.stopPoint();
     ctx.strokeStyle = UI.ink; ctx.lineWidth = 6;
     ctx.beginPath(); rr(ctx, sx - this.ps * 0.9, sy - ww / 2 - 2, this.ps * 1.8, ww + 4, 8); ctx.stroke();
-    ctx.strokeStyle = D.kerb; ctx.lineWidth = 3; ctx.stroke();
-  }
-
-  paintLot() {
-    const ctx = this.ctx, P = this.pad, Rd = this.road;
-    // The road round the car park.
-    ctx.lineCap = "butt";
-    ctx.strokeStyle = D.road; ctx.lineWidth = this.roadW;
-    ctx.beginPath(); rr(ctx, Rd.x, Rd.y, Rd.w, Rd.h, Rd.r); ctx.stroke();
-    ctx.strokeStyle = D.roadLine; ctx.lineWidth = 2; ctx.setLineDash([8, 9]);
-    ctx.stroke(); ctx.setLineDash([]);
-    // The car park itself.
-    ctx.fillStyle = UI.panelLip;
-    ctx.beginPath(); rr(ctx, P.x, P.y + 4, P.w, P.h, 16); ctx.fill();
-    ctx.fillStyle = D.pad; ctx.strokeStyle = D.padEdge; ctx.lineWidth = 2.5;
-    ctx.beginPath(); rr(ctx, P.x, P.y, P.w, P.h, 16); ctx.fill(); ctx.stroke();
-  }
-
-  paintBays() {
-    const ctx = this.ctx, S0 = this.slots[0], SN = this.slots[this.slots.length - 1];
-    // The kerb and pavement behind the bays.
-    const x0 = S0.x - 10, w = SN.x + SN.w - S0.x + 20;
-    ctx.fillStyle = D.pave; ctx.beginPath(); rr(ctx, x0, S0.y - 8, w, 10, 4); ctx.fill();
-    ctx.fillStyle = D.kerb; ctx.beginPath(); rr(ctx, x0, S0.y - 8, w, 4, 2); ctx.fill();
-    for (const s of this.slots) {
-      ctx.fillStyle = D.bay;
-      ctx.beginPath(); rr(ctx, s.x, s.y, s.w, s.h, 10); ctx.fill();
-      ctx.strokeStyle = D.bayEdge; ctx.lineWidth = 2; ctx.setLineDash([6, 5]);
-      ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = D.stop; ctx.lineWidth = 3; ctx.stroke();
+    const gx = Math.round(sx + this.ps * 0.9 + 10), gy = St.y0 - 3, top = Math.max(sy + ww / 2 + 4, gy - 22);
+    if (gy - top > 8) {
+      ctx.fillStyle = D.post; ctx.fillRect(gx - 1.5, top + 4, 3, gy - top - 4);
+      ctx.fillStyle = UI.ink; ctx.beginPath(); ctx.arc(gx, top + 4, 6, 0, TAU); ctx.fill();
+      ctx.fillStyle = D.stop; ctx.beginPath(); ctx.arc(gx, top + 4, 4, 0, TAU); ctx.fill();
     }
+  }
+  /** Posts on both sides of a queue, with a rope between them. */
+  paintRopes(pts, w) {
+    const ctx = this.ctx, len = polyLen(pts), step = Math.max(16, this.ps * 1.4), off = w / 2 + 3;
+    for (const side of [-1, 1]) {
+      const posts = [];
+      for (let d = this.ww / 2 + 4; d < len - 2; d += step) {
+        const p = atDist(pts, d), q = atDist(pts, Math.min(len, d + 1)), a = Math.atan2(q[1] - p[1], q[0] - p[0]) || 0;
+        posts.push([p[0] - Math.sin(a) * off * side, p[1] + Math.cos(a) * off * side]);
+      }
+      ctx.strokeStyle = D.rope; ctx.lineWidth = 1.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.beginPath(); posts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y - 2) : ctx.moveTo(x, y - 2))); ctx.stroke();
+      for (const [x, y] of posts) {
+        ctx.fillStyle = D.post; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, TAU); ctx.fill();
+        ctx.fillStyle = "#d9dcf7"; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 2, 1.5, 1.5);
+      }
+    }
+  }
+
+  /** The ring road round the car park, and the car park itself: asphalt with a painted stall under every
+   *  vehicle, so an empty stall shows where one stood. */
+  paintLot() {
+    const ctx = this.ctx, P = this.pad, Rd = this.road, rw = this.roadW;
+    ctx.lineCap = "butt"; ctx.lineJoin = "round";
+    ctx.beginPath(); rr(ctx, Rd.x, Rd.y, Rd.w, Rd.h, Rd.r);
+    ctx.strokeStyle = D.kerbLo; ctx.lineWidth = rw + 8; ctx.stroke();
+    ctx.strokeStyle = D.kerb; ctx.lineWidth = rw + 4; ctx.stroke();
+    ctx.strokeStyle = D.road; ctx.lineWidth = rw; ctx.stroke();
+    ctx.strokeStyle = D.markSoft; ctx.lineWidth = 2; ctx.setLineDash([9, 9]); ctx.stroke(); ctx.setLineDash([]);
+    // The car park: a kerb, then asphalt.
+    ctx.fillStyle = D.kerb; ctx.beginPath(); rr(ctx, P.x - 2, P.y - 2, P.w + 4, P.h + 4, 14); ctx.fill();
+    ctx.fillStyle = D.lot; ctx.beginPath(); rr(ctx, P.x, P.y, P.w, P.h, 12); ctx.fill();
+    // Stalls: the cells a vehicle stands on, lined along both sides and across the back (open at its
+    // nose), so neighbours share their lines and an empty car park still looks like one.
+    ctx.strokeStyle = D.stall; ctx.lineWidth = Math.max(1.5, this.u * 0.05); ctx.lineCap = "round";
+    ctx.beginPath();
+    for (const c of this.game.cars) {
+      const b = body(c), k = corners({ ...b, hl: KINDS[c.kind].cells / 2 - 0.04, hw: 0.47 }).map(([x, y]) => this.toScreen(x, y));
+      // corners: front-left, front-right, back-right, back-left (from the nose)
+      ctx.moveTo(k[0][0], k[0][1]); ctx.lineTo(k[3][0], k[3][1]); ctx.lineTo(k[2][0], k[2][1]); ctx.lineTo(k[1][0], k[1][1]);
+    }
+    ctx.stroke();
+  }
+
+  /** The street with the bus bays: asphalt from the kerb under the plaza to the bottom of its lane. */
+  paintStreet() {
+    const ctx = this.ctx, St = this.street, Rd = this.road, rw = this.roadW;
+    const x0 = St.x0 - 2, x1 = St.x1 + (St.wide ? rw / 2 : 2);
+    ctx.fillStyle = D.kerbLo; ctx.fillRect(x0, St.y0 - 4, x1 - x0, St.y1 - St.y0 + 8);
+    ctx.fillStyle = D.kerb; ctx.fillRect(x0, St.y0 - 2, x1 - x0, St.y1 - St.y0 + 4);
+    if (St.wide && Math.abs(this.join[1] - St.y) > 1) { // up or down to meet the ring road
+      const ya = Math.min(St.y, this.join[1]) - rw / 2, yb = Math.max(St.y, this.join[1]) + rw / 2;
+      ctx.fillStyle = D.kerb; ctx.fillRect(Rd.x - rw / 2 - 2, ya, rw + 4, yb - ya);
+      ctx.fillStyle = D.road; ctx.fillRect(Rd.x - rw / 2, ya, rw, yb - ya);
+    }
+    ctx.fillStyle = D.road; ctx.fillRect(x0, St.y0, x1 - x0, St.y1 - St.y0);
+    // The lane's edge under the bays, and its centre line.
+    ctx.strokeStyle = D.markSoft; ctx.lineWidth = 2;
+    ctx.setLineDash([9, 9]); ctx.beginPath(); ctx.moveTo(x0, St.y + 0.5); ctx.lineTo(St.wide ? Rd.x : x1, St.y + 0.5); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  /** The bus stop: a yellow edge along the kerb, and a yellow box per bay, open to the street. */
+  paintBays() {
+    const ctx = this.ctx, S0 = this.slots[0], SN = this.slots[this.slots.length - 1], y0 = this.street.y0;
+    ctx.fillStyle = D.stop; ctx.fillRect(S0.x - 10, y0 - 2, SN.x + SN.w - S0.x + 20, 3);
+    for (const s of this.slots) {
+      ctx.strokeStyle = D.stop; ctx.lineWidth = 2.5; ctx.lineCap = "square";
+      ctx.beginPath(); ctx.moveTo(s.x, s.y + s.h); ctx.lineTo(s.x, s.y + 2); ctx.lineTo(s.x + s.w, s.y + 2); ctx.lineTo(s.x + s.w, s.y + s.h); ctx.stroke();
+      // "BUS" written as three bars across the bay, faint, the way a bus box is marked on the road.
+      ctx.fillStyle = "rgba(255,207,63,.16)";
+      for (let k = 0; k < 3; k++) ctx.fillRect(s.x + s.w * 0.3, s.y + s.h * (0.3 + k * 0.17), s.w * 0.4, 3);
+    }
+  }
+
+  /** Trees on the grass either side of the car park, where there is room. */
+  paintTrees() {
+    const B = this.lotBox, St = this.street, y1 = this.H - (this.bottom || 0) - 8, rnd = scatter(this.W * 3 + this.H * 5);
+    if (St.wide) { // side by side: a row of trees under the street, and one over the plaza, where there is room
+      const x1 = Math.min(this.road.x - this.roadW, St.x1) - 20, Z = this.zone;
+      for (const [ya, yb] of [[St.y1 + 6, y1], [this.top + 4, Z.y - 6]]) {
+        const r = Math.min(15, (yb - ya) / 2 - 3);
+        if (r < 8) continue;
+        for (let x = 20 + r; x < x1 - r; x += r * 2.6 + rnd() * r * 1.5) this.tree(x, (ya + yb) / 2 + (rnd() - 0.5) * Math.max(0, yb - ya - 2 * r - 6), r * (0.8 + rnd() * 0.25));
+      }
+      return;
+    }
+    const room = B.x - 4;
+    if (room < 28) return;
+    const r = Math.min(15, room / 2 - 3);
+    for (const side of [0, 1]) {
+      for (let y = St.y1 + r + 10; y < Math.min(y1, B.y + B.h + 40) - r; y += r * 2.4 + rnd() * r) {
+        const x = side ? this.W - room / 2 : room / 2;
+        this.tree(x + (rnd() - 0.5) * Math.max(0, room - 2 * r - 6), y, r * (0.8 + rnd() * 0.25));
+      }
+    }
+  }
+  /** A round tree from above, with its shadow. */
+  tree(x, y, r) {
+    const ctx = this.ctx;
+    ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.arc(x + r * 0.25, y + r * 0.3, r, 0, TAU); ctx.fill();
+    ctx.fillStyle = D.treeLo; ctx.beginPath(); ctx.arc(x, y, r + 1.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = D.tree; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+    ctx.fillStyle = D.treeHi; ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.45, 0, TAU); ctx.fill();
   }
 
   /** The parts of the crowd zone that change: the chevrons walking with the crowd, and the count. */
   drawCrowdLive(frac) {
     const ctx = this.ctx, g = this.game, L = this.loop, ww = this.ww;
     const n = Math.floor(L.len / 34), off = ((g.ticks + frac) / g.R) * n;
-    ctx.strokeStyle = "rgba(227,230,255,.22)"; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(25,27,51,.2)"; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.beginPath();
     for (let i = 0; i < n; i++) {
       const [x, y, a] = L.at((i + (off % 1)) / n), c = Math.cos(a), s = Math.sin(a), q = 3.5;
@@ -474,8 +617,10 @@ export class DepotRenderer {
     // The middle: how many people still wait for a ride.
     const cx = L.x + L.w / 2, cy = L.y + L.h / 2, inner = L.h - ww - 6;
     if (inner > 16) {
-      const k = clamp(inner * 0.6, 12, 30);
-      this.person(cx - k * 0.95, cy - k * 0.05, "#c9cdf5", 0, 0, k, false);
+      const k = clamp(inner * 0.6, 12, 30), sw = k * 2.9;
+      ctx.fillStyle = UI.ink; ctx.beginPath(); rr(ctx, cx - sw / 2, cy - k * 0.62, sw, k * 1.24, k * 0.4); ctx.fill();
+      ctx.strokeStyle = D.walkEdge; ctx.lineWidth = 2; ctx.stroke();
+      this.person(cx - k * 0.85, cy - k * 0.05, "#c9cdf5", 0, 0, k * 0.85, false);
       label(ctx, String(g.remaining), cx + k * 0.35, cy + 1, k);
     }
   }

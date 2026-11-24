@@ -20,7 +20,11 @@ Rules in `src/depot.js`, the car park's geometry in `src/lot.js`. Top to bottom 
 4. A vehicle drives **straight ahead** (the arrow on its roof) to leave the car park. It can go only if no vehicle still parked overlaps the strip in front of it. Vehicles stand at any of eight headings, so the strip can run straight or at 45°.
 5. When nothing can happen any more (nobody on the loop has a vehicle with a seat, and the loop is full or the streams are empty), the game **waits for you**. If it waits with **every bay taken**, you're jammed: the level is lost.
 
+6. **A sure win finishes itself**, as in Critters and Orbit (rule 8 there). Seats per colour always equal the people of that colour still to ride, so it can't be lost any more once **nobody waits in a stream** (everyone left walks the loop: whatever you send fills up within a lap or so, and full bays always empty again) or **every vehicle left fits in the bays** (`sureWin()` in `src/depot.js`). With a free bay some vehicle can always leave the car park: each was parked with a clear way out past the ones that leave after it. From the moment that holds and at least half the vehicles are gone, the game says "Everyone has a ride coming" and plays the rest out live: before every tick it fills every free bay (`sendAll()`: a vehicle that can leave, the colour with the most people on the loop and no seat waiting first), at the pace that has the last person get on after about 4 seconds (usually 1.5–3× the normal walk), under fireworks over the crowd. Taps, undo, hints and powers wait meanwhile. It counts as a clean clear.
+
 The crowd **keeps walking** while the game waits; that changes nothing, because everyone on the loop passes the stop within a lap and the streams always fill in the same order. (The rules check this: `key()` only counts colours on the loop, and a test plays a level with and without waiting and compares.) Every vehicle leaves full in the end: the seats per colour match the crowd exactly. The puzzle is which vehicle to bring when: one whose colour isn't on the loop (yet) blocks a bay, and the one you need may be jammed in behind others.
+
+**The look** is a little town at dusk, drawn from above (`src/renderDepot.js`, painted once per layout): the crowd queues in roped-off lanes on a paved **plaza** and walks a paved **loop round a park** (the sign in the park counts who still waits); at the bottom of the loop is the **bus stop** (gold frame, sign, yellow platform edge). Below the plaza runs the **street**, with the **bays** as yellow-boxed lay-bys on its upper side; its lane is the top of the **ring road** round the car park (side by side, on a wide screen, the street runs from the left edge to the ring road). A vehicle drives out of the car park, round the ring road to the street, along it and into its bay; a full one backs out and drives off along the street. Every vehicle stands on a painted **stall** (its lattice cells, open at its nose), so the car park keeps its markings as it empties. Grass and trees fill the rest. (Until November 2026 it was an abstract panel with a walkway and a separate road round the car park.)
 
 **Car parks** come in three shapes: **straight** (horizontal and vertical), **diagonal** (everything at 45°) and **mixed** (a diagonal heart in a straight ring). Easy starts straight; Medium takes turns of straight, diagonal, mixed; Hard leans to mixed and diagonal.
 
@@ -154,9 +158,9 @@ games/loopline/
   game.js                              app shell: taps, tick loop, HUD, toolbar, loop bar and Repeat, sure wins, coins and powers, lobby (mode, difficulty, levels), model gallery and test levels, result, saving
   src/config.js                        every number, and the 15-colour palette
   src/engine.js                        Critters' rules (track, take, launch, buddies, tick, park, lose, stuck, sure win, undo) and the car-park helpers
-  src/depot.js                         Depot's rules (streams, the zip, loop, stop, bays, car park, quiet, lose, undo, Tow, Magnet)
+  src/depot.js                         Depot's rules (streams, the zip, loop, stop, bays, car park, quiet, lose, sure win, undo, Tow, Magnet)
   src/lot.js                           Depot's car park in geometry: vehicles as rectangles at 8 headings, who blocks whom, lattices
-  src/renderDepot.js                   Depot's 2D canvas: the crowd, the bays, the car park and the road (static parts painted once)
+  src/renderDepot.js                   Depot's 2D canvas, a town from above: the plaza and the loop round a park, the street with the bays, the ring road and the car park (static parts painted once)
   src/pictures.js                      drawn pictures (small and LARGE) and the seeded picture makers
   src/levels.js                        level generator and difficulty (see above)
   src/solver.js                        depth-first search over whole sends, for hints and tests, every mode; shortcut via the made solution
@@ -168,7 +172,7 @@ games/loopline/
   src/audio.js                         synthesised sounds
 ```
 
-- Time runs in **ticks**. Critters: one lap is 3 seconds whatever the picture's size. Depot: the crowd walks one spot every 0.15 s (`CONFIG.depot.tick`; it was a hurried 0.075 s before the redesign). The renderer blends between ticks. Frames run only while something moves, except in Depot, where the crowd walks for as long as a level is played; Depot draws at most 30 frames a second, and paints what never moves (plaza, walkways, road, car park, bays) once per layout onto a layer of its own.
+- Time runs in **ticks**. Critters: one lap is 3 seconds whatever the picture's size. Depot: the crowd walks one spot every 0.15 s (`CONFIG.depot.tick`; it was a hurried 0.075 s before the redesign). The renderer blends between ticks. Frames run only while something moves, except in Depot, where the crowd walks for as long as a level is played; Depot draws at most 30 frames a second, and paints what never moves (grass, plaza, walkways, street, ring road, car park, bays, trees) once per layout onto a layer of its own.
 - **Pixel sprites**: critters and buses are drawn from tiny letter grids (`CRITTER`, `busRows()` in `src/render.js`) onto small canvases per colour, then scaled up without smoothing.
 - The layout fits every level between the HUD and the toolbar on phones down to 375×667; on short screens (≤ 700 px) the HUD and toolbar get slimmer and the yard gives up room so pixels stay at least ~9 px. On a 320×568 phone Depot's road and bays shrink so the car park keeps vehicles of about 20 px per cell.
 - The solver plays one send at a time (send, let everything run until it stops, repeat), which a player can always do too. Its answers can really be played.
@@ -191,6 +195,8 @@ games/loopline/
 
 - Repeat: is "two dry laps each" the right moment to stop, or does it feel slow? Should a lane critter you send join in (it does now, once it parks)?
 - Sure wins: does the level finishing itself feel like a reward, or like being cut short? Is "half the critters done" the right moment? Is about 5 seconds of watching the critters finish it right, or too long?
+- Depot's sure win: is "nobody waits in a stream any more, and half the vehicles gone" a good moment, or should the player get to send the last few?
+- Depot's town look: are people on the light paving and vehicles on the asphalt easy to read on a small phone? Do the stall lines in the car park ever make it harder to see which way a vehicle points?
 - Buddies: is the gold rope readable, also on a hidden ("?") critter? Is it clear why a buddy won't go? Enough pairs on Hard (some levels get none)?
 - The second batch of models: are they readable at 10,000+ blocks, and fun to peel (the burger and the cake are layered on purpose)?
 

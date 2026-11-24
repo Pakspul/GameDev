@@ -381,6 +381,48 @@ test("a sure win plays out live: sendAll() before every tick is what playOut() d
   assert.ok(sim.ticks - t0 > 0);
 });
 
+test("depot: once nobody waits in a stream (or every vehicle left fits in the bays), playing it out always wins", () => {
+  let seen = 0, streamsEmpty = 0;
+  for (const diff of DIFFS) {
+    for (const n of [1, 2, 5, 8, 11]) {
+      const L = makeLevel("depot", diff, n), g = newGame(L, { history: false });
+      for (const m of L.solution) {
+        for (let k = 0; k < 400 && g.status === "play"; k++) { // look at every tick, not only when it waits
+          if (g.sureWin()) {
+            seen++;
+            if (!g.streamsLeft()) streamsEmpty++;
+            const c = g.clone();
+            assert.ok(c.playOut(), `depot ${diff} ${n}: playing out wins`);
+            assert.equal(c.remaining, 0);
+          }
+          if (g.idle) break;
+          g.tick();
+        }
+        g.launch(m);
+      }
+      g.settle();
+      assert.equal(g.status, "won");
+      assert.equal(g.sureWin(), false, "not once it's won");
+    }
+  }
+  assert.ok(seen > 100 && streamsEmpty > 10, `${seen} sure positions, ${streamsEmpty} with the streams empty`);
+  // A stream still waiting and more vehicles than bays: not sure.
+  const L = makeLevel("depot", "hard", 1), g = newGame(L, { history: false });
+  assert.ok(g.streamsLeft() && L.movers.length > g.docks.length && !g.sureWin());
+});
+
+test("depot: a sure win plays out live, sendAll() before every tick, as playOut() does", () => {
+  const L = makeLevel("depot", "medium", 4), g = newGame(L, { history: false });
+  for (const m of L.solution) { g.settle(); if (g.sureWin()) break; g.launch(m); }
+  assert.ok(g.sureWin());
+  const sim = g.clone(), t0 = g.ticks;
+  assert.ok(sim.playOut());
+  for (let k = 0; k < 100000 && g.status === "play"; k++) { g.sendAll(); g.tick(); g.events.length = 0; }
+  assert.equal(g.status, "won");
+  assert.equal(g.ticks, sim.ticks);
+  assert.ok(sim.ticks - t0 > 0);
+});
+
 // ---- Powers (bought with coins in the game) --------------------------------------------------------------
 test("powers: an extra bay stays for the rest of the level, undo included", () => {
   const g = new Game(level(["11", "22"], [[B, 5], [B, 5], [R, 2], [R, 2]], { bays: 1 }));
