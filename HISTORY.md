@@ -11,6 +11,7 @@ Template: copy this to the top for a new day
 -
 
 **Decided**
+- Bubble shooter: named **Bubbleworks** (the name "Bubble Blast" is taken by another game), space theme, Endless pushes by shots rather than a clock, and stardust follows the arcade's economy rules.
 - Camper Crew is the action game to try first. The prototype uses three.js r128 like the other games, so it needs no build step for now.
 -
 
@@ -22,6 +23,12 @@ Template: copy this to the top for a new day
 ## 2026-11-27
 
 **Done**
+- **New game: Bubbleworks**, a bubble shooter in space ([docs/BUBBLEWORKS.md](docs/BUBBLEWORKS.md)). Drag to aim, let go to fire, bounce off the walls; three of a colour pop and whatever hangs from them drops. Every colour has its own symbol.
+  - Three modes on one engine: **Classic** (clear the screen; the ceiling drops after 8 shots that pop nothing; endless stages), **Levels** (a goal per level: clear the board, rescue the aliens or collect a colour, with a shot budget and stars) and **Endless** (a new row every few shots, faster as you go). Plus a **daily level**.
+  - **Powers** collected on the board into a tray of three: Bomb, Prism, Laser, Comet, Black hole and Freeze. A power shot doesn't use a shot; in Classic and Endless a big drop earns a random one.
+  - **Stardust** under the arcade's economy rules: new stars pay, Aim+ and +5 shots in a level cost stardust and a star. Classic and Endless pay once for new progress.
+  - Levels are seeded and checked by an autoplayer, which also sets the shot budget; too-easy boards are made again. `npm run bubbleworks:levels` stores the results for levels 1–300, so a level starts instantly.
+  - Tests: rules in Node, and an end-to-end run in a phone browser.
 - **Graphite: Nonogram**, a fifth puzzle type. Fill the cells the row and column clues ask for, and a little picture appears. Four tiers (5×5, 8×8, 10×10, 12×12), endless seeded levels, a fifth daily.
   - Pictures are random noise smoothed into blobs, often mirrored, so they look like shapes. A picture is kept only if the line solver finishes it, which proves one solution and no guessing; harder tiers keep the picture that needs the most sweeps. Clues are capped (3 to 5 numbers per line) so they fit beside the board on a phone. Generating takes a few milliseconds.
   - Tap to fill, tap again to clear; drag to paint along a row or column. **Cross** mode marks cells that stay empty (optional; crosses disappear when the picture is done). Clues dim when their line matches, and turn red when they can't fit any more (with "Show clashes" on).
