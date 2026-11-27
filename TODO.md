@@ -42,6 +42,8 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [x] Action game: choose a concept (**Camper Crew**) and build a grey-box prototype
 - [ ] Camper Crew: playtest on the phone (landscape and portrait) and with someone else; answer the questions in [docs/BACKLOG.md](docs/BACKLOG.md#prototype-status)
 - [ ] Camper Crew: tune or cut based on the playtest, *then* decide on art, sound and more troubles
+- [x] Emberholm (open-world RPG): a game plan in [docs/EMBERHOLM.md](docs/EMBERHOLM.md)
+- [ ] Emberholm: M0, walk: terrain, chunks, camera and touch controls in landscape at 30 fps on the phone
 - [ ] Inkfield: playtest on the phone (speed, zoom, controls, match length); answer the open questions in [docs/INKFIELD.md](docs/INKFIELD.md)
 - [ ] Inkfield: pick the first add-ons (ideas in [docs/INKFIELD.md](docs/INKFIELD.md#ideas-for-later-add-ons)) and decide on the final name
 - [ ] Starflip: playtest on the phone (table speed, mission clock, is the wormhole too easy or hard, are banner and arrows enough without "How to play"); see [docs/STARFLIP.md](docs/STARFLIP.md#open-questions)

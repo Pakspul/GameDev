@@ -32,8 +32,11 @@ Template: copy this to the top for a new day
 - Nonogram takes Takuzu's place as the second tab; Takuzu moves to the end, after Calcudoku. Takuzu stays: its levels, progress and daily are unchanged.
 - On phones the five "Today" cards show icon and difficulty only; the names didn't fit.
 
+- **A new big game: Emberholm** (working title), a single-player open-world RPG for phones in landscape. Quests, levels, loot, gear and crafting, with survival (food, warmth, night) as the threat of the wilds. Nordic mood; a high chase camera; combat on **Attack** and **Parry** (a timed parry earns a riposte). The plan, scope and milestones are in [docs/EMBERHOLM.md](docs/EMBERHOLM.md).
+
 **Next**
 - Playtest Nonogram on the phone (see TODO).
+- Emberholm: answer the open questions in the plan, then start M0 (walk around the island at 30 fps on the phone).
 
 ## 2026-11-23
 

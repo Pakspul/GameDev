@@ -29,6 +29,8 @@ The concrete, tickable list lives in **[TODO.md](../TODO.md)**, and what has bee
 
 The ideas below are sorted into a pick-list of ten puzzle games plus a chaotic single-player action game in **[BACKLOG.md](BACKLOG.md)**.
 
+**Planned: Emberholm**, a single-player open-world RPG for phones in landscape (quests, levels, loot, crafting, survival in a Nordic world). Plan and milestones in [EMBERHOLM.md](EMBERHOLM.md).
+
 **Done: Graphite** (the logic grid collection): Sudoku, Nonogram, Star Battle, Calcudoku and Takuzu share one board, input, hint, undo, timer and daily engine. A new grid puzzle type is now mostly a generator in `games/graphite/levels/` plus a draw function. Candidates for the next types, all with free-to-use rules and generatable with exactly one solution:
 
 | Puzzle | Note |
