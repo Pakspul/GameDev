@@ -43,9 +43,12 @@ function roundedBoxGeo(w,h,d,r){r=Math.min(r,w*0.3,h*0.3,d*0.3);const iw=w-2*r,i
   g.translate(0,0,-(d-2*r)/2);return g}
 function addPart(geo,color,pos,quat,o={}){
   const mesh=new THREE.Mesh(geo,partMat(color,o.mat||{}));mesh.position.copy(pos);mesh.quaternion.copy(quat||Q());
+  return regPart(mesh,o.proxy||geo,{...o,color})}
+// Any mesh as a part: proxy is the closed shape screws and rays see. Realism models (real/real.js) come in this way
+function regPart(mesh,proxy,o={}){
   mesh.castShadow=true;mesh.receiveShadow=true;BLD.group.add(mesh);
-  const pr=new THREE.Mesh(o.proxy||geo,PROXY_MAT);pr.visible=false;mesh.add(pr);mesh.updateMatrixWorld(true);
-  const p={id:BLD.parts.length,mesh,ray:pr,static:!!o.static,slots:[],screws:[],color,dead:false,alive:true,left:0};
+  const pr=new THREE.Mesh(proxy,PROXY_MAT);pr.visible=false;mesh.add(pr);mesh.updateMatrixWorld(true);
+  const p={id:BLD.parts.length,mesh,ray:pr,static:!!o.static,slots:[],screws:[],color:o.color,dead:false,alive:true,left:0};
   mesh.userData.part=p;pr.userData.part=p;BLD.parts.push(p);return p}
 function addSlot(p,lp,ln,force=false){p.slots.push({p:lp.clone(),n:ln.clone().normalize(),force})}
 function anchorWorld(host,wp,wn){host.mesh.updateMatrixWorld(true);addSlot(host,host.mesh.worldToLocal(wp.clone()),wn.clone().applyQuaternion(host.mesh.quaternion.clone().invert()),true)}

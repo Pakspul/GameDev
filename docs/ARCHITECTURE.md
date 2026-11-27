@@ -17,7 +17,7 @@ How the repository is organised, why, and how to improve it step by step without
 │   │   └── fonts/           Self-hosted fonts + their licences
 │   ├── nuts-and-bolts/
 │   ├── outbound/
-│   ├── unscrew/             models/ holds the 3D models: kit.js (building blocks), one file per category, order.js (level order); dev/inspector.js is the model inspector (?models, left out of builds)
+│   ├── unscrew/             models/ holds the 3D models: kit.js (building blocks), one file per category, order.js (level order); real/ the realism mode's Blender models (real.js, .glb files); dev/inspector.js is the model inspector (?models, left out of builds)
 │   ├── graphite/            levels/ holds one generator per puzzle type; worker.js runs them off the main thread
 │   ├── wallbreaker/         src/ holds the engine, generator, modes, economy (config.js has every number), renderer and save
 │   ├── coin-dozer/          src/ holds the physics board (Rapier), the machine's rules, economy, themes, renderer and save; config.js has every number
@@ -26,9 +26,10 @@ How the repository is organised, why, and how to improve it step by step without
 ├── shared/                  Things every game uses, kept in exactly one place
 │   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md), gamenav.js (back button and menu), gamelobby.js (a game's own menu)
 │   ├── css/                 gamenav.css, gamelobby.css: the neutral look of those, which each game restyles
-│   ├── vendor/three/        three.js r128 (the 3D engine), served locally
+│   ├── vendor/three/        three.js r128 (the 3D engine), served locally, and its GLTFLoader (Unscrew's realism mode)
 │   ├── vendor/rapier/       Rapier 0.19.3 (rigid-body physics, WebAssembly inside an ES module), used by Coin Dozer
 │   └── icons/               App icon
+├── blender/unscrew/         Blender sources of Unscrew's realism models: helpers, build scripts, .blend files (docs/UNSCREW-BLENDER.md)
 ├── scripts/                 Developer tools (never shipped to players)
 │   ├── serve.mjs            npm run dev: local server, also reachable from your phone
 │   ├── build.mjs            npm run build: assembles dist/
@@ -37,7 +38,7 @@ How the repository is organised, why, and how to improve it step by step without
 ├── tests/smoke.mjs          npm test: opens every game in a headless phone browser
 ├── tests/puzzles.mjs        npm test: Graphite's generators give unique puzzles, and the same ones every time
 ├── tests/economy.mjs        npm test: every game's prices and rewards follow docs/ECONOMY.md
-├── tests/unscrew.mjs        npm test: every Unscrew model is loaded, in the fixed level order, and named in every language
+├── tests/unscrew.mjs        npm test: every Unscrew model is loaded, in the fixed level order, and named in every language; realism .glb files follow the part rules
 ├── tests/loopline/          npm test: Loopline's rules for every mode, every level of every track solvable and pinned (rules.test.mjs in Node), e2e.mjs in a phone browser
 ├── tests/wallbreaker/       npm test: Wallbreaker's acceptance criteria (rules.test.mjs in Node, e2e.mjs in a phone browser)
 ├── tests/coin-dozer/        npm test: Coin Dozer's acceptance criteria (rules and sim tests in Node on the real physics, e2e.mjs in a phone browser)
@@ -67,7 +68,7 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Jade Pavilion | English + Dutch | ~610 | three.js 3D table | `jade-pavilion-v1` | Seeded generator, daily challenge, table themes |
 | Nuts & Bolts | English + Dutch | ~1,320 | three.js + 2D canvas particles | `nutsbolts:*` | Solver runs in a Web Worker (built from a Blob), washers currency |
 | Outbound | English + Dutch | ~2,650 | 2D canvas, three.js loaded on demand for 3D modes | `outbound.*` | Three level generators (flat, box, shapes), light/dark theme, haptics, shop |
-| Unscrew | English + Dutch | ~1,120 (of which ~650 in `models/`) | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators (see [UNSCREW-MODELS.md](UNSCREW-MODELS.md)), coins and shop |
+| Unscrew | English + Dutch | ~1,120 (of which ~650 in `models/`) | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators (see [UNSCREW-MODELS.md](UNSCREW-MODELS.md)), a realism mode with models made in Blender (see [UNSCREW-BLENDER.md](UNSCREW-BLENDER.md)), coins and shop |
 | Graphite | English + Dutch | ~2,200 | 2D canvas, redraws only on change | `graphite.v1` | Five logic puzzle types, generators in a Web Worker, logic-based hints, five dailies |
 | Wallbreaker | English + Dutch | ~3,300 (ES modules) | 2D canvas, frame loop only while a level is played | `wallbreaker.save` | Brick breaker, seven modes on one engine (`src/engine.js`, fixed 120 Hz, swept collision); seeded levels; its own economy in `src/config.js`; service worker for offline install. See [WALLBREAKER.md](WALLBREAKER.md) |
 | Coin Dozer | English + Dutch | ~2,900 (ES modules) | three.js r128 + Rapier physics, instanced coins; nothing runs while paused or hidden | `coin-dozer.save` | Coin pusher: fixed 60 Hz physics, seeded board, prizes and bonus events; its own economy in `src/config.js`; service worker for offline install. See [COIN-DOZER.md](COIN-DOZER.md) |
