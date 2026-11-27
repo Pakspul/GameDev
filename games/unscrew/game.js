@@ -13,7 +13,10 @@ function cfgFor(diff,level){
 }
 
 /* ----- 3D: the models live in models/ (kit.js, one file per category, order.js builds GENS3D) ----- */
-function pick3D(diff,level,salt){const n=GENS3D.length,cyc=Math.floor((level-1)/n);const ord=rng(`cyc|${diff}|${cyc}|${salt}`).shuffle([...Array(n).keys()]);return GENS3D[ord[(level-1)%n]]}
+function pickFrom(list,tag,diff,level,salt){const n=list.length,cyc=Math.floor((level-1)/n);const ord=rng(`${tag}|${diff}|${cyc}|${salt}`).shuffle([...Array(n).keys()]);return list[ord[(level-1)%n]]}
+function pick3D(diff,level,salt){return pickFrom(GENS3D,'cyc',diff,level,salt)}
+// realism: the Blender models in real/ (real.js), which must be loaded first (REAL.load())
+function pickReal(diff,level,salt){return pickFrom(GENS_REAL,'real',diff,level,salt)}
 
 /* ----- 2D generator: opaque plates stacked flush ----- */
 function obbOverlap(a,b,m){const ax=[a.phi,a.phi+Math.PI/2,b.phi,b.phi+Math.PI/2];
@@ -124,7 +127,7 @@ function finalize(R,cfg,mode){
 function buildLevel(mode,diff,level,cfg,salt=''){
   for(let attempt=0;attempt<10;attempt++){
     const R=rng(`${mode}|${diff}|${level}|${salt}|${attempt}`);BLD={group:new THREE.Group(),parts:[]};let name='plates';
-    if(mode==='2d')gen2D(R,cfg);else{const[nm,fn]=pick3D(diff,level,salt);name=nm;fn(R,cfg)}
+    if(mode==='2d')gen2D(R,cfg);else{const[nm,fn]=mode==='real'?pickReal(diff,level,salt):pick3D(diff,level,salt);name=nm;fn(R,cfg)}
     const res=finalize(R,cfg,mode);if(res){res.name=name;return res}disposeTree(BLD.group)}
   throw new Error('Level generation failed')}
 /*GEN-END*/
@@ -270,13 +273,13 @@ const ptrs=new Map();let down=null,pinch0=0,dist0=0;const ndc=new THREE.Vector2(
 canvas.addEventListener('pointerdown',e=>{ensureAudio();try{canvas.setPointerCapture(e.pointerId)}catch(_){}ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(ptrs.size===1)down={x:e.clientX,y:e.clientY,moved:false};else{if(down)down.moved=true;const[a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);dist0=orbit.dist}});
 canvas.addEventListener('pointermove',e=>{const pv=ptrs.get(e.pointerId);if(!pv)return;const dx=e.clientX-pv.x,dy=e.clientY-pv.y;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  const is3=CUR&&CUR.mode==='3d';
+  const is3=CUR&&CUR.mode!=='2d';
   if(ptrs.size===1&&down){if(!down.moved&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>7)down.moved=true;
     if(down.moved&&is3){orbit.az-=dx*0.009;orbit.pol=Math.min(POL_MAX,Math.max(POL_MIN,orbit.pol-dy*0.007));orbit.auto=false;orbit.tw=null}}
   else if(ptrs.size===2&&is3){const[a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(d>10)orbit.dist=clampDist(dist0*pinch0/d)}});
 function endPtr(e){const tap=down&&!down.moved&&ptrs.size===1&&e.type==='pointerup';ptrs.delete(e.pointerId);if(tap)onTap(e.clientX,e.clientY);if(!ptrs.size)down=null}
 canvas.addEventListener('pointerup',endPtr);canvas.addEventListener('pointercancel',endPtr);
-canvas.addEventListener('wheel',e=>{if(!CUR||CUR.mode!=='3d')return;e.preventDefault();orbit.dist=clampDist(orbit.dist*(1+Math.sign(e.deltaY)*0.08))},{passive:false});
+canvas.addEventListener('wheel',e=>{if(!CUR||CUR.mode==='2d')return;e.preventDefault();orbit.dist=clampDist(orbit.dist*(1+Math.sign(e.deltaY)*0.08))},{passive:false});
 const clampDist=d=>Math.min(orbit.fit*1.6,Math.max(orbit.fit*0.3,d));
 function onTap(x,y){if(state!=='play'||!LS||LS.done||LS.paused)return;
   ndc.set(x/innerWidth*2-1,-(y/innerHeight)*2+1);pickRay.setFromCamera(ndc,camera);
@@ -305,7 +308,7 @@ let toastT=0;function toast(t,ms=1700){const el=$('#toast');el.textContent=t;el.
 /* --- HUD --- */
 $('#coinIco').innerHTML=COIN;
 const HEART='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.5S2.5 12.7 2.5 7.4A4 4 0 0 1 10 5.3a4 4 0 0 1 7.5 2.1c0 5.3-7.5 10.1-7.5 10.1z" fill="FILL"/></svg>';
-function renderTop(){$('#lvN').textContent=G.level;$('#lvS').textContent=`${G.replay?_t('replay.tag')+' · ':''}${CUR?_t('obj.'+CUR.name):''} · ${_t('diff.'+G.diff)} · ${G.mode.toUpperCase()}`;
+function renderTop(){$('#lvN').textContent=G.level;$('#lvS').textContent=`${G.replay?_t('replay.tag')+' · ':''}${CUR?_t('obj.'+CUR.name):''} · ${_t('diff.'+G.diff)} · ${modeName(G.mode)}`;
   $('#hearts').style.display=G.replay?'none':'';$('#hearts').innerHTML=[0,1,2].map(i=>HEART.replace('FILL',i<G.hearts?'#ff4d6d':'rgba(23,33,46,.18)')).join('');$('#hearts').setAttribute('aria-label',_t('lives',{n:G.hearts}));renderScore();renderProgress();renderCoins()}
 function runScore(){return Math.max(0,G.score+(LS?LS.levelScore:0))}
 function renderScore(){$('#scoreN').textContent=fmt(runScore())}
@@ -326,15 +329,19 @@ function renderTools(){const el=$('#tools');if(!el.children.length){el.innerHTML
   el.querySelectorAll('.tool').forEach(b=>{const id=b.dataset.tool,price=toolPrice(id);b.querySelector('.badge').hidden=true;
     b.querySelector('small').innerHTML=`${COIN}${price}`;b.disabled=!canUse(id);b.classList.toggle('on',!!LS&&LS.target===id);
     b.setAttribute('aria-label',`${TOOLS[id].name}: ${_t('priceN',{n:price})}`)});
-  $('#viewBtn').hidden=!(state==='play'&&CUR&&CUR.mode==='3d')}
+  $('#viewBtn').hidden=!(state==='play'&&CUR&&CUR.mode!=='2d')}
 
 /* --- level flow --- */
 function nextBox(){return LS.qi<LS.queue.length?{c:LS.queue[LS.qi++],n:0,arrived:0,state:'ready'}:null}
 const bestBox=c=>bestBoxOf(LS.boxes.filter(b=>b&&b.state==='ready'),c);
 const key=(m=G.mode,d=G.diff)=>m+'-'+d;
+// Realism models load on first use; everything else is ready at once
+const whenReady=mode=>mode==='real'?REAL.load():Promise.resolve();
+let startTk=0;
 function startLevel(){
   state='play';closeModal();$('#loading').hidden=false;$('#hud').hidden=false;$('#tools').hidden=false;$('#menu').hidden=true;LS=null;placeNav();
-  setTimeout(()=>{
+  const tk=++startTk;
+  whenReady(G.mode).then(()=>setTimeout(()=>{if(tk!==startTk||state!=='play')return;
     const cfg=cfgFor(G.diff,G.level),lv=buildLevel(G.mode,G.diff,G.level,cfg);setCurrent(lv);
     LS={cfg,lv,screws:lv.screws,total:lv.screws.length,removed:0,boxes:[],queue:lv.queue,qi:0,buffer:[],cap:cfg.B,busy:0,levelScore:0,combo:0,lastBox:0,
       start:performance.now(),drills:0,chestUsed:false,uses:{},helped:false,target:null,xrayUntil:0,done:false,paused:false,meshes:[]};
@@ -342,7 +349,8 @@ function startLevel(){
     for(let i=0;i<cfg.K;i++)LS.boxes.push(nextBox());
     renderTop();renderBoxes();renderRail();renderTools();$('#loading').hidden=true;orbit.auto=false;orbit.tw=null;
     requestAnimationFrame(()=>fitCamera(true));
-    if(!G.replay){save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist()}},30)}
+    if(!G.replay){save.runs[key()]={level:G.level,score:G.score,hearts:G.hearts};persist()}},30),
+    ()=>{if(tk!==startTk||state!=='play')return;toast(_t('real.fail'),3000);showMenu()})}
 function addScore(v){if(!LS)return;LS.levelScore+=Math.round(v*LS.cfg.mult);renderScore();if(G.replay)return;const b=save.best[key()]||{score:0,level:0};if(runScore()>b.score){b.score=runScore();save.best[key()]=b}}
 function addCoins(n){save.coins+=n;renderCoins();persist()}
 
@@ -424,7 +432,7 @@ function fallPart(p){const m=p.mesh,is2=CUR.mode==='2d',mats=[];m.traverse(o=>{i
   const vel=dir.multiplyScalar(2.4).add(V(0,3.4,0)),spin=V(Math.random()-.5,Math.random()-.5,Math.random()-.5).multiplyScalar(6);
   anims.push(dt=>{t+=dt;vel.y-=16*dt;m.position.addScaledVector(vel,dt);m.rotation.x+=spin.x*dt;m.rotation.y+=spin.y*dt;m.rotation.z+=spin.z*dt;
     if(t>0.8)mats.forEach(([mm,o])=>mm.opacity=o*Math.max(0,1-(t-0.8)/0.6));if(t>1.4){m.parent&&m.parent.remove(m);return false}})}
-$('#viewBtn').onclick=()=>{if(!CUR||CUR.mode!=='3d')return;orbit.tw={az:0.75,pol:1.02};orbit.dist=orbit.fit};
+$('#viewBtn').onclick=()=>{if(!CUR||CUR.mode==='2d')return;orbit.tw={az:0.75,pol:1.02};orbit.dist=orbit.fit};
 
 /* --- modals --- */
 function modal(title,body,actions){$('#mTitle').textContent=title;$('#mBody').innerHTML=body;const a=$('#mActions');a.innerHTML='';
@@ -444,7 +452,7 @@ const nav=GameNav.create({title:'Unscrew',
   onClose:resume,
   items:()=>{const play=state==='play'&&LS;return[
     play&&{icon:'restart',label:_t('pause.restart'),onSelect:()=>startLevel()},
-    play&&CUR&&CUR.mode==='3d'&&{icon:'view',label:_t('resetCamera'),onSelect:()=>$('#viewBtn').click()},
+    play&&CUR&&CUR.mode!=='2d'&&{icon:'view',label:_t('resetCamera'),onSelect:()=>$('#viewBtn').click()},
     {icon:'shop',label:_t('shop.title'),onSelect:()=>{if(play){LS.paused=true;openShop(resume)}else openShop(()=>renderMenu())}},
     {icon:'sound',label:_t('sound'),checked:save.sound,onToggle(on){save.sound=on;persist()}},
     {icon:'help',label:_t('how.title'),html:'<ul>'+[1,2,3,4,5].map(n=>`<li>${_t('how.'+n)}</li>`).join('')+'</ul>'},
@@ -497,6 +505,9 @@ function newRun(){Object.assign(G,{mode:save.sel.mode,diff:save.sel.diff,level:1
 // Levels come one after the other in a run: the run's own level continues the run, any level you've cleared
 // can be replayed on its own for more stars (replayLevel), and a button under the grid picks the next one to perfect.
 const MODE_ICON={'2d':'<svg viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="5" width="20" height="9" rx="4.5" fill="#8fd3ff"/><rect x="11" y="10" width="9" height="20" rx="4.5" fill="#ffcf70"/><rect x="15" y="16" width="16" height="9" rx="4.5" transform="rotate(-30 23 20)" fill="#b8a4ff"/><circle cx="8" cy="9.5" r="2.4" fill="#ff3d9a"/><circle cx="15.5" cy="25" r="2.4" fill="#1f7bff"/><circle cx="26" cy="17" r="2.4" fill="#8fd61f"/></svg>','3d':'<svg viewBox="0 0 34 34" aria-hidden="true"><path d="M17 3l12 7v14l-12 7-12-7V10z" fill="#7cc68d"/><path d="M17 17l12-7v14l-12 7z" fill="#4f9e64"/><path d="M17 17L5 10l12-7 12 7z" fill="#b8e3b5"/><circle cx="17" cy="10" r="2.4" fill="#ff3d9a"/><circle cx="23" cy="21" r="2.4" fill="#ffcc1a"/><circle cx="10.5" cy="20" r="2.4" fill="#7b4dff"/></svg>'};
+MODE_ICON.real='<svg viewBox="0 0 34 34" aria-hidden="true"><path d="M8 10l1-7 5 5h6l5-5 1 7c2 3 3 6 3 9 0 7-5 12-12 12S5 26 5 19c0-3 1-6 3-9z" fill="#b98a5e"/><circle cx="12" cy="15.5" r="5" fill="#f8ecd8"/><circle cx="22" cy="15.5" r="5" fill="#f8ecd8"/><circle cx="12" cy="15.5" r="2.7" fill="#ffb21e"/><circle cx="22" cy="15.5" r="2.7" fill="#ffb21e"/><circle cx="12" cy="15.5" r="1.2" fill="#231914"/><circle cx="22" cy="15.5" r="1.2" fill="#231914"/><path d="M15.3 20h3.4L17 23.6z" fill="#f0962e"/><path d="M11.5 26.5c1.8 1 3.6 1.4 5.5 1.4s3.7-.4 5.5-1.4" stroke="#f1dfc0" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+// The views in the menu. Realism is a trial of models made in Blender (real/real.js); it may replace 3D later
+const MODES=['2d','3d','real'],modeName=m=>_t('mode.'+m);
 let wallet=null;
 function renderMenu(){const sel=save.sel,k=key(sel.mode,sel.diff),r=save.runs[k],b=save.best[k],st=save.stars[k]||{};
   const reached=Math.max(1,b&&b.level||0,r?r.level:0,...Object.keys(st).map(Number)),sv=Object.values(st).filter(Boolean);
@@ -508,11 +519,11 @@ function renderMenu(){const sel=save.sel,k=key(sel.mode,sel.diff),r=save.runs[k]
     perfect.innerHTML=`<span class="pstar" aria-hidden="true">★</span><span>${_t('menu.perfect',{n:pf})}</span>`;perfect.onclick=()=>replayLevel(pf)}
   else if(reached>1&&(sv.length||b&&b.level>0))perfect=Object.assign(document.createElement('p'),{className:'runnote allperfect',textContent:_t('menu.allPerfect')});
   $('#lobby').replaceChildren(
-    GameLobby.choice({label:_t('menu.view'),value:sel.mode,options:['2d','3d'].map(m=>({value:m,label:m.toUpperCase(),note:_t('menu.'+m),icon:MODE_ICON[m]})),
+    GameLobby.choice({label:_t('menu.view'),value:sel.mode,options:MODES.map(m=>({value:m,label:modeName(m),note:_t('menu.'+m),icon:MODE_ICON[m]})),
       onChoose:m=>{save.sel.mode=m;persist();renderMenu();buildDemo()}}),
     GameLobby.tabs({label:_t('menu.difficulty'),value:sel.diff,options:DIFFS.map(id=>{const c=cfgFor(id,1);return{value:id,label:_t('diff.'+id),note:_t('menu.diffInfo',{k:c.K,b:c.B,c:c.C,cmax:c.Cmax})}}),
       onChoose:id=>{save.sel.diff=id;persist();renderMenu()}}),
-    GameLobby.play({eyebrow:sel.mode.toUpperCase()+' · '+_t('diff.'+sel.diff),title:_t('lobby.level',{n:r?r.level:1}),
+    GameLobby.play({eyebrow:modeName(sel.mode)+' · '+_t('diff.'+sel.diff),title:_t('lobby.level',{n:r?r.level:1}),
       text:r?_t('menu.runOn',{score:fmt(r.score)})+' · '+'♥'.repeat(r.hearts):_t('menu.runNew'),
       action:{label:r?_t('menu.continueRun'):_t('menu.newRun'),onClick:go},
       more:[r&&{label:_t('menu.newRun'),onClick:()=>{ensureAudio();newRun();startLevel()}}],
@@ -522,7 +533,11 @@ function renderMenu(){const sel=save.sel,k=key(sel.mode,sel.diff),r=save.runs[k]
     perfect,
     reached>1?Object.assign(document.createElement('p'),{className:'runnote',textContent:_t('menu.runNote')}):'');
 }
-function buildDemo(){const m=save.sel.mode;const lv=buildLevel(m,'normal',m==='2d'?6:1,cfgFor('normal',3),'demo');setCurrent(lv);spawnScrews(lv);orbit.auto=m==='3d'&&!reduceMotion;requestAnimationFrame(()=>fitCamera(true))}
+let demoTk=0;
+function buildDemo(){const m=save.sel.mode,tk=++demoTk;
+  const go=()=>{if(tk!==demoTk||state!=='menu')return;const lv=buildLevel(m,'normal',m==='2d'?6:1,cfgFor('normal',3),'demo');setCurrent(lv);spawnScrews(lv);
+    orbit.auto=m!=='2d'&&!reduceMotion;requestAnimationFrame(()=>fitCamera(true))};
+  whenReady(m).then(go,()=>{if(tk===demoTk)toast(_t('real.fail'),3000)})}
 function showMenu(){state='menu';LS=null;closeModal();placeNav();$('#hud').hidden=true;$('#tools').hidden=true;$('#viewBtn').hidden=true;$('#menu').hidden=false;$('#loading').hidden=true;$('#fx').innerHTML='';renderMenu();buildDemo()}
 
 /* --- loop --- */

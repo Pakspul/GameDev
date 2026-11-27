@@ -1,5 +1,5 @@
 // Unscrew's model inspector, for development only: open games/unscrew/index.html?models with `npm run dev`
-// (or ?models=giraffe to start on one model). Pick any 3D model, difficulty, level and variant, and see how it
+// (or ?models=giraffe, ?models=real:owl to start on one model). Pick any 3D or realism model, difficulty, level and variant, and see how it
 // is built: the parts finalize() dropped, the slots that didn't become screws, the hidden screws, which parts
 // hold which, and the order it comes apart in. "Play this level" starts a real level of that model.
 // game.js loads this file only with ?models, and scripts/build.mjs leaves both out of release builds.
@@ -8,8 +8,11 @@
 (()=>{
 const SKEY_I='unscrew.inspector';
 let pref={};try{pref=JSON.parse(localStorage.getItem(SKEY_I))||{}}catch(e){}
-const I={name:GENS3D[0][0],diff:'normal',level:1,variant:0,screws:true,xray:false,dropped:true,slots:false,spin:false,...pref,explode:0,sel:null,timer:0};
-const asked=new URLSearchParams(location.search).get('models');if(asked&&GENS3D.some(g=>g[0]===asked))I.name=asked;
+// Every model: the 3D generators, then the realism models made in Blender (real/real.js; keys start with "real:")
+const ENTRIES=[...GENS3D.map(([n,gen,cat])=>({key:n,name:n,gen,cat,mode:'3d'})),...GENS_REAL.map(([n,gen,cat])=>({key:'real:'+n,name:n,gen,cat:'realism · '+cat,mode:'real'}))];
+const entryOf=k=>ENTRIES.find(e=>e.key===k);
+const I={name:ENTRIES[0].key,diff:'normal',level:1,variant:0,screws:true,xray:false,dropped:true,slots:false,spin:false,...pref,explode:0,sel:null,timer:0};
+const asked=new URLSearchParams(location.search).get('models');if(asked&&entryOf(asked))I.name=asked;if(!entryOf(I.name))I.name=ENTRIES[0].key;
 const remember=()=>{try{localStorage.setItem(SKEY_I,JSON.stringify({name:I.name,diff:I.diff,level:I.level,variant:I.variant,screws:I.screws,xray:I.xray,dropped:I.dropped,slots:I.slots,spin:I.spin}))}catch(e){}};
 persist=()=>{};save.coins=99999; // in memory only: tools are free to try while playing from here
 
@@ -42,11 +45,11 @@ const css=document.createElement('style');css.textContent=`
 #iBack{position:fixed;left:12px;top:50%;z-index:20;font:600 13px var(--f-body);background:var(--card);border:0;border-radius:10px;padding:8px 12px;box-shadow:0 3px 0 var(--steel-sh);cursor:pointer}
 @media (max-width:759px){#insp{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:46%}}`;
 document.head.appendChild(css);
-const cats=[...new Set(GENS3D.map(g=>g[2]))];
+const cats=[...new Set(ENTRIES.map(e=>e.cat))];
 const panel=document.createElement('div');panel.id='insp';panel.innerHTML=`
 <header>Model inspector <span class="dev">DEV</span><button id="iMin" aria-label="Collapse">–</button></header>
 <div class="body">
-  <div class="row"><button id="iPrev" aria-label="Previous model">◀</button><select id="iModel" aria-label="Model">${cats.map(c=>`<optgroup label="${c}">${GENS3D.filter(g=>g[2]===c).map(g=>`<option value="${g[0]}">${_t('obj.'+g[0])} (${g[0]})</option>`).join('')}</optgroup>`).join('')}</select><button id="iNext" aria-label="Next model">▶</button></div>
+  <div class="row"><button id="iPrev" aria-label="Previous model">◀</button><select id="iModel" aria-label="Model">${cats.map(c=>`<optgroup label="${c}">${ENTRIES.filter(e=>e.cat===c).map(e=>`<option value="${e.key}">${_t('obj.'+e.name)} (${e.key})</option>`).join('')}</optgroup>`).join('')}</select><button id="iNext" aria-label="Next model">▶</button></div>
   <div class="row"><select id="iDiff" aria-label="Difficulty">${DIFFS.map(d=>`<option value="${d}">${_t('diff.'+d)}</option>`).join('')}</select><label>Level <input id="iLevel" type="number" min="1" max="99"></label></div>
   <div class="row"><span class="grow">Variant <b id="iVar"></b></span><button id="iVarPrev" aria-label="Previous variant">−</button><button id="iVarNext">New variant</button></div>
   <div class="checks">
@@ -80,17 +83,18 @@ const SLOT_GEO=new THREE.CylinderGeometry(0.035,0.035,0.18,6);SLOT_GEO.translate
 const SLOT_MAT=shared(new THREE.MeshBasicMaterial({color:srgb('#5b6270')})),ANCHOR_MAT=shared(new THREE.MeshBasicMaterial({color:srgb('#e8283a')}));
 let B=null; // what's on screen: {lv, cfg, seed, tries, built, dead, ghosts, slots, failed}
 const f2=n=>n.toFixed(2);
-const describe=p=>`${p.box?`box ${f2(p.box.w)} × ${f2(p.box.h)} × ${f2(p.box.d)}`:p.cyl?`cylinder r ${f2(p.cyl.r)} h ${f2(p.cyl.h)}`:p.mesh.geometry.type.replace('Geometry','').replace('Buffer','').toLowerCase()} at (${f2(p.base.x)}, ${f2(p.base.y)}, ${f2(p.base.z)})`;
+const describe=p=>`${p.label?`"${p.label}"`:p.box?`box ${f2(p.box.w)} × ${f2(p.box.h)} × ${f2(p.box.d)}`:p.cyl?`cylinder r ${f2(p.cyl.r)} h ${f2(p.cyl.h)}`:p.mesh.geometry.type.replace('Geometry','').replace('Buffer','').toLowerCase()} at (${f2(p.base.x)}, ${f2(p.base.y)}, ${f2(p.base.z)})`;
 
 function build(){
   stopRun();select(null);
-  const entry=GENS3D.find(g=>g[0]===I.name)||GENS3D[0],[name,gen]=entry,cfg=cfgFor(I.diff,I.level),salt=I.variant?'v'+I.variant:'';
+  let entry=entryOf(I.name)||ENTRIES[0];if(entry.mode==='real'&&!REAL.ready)entry=ENTRIES[0]; // the .glb didn't load
+  const{name,gen,mode}=entry,cfg=cfgFor(I.diff,I.level),salt=I.variant?'v'+I.variant:'';
   let lv=null,raw=null,seed='',tries=0;
   // Same seeds as buildLevel() in game.js, so variant 0 is exactly what that level shows in a run.
   // Each seed is built twice: once as the generator made it (to show what finalize() drops), once finalized.
-  for(let a=0;a<10&&!lv;a++){seed=`3d|${I.diff}|${I.level}|${salt}|${a}`;tries=a+1;
+  for(let a=0;a<10&&!lv;a++){seed=`${mode}|${I.diff}|${I.level}|${salt}|${a}`;tries=a+1;
     BLD={group:new THREE.Group(),parts:[]};gen(rng(seed),cfg);raw=BLD;
-    BLD={group:new THREE.Group(),parts:[]};const R=rng(seed);gen(R,cfg);lv=finalize(R,cfg,'3d');
+    BLD={group:new THREE.Group(),parts:[]};const R=rng(seed);gen(R,cfg);lv=finalize(R,cfg,mode);
     if(!lv){disposeTree(raw.group);disposeTree(BLD.group)}}
   if(!lv){setCurrent(null);B={failed:true,seed,tries,cfg};renderStats();return}
   lv.name=name;const all=BLD.parts,deadIds=new Set(all.filter(p=>!p.static&&p.dead).map(p=>p.id));
@@ -180,17 +184,18 @@ function stopRun(){clearInterval(I.timer);I.timer=0;el('iRun').textContent='Take
 function run(){if(I.timer)return stopRun();el('iRun').textContent='Pause';I.timer=setInterval(()=>{if(!step())stopRun()},reduceMotion?60:140)}
 
 /* ----- playing the model for real ----- */
-const gamePick=pick3D,gameBuild=buildLevel;
+const gamePick=pick3D,gamePickReal=pickReal,gameBuild=buildLevel;
 buildLevel=(mode,diff,level,cfg,salt='')=>gameBuild(mode,diff,level,cfg,salt||(state==='play'&&I.variant?'v'+I.variant:''));
-function play(){stopRun();const entry=GENS3D.find(g=>g[0]===I.name);pick3D=(d,l,salt)=>salt==='demo'?gamePick(d,l,salt):entry;
-  Object.assign(G,{mode:'3d',diff:I.diff,level:I.level,score:0,hearts:3});panel.hidden=true;back.hidden=false;startLevel()}
+function play(){stopRun();const e=entryOf(I.name)||ENTRIES[0],entry=[e.name,e.gen,e.cat];pick3D=(d,l,salt)=>salt==='demo'?gamePick(d,l,salt):entry;
+  pickReal=(d,l,salt)=>salt==='demo'?gamePickReal(d,l,salt):entry;
+  Object.assign(G,{mode:e.mode,diff:I.diff,level:I.level,score:0,hearts:3});panel.hidden=true;back.hidden=false;startLevel()}
 function open(){stopRun();state='inspect';LS=null;closeModal();
   ['#hud','#tools','#viewBtn','#menu','#loading'].forEach(s=>$(s).hidden=true);$('#fx').innerHTML='';
   panel.hidden=false;back.hidden=true;build()}
 back.onclick=open;
 
 /* ----- controls ----- */
-const models=GENS3D.map(g=>g[0]);
+const models=ENTRIES.map(e=>e.key);
 const shift=(d)=>{I.name=models[(models.indexOf(I.name)+d+models.length)%models.length];I.variant=0;build()};
 el('iPrev').onclick=()=>shift(-1);el('iNext').onclick=()=>shift(1);
 el('iModel').onchange=e=>{I.name=e.target.value;I.variant=0;build()};
@@ -210,5 +215,6 @@ addEventListener('keydown',e=>{if(state!=='inspect'||/^(INPUT|SELECT|TEXTAREA)$/
     r:()=>{I.variant++;build()},x:()=>flip('iXray'),d:()=>flip('iDropped'),s:()=>flip('iSlots'),' ':()=>{stopRun();step()}}[k];
   if(act){e.preventDefault();act()}});
 
-open();
+// realism models load on first use: wait for them, so ?models=real:owl opens on the owl
+REAL.load().catch(e=>console.error(e)).then(open);
 })();

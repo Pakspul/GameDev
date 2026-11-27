@@ -7,6 +7,7 @@
 //   - a game that doesn't render a canvas
 //   - a missing translation (every page runs once per language; see shared/js/i18n.js)
 //   - a game without the shared back button and menu (shared/js/gamenav.js), or without its keep-screen-on switch
+//   - Unscrew's realism mode not loading its Blender models, or not starting a level
 // Screenshots land in test-results/ so you can eyeball every game in a few seconds.
 //
 //   npm test            tests dist/ (run `npm run build` first; `npm test` does it for you)
@@ -115,6 +116,17 @@ for (const lang of LANGS) for (const { name, path } of pages) {
     // A tap in the middle of the screen: whatever it hits, it must not throw.
     await page.touchscreen.tap(206, 460);
     await page.waitForTimeout(600);
+    // Unscrew's realism mode loads its Blender models (.glb) on first use: pick it, and start a level of it.
+    if (name === "unscrew") {
+      await page.click(`.lob-choice [role=radio]:has-text("${lang === "nl" ? "Realisme" : "Realism"}")`);
+      await page.waitForFunction(() => CUR && CUR.mode === "real", null, { timeout: 15000 }).catch(() => problems.push("realism mode shows no model in the menu"));
+      await page.click(".lob-play .lob-go");
+      await page.waitForFunction(() => LS && LS.lv.mode === "real", null, { timeout: 15000 }).catch(() => problems.push("a realism level doesn't start"));
+      const lv = await page.evaluate(() => LS && { total: LS.total, name: LS.lv.name });
+      if (lv && !(lv.total >= 9)) problems.push(`realism level "${lv.name}" has ${lv.total} screws`);
+      await page.screenshot({ path: join(OUT, `unscrew-real-${lang}.png`) });
+      await page.evaluate(() => { localStorage.removeItem("unscrew.v2"); });
+    }
   }
 
   await page.screenshot({ path: join(OUT, `${name}-${lang}.png`) });

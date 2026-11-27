@@ -1,6 +1,7 @@
 {
   "mimeTypes": {
-    ".webmanifest": "application/manifest+json"
+    ".webmanifest": "application/manifest+json",
+    ".glb": "model/gltf-binary"
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",

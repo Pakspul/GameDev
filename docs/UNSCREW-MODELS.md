@@ -14,7 +14,7 @@ games/unscrew/models/
   order.js      MODEL_ORDER: the fixed order of all models in the level shuffle; it builds GENS3D for game.js
 ```
 
-✅ = in the game. The other entries are ideas: pick one, build it, tick it here.
+✅ = in the game. "realism" = in the game as a Blender model in realism mode only. The other entries are ideas: pick one, build it, tick it here.
 
 ### 1. Houses (`houses.js`)
 
@@ -47,7 +47,7 @@ games/unscrew/models/
 | Turtle | ✅ | A tiered shell: rims of scutes around two cores, hexagonal plates on top that each hide a screw; flippers, a head on a neck, a pond |
 | Elephant | | Big ears as plates, a trunk of stacked cylinders, a saddle blanket |
 | Dinosaur (stegosaurus) | | A row of back plates and a spiked tail |
-| Owl | | A round body, feather plates in rows, big eyes, on a branch |
+| Owl | realism | Made in Blender for realism mode ([UNSCREW-BLENDER.md](UNSCREW-BLENDER.md)): on a tree stump with feather plates, wings, ear tufts, facial discs, mushrooms, ivy and acorns. Not yet a 3D generator |
 | Cow | | Patches like the giraffe's spots, a bell, in a little meadow with a fence |
 | Penguin | | On an ice floe, with a fish |
 | Crab | | A wide shell, claws and legs on both sides |
