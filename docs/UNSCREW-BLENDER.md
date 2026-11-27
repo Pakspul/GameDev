@@ -2,10 +2,10 @@
 
 *As of 27 November 2026.* Blender is used in two ways for Unscrew:
 
-- **Realism mode** (a trial, since 27 November 2026): finished models made in Blender go into the game as they are. It's a third view in the menu, next to 2D and 3D, and the [first section](#realism-mode-blender-models-in-the-game) below covers it. The first model is an owl. If it works out, realism may replace the 3D view.
+- **Realism mode** (a trial, since 27 November 2026): finished models made in Blender go into the game as they are. It's a third view in the menu, next to 2D and 3D, and the [first section](#realism-mode-blender-models-in-the-game) below covers it. The models are an owl and a [medieval house](#the-medieval-house) with hundreds of screws. If it works out, realism may replace the 3D view.
 - **As a sketchpad** for the code-built 3D models: see [Blender as a sketchpad](#blender-as-a-sketchpad-for-3d-models).
 
-Claude can control Blender through MCP (Model Context Protocol) on your own computer, and it can also run Blender without a screen (the `bpy` Python module), for example in a cloud session. The owl was built that way. The MCP setup was done on the laptop, but Blender is too heavy for it, so the hand work continues on the desktop PC.
+Claude can control Blender through MCP (Model Context Protocol) on your own computer, and it can also run Blender without a screen (the `bpy` Python module), for example in a cloud session. The owl and the house were built that way. The MCP setup was done on the laptop, but Blender is too heavy for it, so the hand work continues on the desktop PC.
 
 ## Realism mode: Blender models in the game
 
@@ -23,7 +23,7 @@ A model is a Blender scene that follows a few rules. The game loads it as a `.gl
 | Custom property `minCx` (0 to 1.6) on a part, decoration or slot | Only from that difficulty on (the `cx` in `cfgFor()`), so harder levels show more detail |
 | Material names | Palette keys: `real/real.js` can recolour them per level |
 
-A model still changes from level to level. `finalize()` picks which slots get screws and what colour each screw is, and proves the level can be solved. Spare slots are fine: it drops the ones that are blocked, too close to something or facing down. `minCx` adds parts as the difficulty goes up. A palette is picked per level: the owl comes in tawny, snowy, grey and lavender.
+A model still changes from level to level. `finalize()` picks which slots get screws and what colour each screw is, and proves the level can be solved. Spare slots are fine: it drops the ones that are blocked, too close to something or facing down. `minCx` adds parts as the difficulty goes up. A palette is picked per level: the owl comes in tawny, snowy, grey and lavender, the house with white, ochre, pink or blue plaster, red tiles or slate, and an autumn tree.
 
 Units are game units, and Blender's −Y is the front the camera starts at. Keep a model within about 10 × 10 units of ground and 8 high.
 
@@ -31,13 +31,14 @@ Units are game units, and Blender's −Y is the front the camera starts at. Keep
 
 | File | What it is |
 |---|---|
-| `blender/unscrew/unscrew_kit.py` | Helpers for building models in Blender's Python: parts, screws, proxies, cover plates that follow a curved body, export. The rules above are in its header too. |
+| `blender/unscrew/unscrew_kit.py` | Helpers for building models in Blender's Python: parts, screws, proxies, cover plates that follow a curved body, `Shape` (boxes, cylinders, prisms and blobs merged into one mesh, for hard-surface models like the house), export. The rules above are in its header too. |
 | `blender/unscrew/owl.py` | Builds the owl from scratch, saves `owl.blend` and exports `owl.glb`. |
 | `blender/unscrew/owl.blend` | The owl as a Blender file: open it to shape it by hand. |
+| `blender/unscrew/house.py`, `house.blend` | The medieval house: the build script and its Blender file. |
 | `blender/unscrew/export.py` | Exports a `.blend` to `games/unscrew/real/<name>.glb`, with a few checks first. |
 | `blender/unscrew/render.py` | Renders a preview from the game's starting camera angle, without opening Blender. |
 | `games/unscrew/real/real.js` | The list of realism models (`REAL_MODELS`, with their palettes), loading, and the generator that turns a `.glb` into parts. |
-| `games/unscrew/real/owl.glb` | The owl as the game loads it. |
+| `games/unscrew/real/owl.glb`, `house.glb` | The models as the game loads them. |
 | `shared/vendor/three/GLTFLoader.js` | three.js r128's glTF loader, unchanged. |
 
 The `.glb` files load the first time someone picks realism, so 2D and 3D players never download them.
@@ -64,9 +65,10 @@ The last argument of `render.py` turns the camera around the model in degrees. R
 ### Adding a realism model
 
 1. Build it with the helpers, as `owl.py` does, or by hand in Blender. Save it as `blender/unscrew/<name>.blend` and export it.
-2. Add it at the end of `REAL_MODELS` in `games/unscrew/real/real.js`, with its category and palettes. Never reorder that list: the position decides which model each level shows.
+2. Add it at the end of `REAL_MODELS` in `games/unscrew/real/real.js`, with its category and palettes. Never reorder that list: the position decides which model each level shows. A big model can set `capMul`: the difficulty's cap on screws (`cap` in `cfgFor()`) is multiplied by it.
 3. Name it in `games/unscrew/strings.js` (`obj.<name>`, in every language).
 4. Run `node tests/unscrew.mjs` and look at it in the inspector, at every difficulty.
+5. Run `npm run unscrew:models -- real:<name> --drops`: screws per level, the share of parts kept (aim for 97% or more), the slowest build, and every dropped part.
 
 ### What makes a model play well
 
@@ -75,13 +77,36 @@ These come from the owl and from the checks in `finalize()`:
 - **Cover plates hide screws only when they're thick enough.** A plate over a hidden screw must reach at least 0.125 above the surface, sit less than 0.02 below it, and stay that thick 0.15 to every side of the screw. `plate()` makes 0.16 thick plates with a full-thickness middle. Thin chevrons and the edges of rounded shapes don't count.
 - **Screws facing down by more than about 17° are dropped**, and so are screws within 0.13 of another part. Put screws on the top and the sides.
 - **One material per part.** Eyes, dots and stems are child objects (decoration).
-- **More parts mean more screws.** A 3D model has about 120 screws on normal. The owl has about 50 on normal and 85 on expert, from 72 parts.
+- **More parts mean more screws.** A 3D model has about 120 screws on normal. The owl has about 50 on normal and 85 on expert, from 72 parts. The house has 300 parts and 400 to 500 screws.
+- **Screws need room from each other.** `finalize()` skips a screw within 0.52 of a chosen one on the same plane (0.42 when they face different ways, so two screws back to back on a thin wall clash). A part whose every slot clashes gets no screw and is dropped. Space a part's own screws 0.55 apart, and keep them 0.55 from the neighbours' screws.
+- **Leave 0.15 around a screw clear of overhangs.** The check casts five rays: from the screw and from 0.15 to each side. A ray that starts inside an overhang (a floor that juts out, the eaves, a window sill) or within 0.13 of one drops the slot. On the house that meant moving the beam screws down and raising the eaves.
+- **Don't let two parts wait for each other.** A screw is free when nothing is in front of it, however far away. If a garden part's screws face the house and the house's screws face it, neither comes off first and `finalize()` drops one. Point screws away from what's beside them: the tree's crown has no screws on the side facing the house.
+- **Parts made of several pieces:** let the pieces overlap a little rather than touch face to face, so the screw rays count crossings right (see `Shape` in `unscrew_kit.py`).
 - **Check proxies are closed.** The screw rays count how often they cross a surface to know whether they start inside something. `tests/unscrew.mjs` checks every part's collision shape.
+
+### The medieval house
+
+`house.py` builds a timber-framed house on a garden plot, with no hand work yet, so running it again is safe. It's the big puzzle of realism mode: about 300 parts and 570 screw slots, so 390 to 430 screws on easy and up to 500 on expert. `capMul: 10` in `real.js` lifts the usual cap of 80 to 240 screws, so the model decides. Nothing is hard about it: there are always lots of free screws, it just takes a while.
+
+- **Outside:** a stone ground floor with the front door, two timber-framed storeys that jut out over the one below, and gables. Posts, window frames, shutters, flower boxes and the door hide the screws of the walls behind them.
+- **The roof:** rows of pantiles hide the screws of the roof boards, then the ridge, the chimney and its cap.
+- **Inside, from the bottom:** a kitchen (hearth with a fire, a cauldron and a hood, a table with benches and bread, a dresser with plates, a barrel, a basket of apples) and a living room (armchair with a cushion, a rug, a round table with a candle, a chest, a spinning wheel); a bedroom (double bed with blanket and pillows, nightstand, wardrobe, chest, rug) and a bathroom (a wooden tub under a bucket shower, a washstand with a basin, a privy); a children's room (two beds, a toy chest, a rocking horse, a ball) and a study (desk with a book, chair, bookshelf, lectern); a loft under the roof (crates, barrels, grain sacks, a hay bale, an old trunk, drying herbs). Steep stairs turn on every floor, under a trapdoor.
+- **How it comes apart:** furniture stands on the floor boards and hides their screws, and the floor above blocks the furniture's screws, so every storey empties from the top down: tiles, roof boards, loft, attic floor, and so on. A pillow comes off before its blanket, the blanket before the bed.
+- **The garden:** a picket fence with a gate, flagstones, a well with a roof and a bucket, a vegetable bed with cabbages and pumpkins, an apple tree with a swing, a woodpile with a chopping block, a hen house and two hens, a wheelbarrow, a water butt, flower pots and stones.
+
+`minCx` keeps a few details (apples, pumpkins, a rug, the herb pole, some crown clumps) for the harder levels. The materials are palette keys, so the plaster, timber, shutters, roof and the tree can change colour per level.
+
+### Realism screws
+
+Realism mode has its own screw (`SGR` in `game.js`): a domed head with a deep Phillips recess, and a threaded steel shank that shows while it turns out. Head and recess are one mesh. Its vertex colours darken the recess towards the bottom and dim the reflections there too (`dimSpecular`), standing in for the shadow inside. The 2D and 3D views keep their flat, cartoon screw.
+
+Two fingers (or the right mouse button, or shift and drag) move the view across the model, which the house needs once you zoom in. The view button brings it back to the middle.
 
 ### Known limits and next steps
 
-- **File size.** `owl.glb` is 1.3 MB and about 70,000 triangles. Mesh compression (meshopt or Draco, and a decoder in the game) would shrink it a lot.
-- **Fewer screws than 3D models.** More feather plates and props would help, or more slots per part.
+- **File size.** `owl.glb` is 1.3 MB and about 70,000 triangles; `house.glb` is 3.8 MB and about 76,000 triangles, mostly because flat-shaded boxes need their own vertices per face. Mesh compression (meshopt or Draco, and a decoder in the game) would shrink both a lot. Both load the first time someone picks realism.
+- **Drawing the house is heavy.** With every screw in place it's about 1,950 draw calls and 700,000 triangles a frame (shadows included), against about 400 for the owl. Untested on a slow phone. Helpers if it stutters: draw only when something changes (the game draws every frame now), drop the screws' shadows, or merge each part's decoration into fewer meshes.
+- **Progress within a level isn't saved.** A house level takes a while; leaving the game halfway starts the level over.
 - **Look.** The game lights models with its own studio light and plain materials (`LOOK` in `game.js`), so a model looks flatter in the game than in a Blender render. Textures aren't used yet: export leaves out texture coordinates.
 
 ## Blender MCP setup

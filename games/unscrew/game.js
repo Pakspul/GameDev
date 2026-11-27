@@ -95,9 +95,9 @@ function finalize(R,cfg,mode){
     for(const s of vs.filter(s=>s.force).concat(rest)){if(!s.force&&mine.length>=k)break;if(close(s.p,s.n))continue;
       const sc={part:p,p:s.p,n:s.n,scale:S,force:s.force,hid:s.hid};mine.push(sc);chosen.push(sc)}
     p.screws=mine}
-  let total=chosen.length;
-  if(total>cfg.cap){const pool=R.shuffle(chosen.slice()).sort((a,b)=>(a.force+a.hid*2)-(b.force+b.hid*2));
-    for(const c of pool){if(total<=cfg.cap)break;if(c.part.screws.length<=1)continue;c.part.screws.splice(c.part.screws.indexOf(c),1);total--}}
+  let total=chosen.length;const cap=Math.round(cfg.cap*(BLD.capMul||1)); // a big model may allow more (real.js)
+  if(total>cap){const pool=R.shuffle(chosen.slice()).sort((a,b)=>(a.force+a.hid*2)-(b.force+b.hid*2));
+    for(const c of pool){if(total<=cap)break;if(c.part.screws.length<=1)continue;c.part.screws.splice(c.part.screws.indexOf(c),1);total--}}
   const kill=p=>{if(p.dead)return;p.dead=true;BLD.group.remove(p.mesh);disposeTree(p.mesh)};
   rem.forEach(p=>{if(!p.screws.length)kill(p)});
   PROXY_MAT.side=THREE.FrontSide;
@@ -214,12 +214,66 @@ const SG=(()=>{const head=new THREE.LatheGeometry([[0,0],[0.205,0],[0.21,0.035],
   const sh=new THREE.CylinderGeometry(0.06,0.045,0.4,10);sh.translate(0,-0.2,0);
   const dark=mergeGeos([c1,c2,sh]),hit=new THREE.SphereGeometry(0.31,10,8);hit.translate(0,0.05,0);
   [head,dark,hit].forEach(g=>g.userData.shared=true);return{head,dark,hit}})();
+// Realism mode's screw: a domed head with a deep cross recess, and a threaded shank that shows while it turns out.
+// Head and recess are one mesh. Vertex colours darken the recess the deeper it goes, and its reflections with it
+// (realMats), standing in for the shadow inside, so it reads as a hole and not as a cross painted on top.
+const SGR=(()=>{
+  let pos=[],nor=[],col=[];const P=(x,y,z)=>new THREE.Vector3(x,y,z);
+  const put=(v,n,k)=>{pos.push(v.x,v.y,v.z);nor.push(n.x,n.y,n.z);col.push(k,k,k)};
+  const geo=()=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+    g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));pos=[];nor=[];col=[];return g};
+  // a triangle wound to face roughly `want`, with its own normals (or the face normal)
+  const tri=(a,b,c,want,ka,kb,kc,na,nb,nc)=>{const f=b.clone().sub(a).cross(c.clone().sub(a)).normalize();
+    if(f.dot(want)<0){[b,c]=[c,b];[kb,kc]=[kc,kb];[nb,nc]=[nc,nb]}put(a,na||f,ka);put(b,nb||f,kb);put(c,nc||f,kc)};
+  const A=0.215,h=r=>0.035+0.08*Math.sqrt(Math.max(0,1-(r/A)**2));
+  const domeN=(x,z)=>{const r=Math.hypot(x,z);if(r<1e-6)return P(0,1,0);const d=-0.08*(r/(A*A))/Math.sqrt(Math.max(1e-4,1-(r/A)**2));return P(-d*x/r,1,-d*z/r).normalize()};
+  const RC=0.14,SEG=32,up=P(0,1,0);
+  // the rim and the outer dome, turned on a lathe; a little darker at the bottom, where it meets the surface
+  const prof=[[0,0],[0.19,0],[0.205,0.012],[0.208,0.032]];for(const r of[0.205,0.194,0.172,RC])prof.push([r,h(r)]);
+  const lathe=new THREE.LatheGeometry(prof.map(([x,y])=>new THREE.Vector2(x,y)),SEG).toNonIndexed(),lp=lathe.attributes.position,ln=lathe.attributes.normal;
+  for(let i=0;i<lp.count;i++)put(P(lp.getX(i),lp.getY(i),lp.getZ(i)),P(ln.getX(i),ln.getY(i),ln.getZ(i)),0.78+0.22*Math.min(1,lp.getY(i)/0.04));
+  // the top: the dome inside RC, around a cross-shaped hole. Shape (x, y) is (x, -z) in 3D, matching the lathe's seam
+  const W=0.04,L=0.13,WF=0.012,LF=0.104,to3=(x,y)=>P(x,h(Math.hypot(x,y)),-y);
+  const cross=[[L,W],[W,W],[W,L],[-W,L],[-W,W],[-L,W],[-L,-W],[-W,-W],[-W,-L],[W,-L],[W,-W],[L,-W]],hole=[];
+  const edgeOf=[];cross.forEach((c,i)=>{const d=cross[(i+1)%12],n=Math.max(1,Math.round(Math.hypot(d[0]-c[0],d[1]-c[1])/0.024));
+    for(let k=0;k<n;k++){hole.push(new THREE.Vector2(c[0]+(d[0]-c[0])*k/n,c[1]+(d[1]-c[1])*k/n));edgeOf.push(i)}});
+  const outline=hole.map(v=>v.clone()),ring=[];for(let i=0;i<SEG;i++){const a=i/SEG*Math.PI*2;ring.push(new THREE.Vector2(RC*Math.sin(a),-RC*Math.cos(a)))}
+  const faces=THREE.ShapeUtils.triangulateShape(ring,[hole]),vs=ring.concat(hole);
+  for(const[a,b,c]of faces){const[p,q,r]=[vs[a],vs[b],vs[c]].map(v=>to3(v.x,v.y));tri(p,q,r,up,1,1,1,domeN(p.x,p.z),domeN(q.x,q.z),domeN(r.x,r.z))}
+  // the recess: walls sloping in to a narrow floor that's deepest in the middle, like a Phillips head
+  const g=t=>Math.sign(t)*(Math.abs(t)<=W?Math.abs(t)*WF/W:WF+(Math.abs(t)-W)*(LF-WF)/(L-W));
+  const floorAt=(x,y)=>P(g(x),0.022+Math.min(1,Math.hypot(g(x),g(y))/LF)*0.066,-g(y)),shadeAt=v=>0.1+0.2*Math.min(1,Math.hypot(v.x,v.z)/LF);
+  // one normal per side of the cross, so each wall shades evenly
+  const sideN=cross.map((c,i)=>{const d=cross[(i+1)%12],t0=to3(c[0],c[1]),t1=to3(d[0],d[1]),f0=floorAt(c[0],c[1]);
+    const n=t1.clone().sub(t0).cross(f0.clone().sub(t0)).normalize(),inward=floorAt(d[0],d[1]).add(f0).sub(t0).sub(t1);inward.y=0.02;return n.dot(inward)<0?n.negate():n});
+  outline.forEach((v,i)=>{const w=outline[(i+1)%outline.length],t0=to3(v.x,v.y),t1=to3(w.x,w.y),f0=floorAt(v.x,v.y),f1=floorAt(w.x,w.y),n=sideN[edgeOf[i]];
+    tri(t0,t1,f1,n,0.5,0.5,shadeAt(f1),n,n,n);tri(t0,f1,f0,n,0.5,shadeAt(f1),shadeAt(f0),n,n,n)});
+  const fl=outline.map(v=>new THREE.Vector2(g(v.x),g(v.y)));
+  const floorY=v=>P(v.x,0.022+Math.min(1,v.length()/LF)*0.066,-v.y);
+  for(const[a,b,c]of THREE.ShapeUtils.triangulateShape(fl,[])){const[p,q,r]=[fl[a],fl[b],fl[c]].map(floorY);tri(p,q,r,up,shadeAt(p),shadeAt(q),shadeAt(r))}
+  const head=geo();
+  // the shank: a thread wound round a core that tapers to a point
+  const S=12,J=26,len=0.42,pitch=0.075,sp=[],si=[];
+  for(let j=0;j<=J;j++){const y=-j/J*len,tip=Math.min(1,(len+y)/0.09);
+    for(let i=0;i<=S;i++){const a=i/S*Math.PI*2,u=((-y/pitch+i/S)%1+1)%1,r=(0.042+0.02*(1-2*Math.abs(u-0.5)))*tip;sp.push(r*Math.sin(a),y,r*Math.cos(a))}}
+  for(let j=0;j<J;j++)for(let i=0;i<S;i++){const a=j*(S+1)+i,b=a+S+1;si.push(a,a+1,b,b,a+1,b+1)}
+  const shank=new THREE.BufferGeometry();shank.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));shank.setIndex(si);shank.computeVertexNormals();
+  [head,shank].forEach(g=>g.userData.shared=true);return{head,shank}})();
 const shared=m=>{m.userData.shared=true;return m};
 const headMats=SCREW_COLORS.map(c=>shared(new THREE.MeshStandardMaterial({color:srgb(c.hex),roughness:.28,metalness:.08})));
 const ghostMats=SCREW_COLORS.map(c=>shared(new THREE.MeshBasicMaterial({color:srgb(c.hex),transparent:true,opacity:.9,depthTest:false})));
 const darkMat=shared(new THREE.MeshStandardMaterial({color:srgb('#2a303a'),roughness:.45,metalness:.35}));
 const ghostDark=shared(new THREE.MeshBasicMaterial({color:srgb('#2a303a'),transparent:true,opacity:.9,depthTest:false}));
 const hitMat=shared(new THREE.MeshBasicMaterial({visible:false}));
+// The vertex colour (1 on the head, darker down the recess) also dims the highlights and reflections, like shadow would
+const dimSpecular=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <aomap_fragment>','#include <aomap_fragment>\n\treflectedLight.directSpecular*=vColor.r*vColor.r;reflectedLight.indirectSpecular*=vColor.r*vColor.r;')};
+const realMats=SCREW_COLORS.map(c=>{const m=new THREE.MeshStandardMaterial({color:srgb(c.hex),roughness:.3,metalness:.18,vertexColors:true});m.onBeforeCompile=dimSpecular;return shared(m)});
+const ghostRealMats=SCREW_COLORS.map(c=>shared(new THREE.MeshBasicMaterial({color:srgb(c.hex),vertexColors:true,transparent:true,opacity:.9,depthTest:false})));
+const shankMat=shared(new THREE.MeshStandardMaterial({color:srgb('#b4bcc6'),roughness:.3,metalness:.85}));
+// Paints a screw in its colour, or as a ghost seen through the model (x-ray): its head and its cross (a realism head has both)
+function screwLook(s,ghost){const[h,d]=s.group.children;h.castShadow=!ghost;h.renderOrder=d.renderOrder=ghost?30:0;
+  if(s.real){h.material=(ghost?ghostRealMats:realMats)[s.color];return}
+  h.material=(ghost?ghostMats:headMats)[s.color];d.material=ghost?ghostDark:darkMat}
 
 let CUR=null,LS=null,state='menu',anims=[];
 // replay: a single cleared level played again for more stars, outside the run (no lives, score or run saved)
@@ -227,14 +281,20 @@ const G={mode:'3d',diff:'normal',level:1,score:0,hearts:3,replay:false};
 // The camera orbits the object all the way round: az horizontally, pol from straight above (0) to straight below (PI).
 // The model itself never turns, so screw positions, raycasts and the sun's shadows stay in world space.
 const orbit={az:0.75,pol:1.02,dist:14,fit:14,target:V(),auto:false,tw:null};
+// Moving the view sideways (two fingers, or the right mouse button / shift and drag): the point it turns around moves
+// across the screen, so a zoomed-in player can reach every corner of a big model. It stays within the model.
+function panView(dx,dy){if(!CUR||CUR.mode==='2d')return;const k=2*orbit.dist*Math.tan(persp.fov*Math.PI/360)/innerHeight;
+  const r=V(1,0,0).applyQuaternion(persp.quaternion),u=V(0,1,0).applyQuaternion(persp.quaternion);
+  orbit.target.addScaledVector(r,-dx*k).addScaledVector(u,dy*k);const off=orbit.target.clone().sub(CUR.center),m=CUR.radius*0.85;
+  if(off.length()>m)orbit.target.copy(CUR.center).addScaledVector(off.normalize(),m);orbit.auto=false;if(orbit.tw)orbit.tw.target=null}
 const POL_MIN=0.06,POL_MAX=Math.PI-0.06;
 
-function look(s){if(s.state!=='in')return;const g=s.group,h=g.children[0],d=g.children[1],xr=LS&&LS.xrayUntil>performance.now();
-  if(!s.hidden){g.visible=true;h.material=headMats[s.color];d.material=darkMat;h.renderOrder=d.renderOrder=0;h.castShadow=true}
-  else if(xr){g.visible=true;h.material=ghostMats[s.color];d.material=ghostDark;h.renderOrder=d.renderOrder=30;h.castShadow=false}
-  else g.visible=false}
+function look(s){if(s.state!=='in')return;const g=s.group,xr=LS&&LS.xrayUntil>performance.now();
+  if(!s.hidden){g.visible=true;screwLook(s,false)}else if(xr){g.visible=true;screwLook(s,true)}else g.visible=false}
 function spawnScrews(lv){const meshes=lv.parts.filter(p=>!p.static).map(p=>p.ray);
-  lv.screws.forEach(s=>{const g=new THREE.Group(),h=new THREE.Mesh(SG.head,headMats[s.color]),d=new THREE.Mesh(SG.dark,darkMat),hit=new THREE.Mesh(SG.hit,hitMat);
+  const real=lv.mode==='real';
+  lv.screws.forEach(s=>{const g=new THREE.Group(),h=new THREE.Mesh(real?SGR.head:SG.head,headMats[s.color]),d=new THREE.Mesh(real?SGR.shank:SG.dark,real?shankMat:darkMat),hit=new THREE.Mesh(SG.hit,hitMat);
+    s.real=real;if(real)d.visible=false; // a realism screw's shank only shows while it turns out
     if(lv.mode==='2d')hit.scale.setScalar(1.1);g.add(h,d,hit);g.position.copy(s.p);g.quaternion.setFromUnitVectors(UPV,s.n);g.rotateY(Math.random()*Math.PI);
     g.scale.setScalar(s.scale);s.baseQ=g.quaternion.clone();s.group=g;s.hit=hit;hit.userData.screw=s;s.state='in';lv.group.add(g);
     s.blocker=firstBlocker(s,meshes);look(s)});return meshes}
@@ -269,14 +329,17 @@ function applyOrbit(){const sp=Math.sin(orbit.pol),t=orbit.target;persp.position
 addEventListener('resize',()=>{fitCamera(false)});
 
 /* --- input --- */
-const ptrs=new Map();let down=null,pinch0=0,dist0=0;const ndc=new THREE.Vector2(),pickRay=new THREE.Raycaster();
+const ptrs=new Map();let down=null,pinch0=0,dist0=0,mid=null;
+const midOf=()=>{const[a,b]=[...ptrs.values()];return{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};const ndc=new THREE.Vector2(),pickRay=new THREE.Raycaster();
 canvas.addEventListener('pointerdown',e=>{ensureAudio();try{canvas.setPointerCapture(e.pointerId)}catch(_){}ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(ptrs.size===1)down={x:e.clientX,y:e.clientY,moved:false};else{if(down)down.moved=true;const[a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);dist0=orbit.dist}});
+  if(ptrs.size===1)down={x:e.clientX,y:e.clientY,moved:false,pan:e.button===2||e.shiftKey};else{if(down)down.moved=true;const[a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);dist0=orbit.dist;mid=midOf()}});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointermove',e=>{const pv=ptrs.get(e.pointerId);if(!pv)return;const dx=e.clientX-pv.x,dy=e.clientY-pv.y;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   const is3=CUR&&CUR.mode!=='2d';
   if(ptrs.size===1&&down){if(!down.moved&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>7)down.moved=true;
-    if(down.moved&&is3){orbit.az-=dx*0.009;orbit.pol=Math.min(POL_MAX,Math.max(POL_MIN,orbit.pol-dy*0.007));orbit.auto=false;orbit.tw=null}}
-  else if(ptrs.size===2&&is3){const[a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(d>10)orbit.dist=clampDist(dist0*pinch0/d)}});
+    if(down.moved&&is3){if(down.pan)panView(dx,dy);else{orbit.az-=dx*0.009;orbit.pol=Math.min(POL_MAX,Math.max(POL_MIN,orbit.pol-dy*0.007));orbit.auto=false;orbit.tw=null}}}
+  else if(ptrs.size===2&&is3){const[a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(d>10)orbit.dist=clampDist(dist0*pinch0/d);
+    const m=midOf();if(mid)panView(m.x-mid.x,m.y-mid.y);mid=m}});
 function endPtr(e){const tap=down&&!down.moved&&ptrs.size===1&&e.type==='pointerup';ptrs.delete(e.pointerId);if(tap)onTap(e.clientX,e.clientY);if(!ptrs.size)down=null}
 canvas.addEventListener('pointerup',endPtr);canvas.addEventListener('pointercancel',endPtr);
 canvas.addEventListener('wheel',e=>{if(!CUR||CUR.mode==='2d')return;e.preventDefault();orbit.dist=clampDist(orbit.dist*(1+Math.sign(e.deltaY)*0.08))},{passive:false});
@@ -363,7 +426,7 @@ function pullScrew(s,delay=0){
   const box=bestBox(s.color);let dest;
   if(box){box.n++;dest={box,idx:box.n-1}}
   else{const slot=freeSlot();if(slot<0)return false;const it={c:s.color,slot,arrived:false};LS.buffer.push(it);dest={it}}
-  s.state='out';s.hidden=false;const g=s.group;g.visible=true;g.children[0].material=headMats[s.color];g.children[1].material=darkMat;g.children[0].renderOrder=g.children[1].renderOrder=0;
+  s.state='out';s.hidden=false;const g=s.group;g.visible=true;screwLook(s,false);
   LS.removed++;LS.busy++;addScore(10);renderProgress();
   const p=s.part;p.left--;if(p.left===0)killPart(p);
   const ls=LS,go=()=>{if(ls!==LS)return;sfx.unscrew();unscrewAnim(s,()=>{if(ls!==LS)return;const from=screenOf(s.group.position.clone().addScaledVector(s.n,0.06),s.scale);s.group.visible=false;LS.busy--;flyTo(s.color,from,dest)})};
@@ -420,7 +483,7 @@ function hammerHit(p){if(!p||!p.alive)return;const list=p.screws.filter(s=>s.sta
 
 /* --- 3D animations --- */
 const _qy=new THREE.Quaternion();
-function unscrewAnim(s,done){let t=0;const D=reduceMotion?0.08:0.32,base=s.p.clone();
+function unscrewAnim(s,done){let t=0;const D=reduceMotion?0.08:0.32,base=s.p.clone();if(s.real)s.group.children[1].visible=true;
   anims.push(dt=>{t+=dt;const k=Math.min(1,t/D),e=1-(1-k)*(1-k);s.group.position.copy(base).addScaledVector(s.n,0.5*e*s.scale);_qy.setFromAxisAngle(UPV,-k*Math.PI*3);s.group.quaternion.copy(s.baseQ).multiply(_qy);if(k>=1){done();return false}})}
 function shakeScrew(s){let t=0;anims.push(dt=>{t+=dt;_qy.setFromAxisAngle(UPV,Math.sin(t*55)*0.3*(1-t/0.3));s.group.quaternion.copy(s.baseQ).multiply(_qy);if(t>=0.3){s.group.quaternion.copy(s.baseQ);return false}})}
 function revealAnim(s){look(s);if(reduceMotion)return;let t=0;const g=s.group,S=s.scale;g.scale.setScalar(0.01);anims.push(dt=>{t+=dt;const k=Math.min(1,t/0.35);g.scale.setScalar(S*(k<0.7?k/0.7*1.25:1.25-(k-0.7)/0.3*0.25));if(k>=1){g.scale.setScalar(S);return false}})}
@@ -432,7 +495,7 @@ function fallPart(p){const m=p.mesh,is2=CUR.mode==='2d',mats=[];m.traverse(o=>{i
   const vel=dir.multiplyScalar(2.4).add(V(0,3.4,0)),spin=V(Math.random()-.5,Math.random()-.5,Math.random()-.5).multiplyScalar(6);
   anims.push(dt=>{t+=dt;vel.y-=16*dt;m.position.addScaledVector(vel,dt);m.rotation.x+=spin.x*dt;m.rotation.y+=spin.y*dt;m.rotation.z+=spin.z*dt;
     if(t>0.8)mats.forEach(([mm,o])=>mm.opacity=o*Math.max(0,1-(t-0.8)/0.6));if(t>1.4){m.parent&&m.parent.remove(m);return false}})}
-$('#viewBtn').onclick=()=>{if(!CUR||CUR.mode==='2d')return;orbit.tw={az:0.75,pol:1.02};orbit.dist=orbit.fit};
+$('#viewBtn').onclick=()=>{if(!CUR||CUR.mode==='2d')return;orbit.tw={az:0.75,pol:1.02,target:CUR.center.clone()};orbit.dist=orbit.fit};
 
 /* --- modals --- */
 function modal(title,body,actions){$('#mTitle').textContent=title;$('#mBody').innerHTML=body;const a=$('#mActions');a.innerHTML='';
@@ -544,7 +607,8 @@ function showMenu(){state='menu';LS=null;closeModal();placeNav();$('#hud').hidde
 let last=performance.now();
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;
   if(orbit.auto)orbit.az+=dt*0.22;
-  if(orbit.tw){let da=orbit.tw.az-orbit.az;da=Math.atan2(Math.sin(da),Math.cos(da));orbit.az+=da*Math.min(1,dt*6);orbit.pol+=(orbit.tw.pol-orbit.pol)*Math.min(1,dt*6);if(Math.abs(da)<0.002&&Math.abs(orbit.tw.pol-orbit.pol)<0.002)orbit.tw=null}
+  if(orbit.tw){let da=orbit.tw.az-orbit.az;da=Math.atan2(Math.sin(da),Math.cos(da));orbit.az+=da*Math.min(1,dt*6);orbit.pol+=(orbit.tw.pol-orbit.pol)*Math.min(1,dt*6);
+    const tt=orbit.tw.target;if(tt)orbit.target.lerp(tt,Math.min(1,dt*6));if(Math.abs(da)<0.002&&Math.abs(orbit.tw.pol-orbit.pol)<0.002&&(!tt||orbit.target.distanceTo(tt)<0.005))orbit.tw=null}
   if(camera===persp){applyOrbit();fadeBase()}
   if(anims.length)anims=anims.filter(a=>a(dt)!==false);
   renderer.render(scene,camera);requestAnimationFrame(frame)}

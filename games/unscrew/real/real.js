@@ -12,11 +12,17 @@
 
 // Append new models at the end and never reorder: the position decides which model each level shows.
 // palettes: one is picked per level; null keeps the colours from Blender.
+// capMul: a big model may have more screws than the difficulty's usual cap (cfgFor() in game.js), times this.
 const REAL_MODELS=[
   {name:'owl',cat:'animals',file:'real/owl.glb',palettes:[null,
     {owl_main:'#efe9df',owl_dark:'#8c8378',owl_light:'#ffffff',owl_face:'#ffffff',owl_eye:'#ffd23f'},
     {owl_main:'#a3aab3',owl_dark:'#5f6873',owl_light:'#e3e7ec',owl_face:'#f2f4f7',owl_eye:'#ff9f1c'},
-    {owl_main:'#c4b0e2',owl_dark:'#8a70bb',owl_light:'#f4edfc',owl_face:'#fcf9ff',owl_eye:'#8fd61f',owl_beak:'#ff9d5c'}]}];
+    {owl_main:'#c4b0e2',owl_dark:'#8a70bb',owl_light:'#f4edfc',owl_face:'#fcf9ff',owl_eye:'#8fd61f',owl_beak:'#ff9d5c'}]},
+  // The medieval house: three storeys and an attic, furnished room by room, in a garden. Hundreds of screws.
+  {name:'house',cat:'houses',file:'real/house.glb',capMul:10,palettes:[null,
+    {plaster:'#ecd3a0',timber:'#4b2f20',shutter:'#3f6ea8',roof:'#a34d37',roof_dark:'#7c3526'},
+    {plaster:'#f0cfc6',timber:'#5a3a2a',shutter:'#e9e1cf',frame:'#5a3a2a',roof:'#69707c',roof_dark:'#4c525c',brick:'#8b8f96'},
+    {plaster:'#d7e6ea',timber:'#3a2a22',shutter:'#b8463c',roof:'#c8744c',roof_dark:'#965232',leaves:'#d98a3a',leaves_light:'#e8b04a'}]}];
 
 const REAL={ready:false,parts:{},promise:null,
   load(){
@@ -49,7 +55,7 @@ function paintMat(m,pal){const c=m.clone();if(pal&&pal[m.name])c.color.copy(srgb
 // The generator for a realism model, called like any 3D generator: gen(R, cfg) fills BLD
 function realGen(m){return(R,cfg)=>{
   const parts=REAL.parts[m.name];if(!parts)throw new Error(`Unscrew: ${m.file} isn't loaded yet (REAL.load())`);
-  const pal=m.palettes?R.pick(m.palettes):null,keep=o=>!(+o.userData.minCx>cfg.cx);
+  const pal=m.palettes?R.pick(m.palettes):null,keep=o=>!(+o.userData.minCx>cfg.cx);BLD.capMul=m.capMul||1;
   for(const t of parts){if(t.minCx>cfg.cx)continue;
     const mesh=new THREE.Mesh(t.geo,paintMat(t.mat,pal));mesh.position.copy(t.pos);mesh.quaternion.copy(t.quat);mesh.scale.copy(t.scale);mesh.name=t.name;
     const p=regPart(mesh,t.proxy||t.geo,{static:t.static});p.label=t.name;

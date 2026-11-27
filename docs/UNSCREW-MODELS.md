@@ -23,6 +23,7 @@ games/unscrew/models/
 | Cottage | ✅ | Planked walls, gabled roof, chimney, fence, garden props |
 | Villa | ✅ | Modern: two floors, flat roofs, glass balustrade, solar panels, pool with a screwed-on rim |
 | Dutch canal house | ✅ | A row of one to three tall, narrow houses on a canal: brick courses, stepped gables, hoist beams, pairs of sash windows, a moored boat |
+| Medieval house | realism | Made in Blender for realism mode ([UNSCREW-BLENDER.md](UNSCREW-BLENDER.md#the-medieval-house)): a timber-framed house of three storeys and an attic, every room furnished (kitchen with hearth, living room, bedroom, a bathroom with a bucket shower, a children's room, a study, a loft), in a garden with a tree, a well and a vegetable bed. About 300 parts and 400 to 500 screws |
 | Farmhouse with barn | | House plus a barn with big doors, a silo (cylinder plus cladding), hay bales (boxes) |
 | Log cabin | | Walls of horizontal round logs (cylinders lying down), a stone chimney, a porch |
 | Houseboat | | A hull on blue water, a cabin on deck, plant pots, a gangway |

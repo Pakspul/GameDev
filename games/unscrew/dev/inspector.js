@@ -117,9 +117,8 @@ function build(){
   orbit.auto=I.spin&&!reduceMotion;requestAnimationFrame(()=>fitCamera(true));
   renderStats();remember()}
 
-function paint(s){if(s.state!=='in')return;const g=s.group,h=g.children[0],d=g.children[1],ghost=s.hidden;
-  g.visible=I.screws&&(!ghost||I.xray);h.material=ghost?ghostMats[s.color]:headMats[s.color];d.material=ghost?ghostDark:darkMat;
-  h.renderOrder=d.renderOrder=ghost?30:0;h.castShadow=!ghost}
+function paint(s){if(s.state!=='in')return;const g=s.group,ghost=s.hidden;
+  g.visible=I.screws&&(!ghost||I.xray);screwLook(s,ghost)}
 const liveParts=()=>B&&B.lv?B.lv.parts.filter(p=>!p.static&&p.alive):[];
 
 function renderStats(){
@@ -174,7 +173,7 @@ function step(){if(!B||!B.lv)return false;if(I.explode){el('iExp').value=I.explo
   const lv=B.lv,meshes=liveParts().map(p=>p.ray),s=lv.screws.find(s=>s.state==='in'&&!firstBlocker(s,meshes));
   if(!s){lv.screws.forEach(paint);return false}
   if(I.sel)select(null);
-  s.state='out';s.hidden=false;const g=s.group;g.visible=true;g.children[0].material=headMats[s.color];g.children[1].material=darkMat;g.children[0].renderOrder=g.children[1].renderOrder=0;
+  s.state='out';s.hidden=false;const g=s.group;g.visible=true;screwLook(s,false);
   unscrewAnim(s,()=>{g.visible=false});
   const p=s.part;if(--p.left===0){p.alive=false;fallPart(p);const left=liveParts().map(q=>q.ray);
     for(const x of lv.screws)if(x.state==='in'){firstBlocker(x,left);paint(x)}}
