@@ -131,6 +131,16 @@ Outbound works out the balance from the save every time (what you've earned minu
 
 Depot and Critters share the first three tiers; Orbit (sculptures of 10,000+ blocks, two to three times as long per level) is its own track. Undo is free on Easy and Medium and still costs a star there, like any help. Undoing a send that used a power refunds that power. Players start with 70; a save from before coins gets what its kept stars would have paid. See [LOOPLINE.md](LOOPLINE.md#coins-and-powers).
 
+### Bubbleworks: stardust ([`economy.js`](../games/bubbleworks/economy.js))
+
+| | Easy | Medium | Hard | Expert |
+|---|---|---|---|---|
+| 3-star clear pays | 20 | 35 | 60 | 100 |
+| Aim+ (peek) | 10 | 18 | 30 | 50 |
+| +5 shots (boost) | 40 | 70 | 120 | 200 |
+
+Levels 1–15 are Easy, 16–40 Medium, 41–80 Hard, then Expert; the daily level is Hard. Help exists only in Levels and the daily. Classic and Endless have no help to buy; they pay once for progress you haven't made before (a Classic stage cleared for the first time pays a level of its tier, and every 10 Endless rows past your best). Powers are collected on the board and can't be bought. Players start with 70. See [BUBBLEWORKS.md](BUBBLEWORKS.md#stardust-economy).
+
 ## Games without a currency
 
 - **Graphite**: hints are free and unlimited, and they cost stars (3 with none, 2 with one or two, 1 with more). Its hints explain the logic, so they're part of learning the puzzles, and there's nothing to buy.
