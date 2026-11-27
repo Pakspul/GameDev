@@ -1,4 +1,4 @@
-// Graphite: the game shell. Four puzzle types share one board renderer, one input model,
+// Graphite: the game shell. Five puzzle types share one board renderer, one input model,
 // undo, hints, timer, saving and the daily puzzles. The generators live in levels/*.js
 // (pure logic) and run in worker.js so the screen never freezes.
 (function () {
@@ -22,11 +22,13 @@ const ICON = {
   erase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H9L4.6 15.6a2 2 0 0 1 0-2.8l8.8-8.8a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8L11 18.4"/><path d="M8.5 9.5l6 6"/></svg>',
   pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1.2-4.6L16.5 4.1a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z"/><path d="M14.5 6l3.5 3.5"/></svg>',
   bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg>',
+  cross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg>',
   dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="6" r="1.8"/><circle cx="12" cy="6" r="1.8"/><circle cx="18" cy="6" r="1.8"/><circle cx="6" cy="12" r="1.8"/><path d="M12 8.6l1 2.2 2.4.3-1.8 1.6.5 2.4-2.1-1.2-2.1 1.2.5-2.4-1.8-1.6 2.4-.3z"/><circle cx="18" cy="12" r="1.8"/><circle cx="6" cy="18" r="1.8"/><circle cx="12" cy="18" r="1.8"/><circle cx="18" cy="18" r="1.8"/></svg>',
   // puzzle types
   sudoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18" stroke-width="1.3"/><text x="12" y="14.3" font-size="6.5" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none" font-family="sans-serif">7</text></svg>',
   takuzu: '<svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="4.6" fill="currentColor"/><path d="M18.8 13.4a4.8 4.8 0 1 1-4.2 7.2 4 4 0 0 0 4.2-7.2z" fill="currentColor"/><circle cx="16.5" cy="7.5" r="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2"/><circle cx="7.5" cy="16.5" r="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2"/></svg>',
   stars: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 3h10v7h8v11H3z"/><path d="M8 5.3l1.2 2.5 2.7.3-2 1.9.5 2.7L8 11.4l-2.4 1.3.5-2.7-2-1.9 2.7-.3z" fill="currentColor" stroke="none"/><path d="M16 13.8l1.2 2.5 2.7.3-2 1.9.5 2.7-2.4-1.3-2.4 1.3.5-2.7-2-1.9 2.7-.3z" fill="currentColor" stroke="none"/></svg>',
+  nonogram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="1.5"/><path d="M8.6 8.6h4v4h-4zM12.6 12.6h4v4h-4zM16.6 8.6h3.8v4h-3.8zM8.6 16.6h4v3.8h-4z" fill="currentColor" stroke="none"/><path d="M3 10.5h2.6M3 14.5h2.6M3 18.5h2.6M10.5 3v2.6M14.5 3v2.6M18.5 3v2.6" stroke-width="1.7" stroke-linecap="round"/></svg>',
   calcudoku: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 3h11v7H10v11H3z"/><path d="M14 3h7v18H10"/><text x="6.2" y="8.6" font-size="5.6" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none" font-family="sans-serif">+</text><text x="17.5" y="8.6" font-size="5.6" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none" font-family="sans-serif">×</text></svg>',
 };
 function fillIcons(root) {
@@ -41,8 +43,9 @@ const KINDS = {
   takuzu: { gen: window.GraphiteTakuzu, input: "cycle" },
   stars: { gen: window.GraphiteStars, input: "stars" },
   calcudoku: { gen: window.GraphiteCalcudoku, input: "digits" },
+  nonogram: { gen: window.GraphiteNonogram, input: "paint" },
 };
-const KIND_ORDER = ["sudoku", "takuzu", "stars", "calcudoku"];
+const KIND_ORDER = ["sudoku", "nonogram", "stars", "calcudoku", "takuzu"];
 // Names, descriptions and rules come from strings.js: "<kind>.name", "<kind>.tier.<tier>", "<kind>.rule.1", ...
 for (const k of KIND_ORDER) {
   const K = KINDS[k];
@@ -246,7 +249,7 @@ async function startGame(opts) {
   canvas.style.visibility = "";
   G = {
     kind, tier, level, date, slot, key, p: state.p, cells: state.cells.slice(), notes: state.notes.slice(),
-    hints: state.hints || 0, elapsed: state.elapsed || 0, perfecting: !!opts.perfecting, done: false, undo: [], sel: -1, noteMode: false, flash: null, hl: null, win: null,
+    hints: state.hints || 0, elapsed: state.elapsed || 0, perfecting: !!opts.perfecting, done: false, undo: [], sel: -1, noteMode: false, crossMode: false, flash: null, hl: null, win: null,
   };
   if (KINDS[kind].input === "digits") G.sel = firstEmpty();
   buildControls();
@@ -295,27 +298,44 @@ window.addEventListener("pagehide", persist);
 /* ---------- board geometry & drawing ---------- */
 const canvas = $("#board");
 const ctx = canvas.getContext("2d");
-let geo = { size: 0, pad: 0, cs: 0, dpr: 1 };
+// w, h: canvas size in CSS pixels; ox, oy: top-left corner of the grid; cs: cell size.
+// Most boards are square with the grid in the middle; a Nonogram adds its clues above and
+// to the left, so its canvas is as wide and tall as grid plus clues.
+let geo = { w: 0, h: 0, pad: 0, cs: 0, ox: 0, oy: 0, dpr: 1 };
+const CLUE_W = 0.62, CLUE_H = 0.56; // a clue number's slot, in cells
 
 function layout() {
   if (!G) return;
   const wrap = $("#boardWrap").getBoundingClientRect();
-  const size = Math.max(160, Math.floor(Math.min(wrap.width, wrap.height, 620)));
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  canvas.style.width = size + "px"; canvas.style.height = size + "px";
-  canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
-  const pad = Math.round(size * 0.018) + 2;
-  geo = { size, pad, cs: (size - 2 * pad) / G.p.n, dpr };
+  const n = G.p.n;
+  let w, h, pad, cs, ox, oy;
+  if (G.p.kind === "nonogram") {
+    const R = Math.max(1, ...G.p.rows.map((c) => c.length)), Cn = Math.max(1, ...G.p.cols.map((c) => c.length));
+    const W = Math.max(160, Math.min(wrap.width, 620)), H = Math.max(160, Math.min(wrap.height, 620));
+    pad = 4;
+    cs = Math.min((W - 2 * pad) / (n + R * CLUE_W), (H - 2 * pad) / (n + Cn * CLUE_H));
+    ox = pad + R * CLUE_W * cs; oy = pad + Cn * CLUE_H * cs;
+    w = Math.ceil(ox + n * cs + pad); h = Math.ceil(oy + n * cs + pad);
+  } else {
+    w = h = Math.max(160, Math.floor(Math.min(wrap.width, wrap.height, 620)));
+    pad = ox = oy = Math.round(w * 0.018) + 2;
+    cs = (w - 2 * pad) / n;
+  }
+  canvas.style.width = w + "px"; canvas.style.height = h + "px";
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  geo = { w, h, pad, cs, ox, oy, dpr };
   draw();
 }
 if (window.ResizeObserver) new ResizeObserver(() => { if (G && !$("#game").hidden) layout(); }).observe($("#boardWrap"));
 else window.addEventListener("resize", () => { if (G) layout(); });
 
-function cellAt(clientX, clientY) {
+function cellAt(clientX, clientY, clamp) {
   const r = canvas.getBoundingClientRect();
-  const x = clientX - r.left - geo.pad, y = clientY - r.top - geo.pad;
+  const x = clientX - r.left - geo.ox, y = clientY - r.top - geo.oy;
   const n = G.p.n;
-  const c = Math.floor(x / geo.cs), rr = Math.floor(y / geo.cs);
+  let c = Math.floor(x / geo.cs), rr = Math.floor(y / geo.cs);
+  if (clamp) { c = Math.max(0, Math.min(n - 1, c)); rr = Math.max(0, Math.min(n - 1, rr)); }
   if (c < 0 || rr < 0 || c >= n || rr >= n) return -1;
   return rr * n + c;
 }
@@ -332,11 +352,12 @@ function frame() {
 function draw() {
   if (!G) return;
   if (!colors) colors = readColors();
-  const { size, dpr } = geo;
+  const { w, h, dpr } = geo;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, size, size);
+  ctx.clearRect(0, 0, w, h);
   const k = G.p.kind;
   if (k === "takuzu") drawTakuzu();
+  else if (k === "nonogram") drawNonogram();
   else if (k === "stars") drawStars();
   else drawDigits();
   drawOverlayEffects();
@@ -344,7 +365,7 @@ function draw() {
 
 function cellRect(i) {
   const n = G.p.n, r = (i / n) | 0, c = i % n;
-  return { x: geo.pad + c * geo.cs, y: geo.pad + r * geo.cs, r, c };
+  return { x: geo.ox + c * geo.cs, y: geo.oy + r * geo.cs, r, c };
 }
 
 function roundRect(x, y, w, h, rad) {
@@ -601,6 +622,98 @@ function drawStars() {
   void pad;
 }
 
+/* --- Nonogram: clues above and to the left; cells are 0 empty, 1 filled, 2 crossed --- */
+// "done": the line's filled blocks match its clue; "bad": no way to fit the clue any more
+// (only with "Show clashes" on; like the other clashes it never looks at the solution).
+function nonoLineState(li) {
+  const p = G.p, n = p.n, cells = GraphiteNonogram.linesOf(n)[li];
+  const clue = li < n ? p.rows[li] : p.cols[li - n];
+  const vals = cells.map((i) => G.cells[i]);
+  const got = GraphiteNonogram.runs(vals);
+  if (got.length === clue.length && got.every((v, k) => v === clue[k])) return "done";
+  if (store.settings.mistakes && !GraphiteNonogram.lineSolve(clue, vals.map((v) => (v === 1 ? 1 : v === 2 ? 0 : -1)))) return "bad";
+  return "";
+}
+function drawNonogram() {
+  const p = G.p, n = p.n, { cs, ox, oy, pad } = geo, cells = G.cells;
+  const sr = G.sel >= 0 ? (G.sel / n) | 0 : -1, sc = G.sel >= 0 ? G.sel % n : -1;
+  const N = n * cs;
+  // clue bands, with the selected cell's row and column lit
+  ctx.fillStyle = colors.cell;
+  roundRect(pad, oy, ox - pad, N, Math.min(8, cs * 0.2)); ctx.fill();
+  roundRect(ox, pad, N, oy - pad, Math.min(8, cs * 0.2)); ctx.fill();
+  if (sr >= 0 && !G.done) {
+    ctx.fillStyle = colors.peer;
+    ctx.fillRect(pad, oy + sr * cs, ox - pad + N, cs);
+    ctx.fillRect(ox + sc * cs, pad, cs, oy - pad + N);
+  }
+  ctx.strokeStyle = colors.grid; ctx.lineWidth = 1; ctx.globalAlpha = 0.6;
+  ctx.beginPath();
+  for (let k = 1; k < n; k++) {
+    const q = Math.round(oy + k * cs) + 0.5, t = Math.round(ox + k * cs) + 0.5;
+    ctx.moveTo(pad + 3, q); ctx.lineTo(ox, q);
+    ctx.moveTo(t, pad + 3); ctx.lineTo(t, oy);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.font = `700 ${Math.max(9, cs * 0.42)}px "Atkinson Hyperlegible", system-ui, sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const clueText = (li, clue, place) => {
+    const st = nonoLineState(li), list = clue.length ? clue : [0];
+    ctx.fillStyle = st === "bad" ? colors.bad : st === "done" ? colors.muted : colors.ink;
+    ctx.globalAlpha = st === "done" ? 0.5 : 1;
+    list.forEach((v, k) => { const [x, y] = place(list.length - k - 0.5); ctx.fillText(String(v), x, y); });
+    ctx.globalAlpha = 1;
+  };
+  for (let r = 0; r < n; r++) clueText(r, p.rows[r], (back) => [ox - back * CLUE_W * cs, oy + r * cs + cs / 2]);
+  for (let c = 0; c < n; c++) clueText(n + c, p.cols[c], (back) => [ox + c * cs + cs / 2, oy - back * CLUE_H * cs + cs * 0.04]);
+  // the grid
+  ctx.fillStyle = colors.cell; ctx.fillRect(ox, oy, N, N);
+  if (sr >= 0 && !G.done) {
+    ctx.fillStyle = colors.peer;
+    ctx.fillRect(ox, oy + sr * cs, N, cs);
+    ctx.fillRect(ox + sc * cs, oy, cs, N);
+  }
+  for (let i = 0; i < n * n; i++) {
+    const v = cells[i];
+    if (!v) continue;
+    const { x, y } = cellRect(i);
+    if (v === 1) { ctx.fillStyle = colors.ink; ctx.fillRect(x, y, cs + 0.5, cs + 0.5); }
+    else if (!G.done) { // crosses are scaffolding: they disappear when the picture is done
+      const a = cs * 0.24;
+      ctx.strokeStyle = colors.muted; ctx.lineWidth = Math.max(1.5, cs * 0.07); ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x + cs / 2 - a, y + cs / 2 - a); ctx.lineTo(x + cs / 2 + a, y + cs / 2 + a);
+      ctx.moveTo(x + cs / 2 + a, y + cs / 2 - a); ctx.lineTo(x + cs / 2 - a, y + cs / 2 + a);
+      ctx.stroke();
+    }
+  }
+  // thin lines between cells, thick ones every five, and a frame
+  ctx.strokeStyle = colors.grid; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let k = 1; k < n; k++) {
+    if (k % 5 === 0) continue;
+    const q = Math.round(oy + k * cs) + 0.5, t = Math.round(ox + k * cs) + 0.5;
+    ctx.moveTo(ox, q); ctx.lineTo(ox + N, q);
+    ctx.moveTo(t, oy); ctx.lineTo(t, oy + N);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = colors.ink; ctx.lineWidth = Math.max(1.5, cs * 0.05);
+  ctx.beginPath();
+  for (let k = 5; k < n; k += 5) {
+    ctx.moveTo(ox, oy + k * cs); ctx.lineTo(ox + N, oy + k * cs);
+    ctx.moveTo(ox + k * cs, oy); ctx.lineTo(ox + k * cs, oy + N);
+  }
+  ctx.stroke();
+  ctx.lineWidth = Math.max(2, cs * 0.07);
+  ctx.strokeRect(ox, oy, N, N);
+  if (G.sel >= 0 && kbdUsed && !G.done) {
+    const { x, y } = cellRect(G.sel);
+    ctx.strokeStyle = colors.accent; ctx.lineWidth = 3;
+    ctx.strokeRect(x + 2, y + 2, cs - 4, cs - 4);
+  }
+}
+
 function drawOverlayEffects() {
   const now = performance.now();
   if (G.hl) {
@@ -724,6 +837,7 @@ canvas.addEventListener("pointerdown", (e) => {
   const input = KINDS[G.kind].input;
   if (input === "digits") { G.sel = i; draw(); updateControls(); return; }
   if (input === "cycle") { G.sel = i; cycleTakuzu(i); return; }
+  if (input === "paint") { G.sel = i; paintStart(i); try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } return; }
   // stars: tap cycles empty → dot → star → empty; dragging from a new dot paints dots
   G.sel = i;
   const act = begin();
@@ -737,6 +851,7 @@ canvas.addEventListener("pointerdown", (e) => {
 });
 canvas.addEventListener("pointermove", (e) => {
   if (!drag || !G) return;
+  if (drag.paint) { const i = cellAt(e.clientX, e.clientY, true); if (i !== drag.last) { drag.last = i; paintTo(i); } return; }
   const i = cellAt(e.clientX, e.clientY);
   if (i < 0 || i === drag.last) return;
   drag.last = i;
@@ -746,11 +861,39 @@ canvas.addEventListener("pointermove", (e) => {
 function endDrag() {
   if (!drag) return;
   const d = drag; drag = null;
+  if (d.paint) { commit(d.act, d.clear ? "erase" : "tick"); return; }
   const star = [...d.act.values()].some((e) => G.cells[e.i] === 2);
   commit(d.act, star ? "tick" : "erase");
 }
 canvas.addEventListener("pointerup", endDrag);
 canvas.addEventListener("pointercancel", endDrag);
+
+// Nonogram painting: the first cell decides between marking (fill, or cross in cross mode)
+// and clearing; dragging then repeats that along the row or column the finger set off in.
+// Marking skips cells that already hold the other mark, so a careless swipe can't wipe crosses.
+function paintStart(i) {
+  const m = G.crossMode ? 2 : 1;
+  drag = { paint: true, act: begin(), start: i, last: i, axis: null, m, clear: G.cells[i] === m };
+  paintTo(i);
+}
+function paintTo(i) {
+  const n = G.p.n, d = drag, r0 = (d.start / n) | 0, c0 = d.start % n;
+  let r = (i / n) | 0, c = i % n;
+  if (!d.axis && i !== d.start) d.axis = Math.abs(r - r0) >= Math.abs(c - c0) ? "col" : "row";
+  if (d.axis === "row") r = r0; else if (d.axis === "col") c = c0;
+  const seg = new Set(), dr = Math.sign(r - r0), dc = Math.sign(c - c0);
+  for (let rr = r0, cc = c0; ; rr += dr, cc += dc) { seg.add(rr * n + cc); if (rr === r && cc === c) break; }
+  for (const e of d.act.values()) if (!seg.has(e.i)) G.cells[e.i] = e.c0; // dragged back: undo those
+  for (const j of seg) {
+    const v0 = d.act.has(j) ? d.act.get(j).c0 : G.cells[j];
+    let v = v0;
+    if (d.clear) { if (v0 === d.m) v = 0; }
+    else if (j === d.start || v0 === 0) v = d.m;
+    setCell(d.act, j, v);
+  }
+  G.sel = r * n + c;
+  draw();
+}
 
 /* ---------- keyboard ---------- */
 document.addEventListener("keydown", (e) => {
@@ -788,6 +931,12 @@ document.addEventListener("keydown", (e) => {
         const act = begin(); setCell(act, i, +e.key); commit(act, "tick");
       } else if (e.key === "Backspace" || e.key === "Delete") erase();
       else return;
+    } else if (input === "paint") {
+      const m = e.key === " " || e.key === "Enter" ? 1 : e.key === "x" || e.key === "X" || e.key === "." ? 2 : e.key === "Backspace" || e.key === "Delete" ? 0 : -1;
+      if (m < 0) return;
+      const act = begin();
+      setCell(act, i, m && G.cells[i] === m ? 0 : m);
+      commit(act, G.cells[i] ? "tick" : "erase");
     } else {
       const act = begin();
       if (e.key === " " || e.key === "Enter") { const v = G.cells[i]; setCell(act, i, v === 0 ? 1 : v === 1 ? 2 : 0); if (G.cells[i] === 2) autodot(act, i); }
@@ -816,6 +965,11 @@ function buildControls() {
     pad.querySelectorAll(".key").forEach((b) => b.addEventListener("click", () => inputDigit(+b.dataset.d)));
     $("#tErase").addEventListener("click", erase);
     $("#tNotes").addEventListener("click", toggleNotes);
+  } else if (k === "nonogram") {
+    pad.style.gridTemplateColumns = "1fr";
+    pad.innerHTML = `<div class="legend" id="nonoLegend"></div>`;
+    tools.innerHTML = tool("tUndo", "undo", _t("tool.undo")) + tool("tCross", "cross", _t("tool.cross")) + tool("tHint", "bulb", _t("tool.hint"));
+    $("#tCross").addEventListener("click", () => { G.crossMode = !G.crossMode; updateControls(); });
   } else if (k === "takuzu") {
     pad.style.gridTemplateColumns = "1fr";
     pad.innerHTML = `<div class="legend">${_t("legend.takuzu", { sun: `<i style="background:${readColors().sun}"></i>`, moon: `<i style="background:${readColors().moon}"></i>` })}</div>`;
@@ -839,6 +993,8 @@ function updateControls() {
   if (nb) { nb.setAttribute("aria-pressed", String(G.noteMode)); $("#pad").classList.toggle("notes", G.noteMode); }
   const ab = $("#tAuto");
   if (ab) ab.setAttribute("aria-pressed", String(!!store.settings.autodot));
+  const xb = $("#tCross");
+  if (xb) { xb.setAttribute("aria-pressed", String(G.crossMode)); $("#nonoLegend").textContent = _t(G.crossMode ? "legend.nonoCross" : "legend.nonoFill"); }
   const keys = $("#pad").querySelectorAll(".key");
   if (keys.length) {
     const n = G.p.n, count = new Array(n + 1).fill(0);
@@ -856,6 +1012,7 @@ function isWrong(i) {
   const p = G.p, v = G.cells[i];
   if (p.kind === "sudoku" || p.kind === "calcudoku") return v !== 0 && v !== p.solution[i];
   if (p.kind === "takuzu") return v >= 0 && v !== p.solution[i];
+  if (p.kind === "nonogram") return (v === 1 && !p.solution[i]) || (v === 2 && p.solution[i] === 1);
   return (v === 2 && p.solution[i] !== 1) || (v === 1 && p.solution[i] === 1);
 }
 let toastTimer = 0;
@@ -876,7 +1033,8 @@ function hint() {
     G.hints++;
     G.sel = i;
     G.flash = { cell: i, until: performance.now() + 1400, bad: true };
-    const what = p.kind === "stars" ? (G.cells[i] === 2 ? "wrong.star" : "wrong.dot") : p.kind === "takuzu" ? "wrong.symbol" : "wrong.digit";
+    const what = p.kind === "stars" ? (G.cells[i] === 2 ? "wrong.star" : "wrong.dot") : p.kind === "takuzu" ? "wrong.symbol"
+      : p.kind === "nonogram" ? (G.cells[i] === 1 ? "wrong.fill" : "wrong.cross") : "wrong.digit";
     toast(_t(what, { v: G.cells[i] }), 4500);
     const act = begin();
     setCell(act, i, p.kind === "takuzu" ? -1 : 0, 0);
@@ -901,12 +1059,14 @@ function hint() {
       if (c < bestN) { best = i; bestN = c; }
     }
     if (best >= 0) h = { cell: best, value: p.solution[best], text: _t(bestN === 1 ? "hint.calcuOnly" : "hint.calcuIs", { v: p.solution[best] }) };
+  } else if (p.kind === "nonogram") {
+    h = nonogramHint(p);
   } else {
     h = starsHint(p);
   }
   if (!h) {
     for (let i = 0; i < n * n; i++) {
-      const want = p.kind === "stars" ? (p.solution[i] ? 2 : null) : p.solution[i];
+      const want = p.kind === "stars" ? (p.solution[i] ? 2 : null) : p.kind === "nonogram" ? (p.solution[i] ? 1 : null) : p.solution[i];
       if (want !== null && G.cells[i] !== want) { h = { cell: i, value: want, text: _t("hint.filled") }; break; }
     }
   }
@@ -914,6 +1074,7 @@ function hint() {
   G.hints++;
   const act = begin();
   setCell(act, h.cell, h.value, 0);
+  for (const j of h.also || []) setCell(act, j, h.value, 0);
   if (p.kind === "stars") { for (const d of h.dots || []) if (G.cells[d] === 0) setCell(act, d, 1); autodot(act, h.cell); }
   if (p.kind === "sudoku" || p.kind === "calcudoku") for (const j of peersOf(h.cell)) if (G.notes[j] & (1 << h.value)) setCell(act, j, G.cells[j], G.notes[j] & ~(1 << h.value));
   G.sel = h.cell;
@@ -922,6 +1083,15 @@ function hint() {
   else toast(h.text, 5200);
   commit(act, "tick");
   kick();
+}
+/** Nonogram: one line, and every cell its clue settles (all filled, or all crossed). */
+function nonogramHint(p) {
+  const n = p.n, state = G.cells.map((v) => (v === 1 ? 1 : v === 2 ? 0 : -1));
+  const r = GraphiteNonogram.hint(n, p.rows, p.cols, state);
+  if (!r) return null;
+  const clue = r.line < n ? p.rows[r.line] : p.cols[r.line - n];
+  const text = _t("nono." + r.why, { line: _t(r.line < n ? "unit.row" : "unit.column"), clue: clue.length ? clue.join(" ") : "0", n: r.cells.length });
+  return { cell: r.cells[0], value: r.value ? 1 : 2, also: r.cells.slice(1), pages: [{ text, highlight: GraphiteNonogram.linesOf(n)[r.line], pulse: r.cells }] };
 }
 /** Star Battle: the easiest star to see, explained step by step so the player learns how. */
 function starsHint(p) {
@@ -1020,6 +1190,7 @@ function takuzuHintText(r, n) {
 function solved() {
   const p = G.p;
   if (p.kind === "stars") return G.cells.every((v, i) => (v === 2) === (p.solution[i] === 1));
+  if (p.kind === "nonogram") return G.cells.every((v, i) => (v === 1) === (p.solution[i] === 1));
   return G.cells.every((v, i) => v === p.solution[i]);
 }
 function checkWin() {
@@ -1049,7 +1220,8 @@ function checkWin() {
   const now = performance.now();
   G.win = { start: now, until: now + 1300 };
   kick();
-  setTimeout(show, 1150);
+  // a nonogram's reward is the picture: let it stand a moment longer before the card covers it
+  setTimeout(show, G.kind === "nonogram" ? 2100 : 1150);
 }
 function showWin(stars, time, best, newBest) {
   if (!G) return;

@@ -19,6 +19,22 @@ Template: copy this to the top for a new day
 -
 -->
 
+## 2026-11-27
+
+**Done**
+- **Graphite: Nonogram**, a fifth puzzle type. Fill the cells the row and column clues ask for, and a little picture appears. Four tiers (5×5, 8×8, 10×10, 12×12), endless seeded levels, a fifth daily.
+  - Pictures are random noise smoothed into blobs, often mirrored, so they look like shapes. A picture is kept only if the line solver finishes it, which proves one solution and no guessing; harder tiers keep the picture that needs the most sweeps. Clues are capped (3 to 5 numbers per line) so they fit beside the board on a phone. Generating takes a few milliseconds.
+  - Tap to fill, tap again to clear; drag to paint along a row or column. **Cross** mode marks cells that stay empty (optional; crosses disappear when the picture is done). Clues dim when their line matches, and turn red when they can't fit any more (with "Show clashes" on).
+  - Hints settle one whole line: "Every way to fit 6 3 into this row fills the blinking cells."
+  - Tests: unique solution, the clues match the picture, hints from an empty board only ever agree with the picture, fingerprints. The levels of the other four types are unchanged.
+
+**Decided**
+- Nonogram takes Takuzu's place as the second tab; Takuzu moves to the end, after Calcudoku. Takuzu stays: its levels, progress and daily are unchanged.
+- On phones the five "Today" cards show icon and difficulty only; the names didn't fit.
+
+**Next**
+- Playtest Nonogram on the phone (see TODO).
+
 ## 2026-11-23
 
 **Done**

@@ -12,7 +12,7 @@ Most "free" mobile games make you watch an ad after every level, until you spend
 | **Nuts & Bolts** | Screw nuts from bolt to bolt until every colour is sorted |
 | **Outbound** | Every arrow leaves the way it points; find the order that clears the board (2D and 3D shapes) |
 | **Unscrew** | Take 3D objects apart screw by screw |
-| **Graphite** | Pencil-and-paper logic puzzles: Sudoku, Takuzu, Star Battle and Calcudoku, endlessly generated, each with exactly one solution |
+| **Graphite** | Pencil-and-paper logic puzzles: Sudoku, Nonogram, Star Battle, Calcudoku and Takuzu, endlessly generated, each with exactly one solution |
 | **Crystal Reels** | Two slot machines with play money only: free spins, Hold & Spin, a pick bonus, jackpots, the same odds for everyone. See [docs/SLOTS.md](docs/SLOTS.md) |
 | **Wallbreaker** | A brick breaker with seven modes (Classic, Zen, Descent, Run, Daily, Puzzle, Time Attack), endless seeded levels, bosses, and risky capsules you catch or dodge. See [docs/WALLBREAKER.md](docs/WALLBREAKER.md) |
 | **Coin Dozer** | A coin pusher with real physics: drop coins, the pusher shoves the pile, win what spills over. Gems and figures to collect in four machine themes. See [docs/COIN-DOZER.md](docs/COIN-DOZER.md) |

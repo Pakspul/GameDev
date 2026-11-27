@@ -29,11 +29,10 @@ The concrete, tickable list lives in **[TODO.md](../TODO.md)**, and what has bee
 
 The ideas below are sorted into a pick-list of ten puzzle games plus a chaotic single-player action game in **[BACKLOG.md](BACKLOG.md)**.
 
-**Done: Graphite** (the logic grid collection): Sudoku, Takuzu, Star Battle and Calcudoku share one board, input, hint, undo, timer and daily engine. A new grid puzzle type is now mostly a generator in `games/graphite/levels/` plus a draw function. Candidates for the next types, all with free-to-use rules and generatable with exactly one solution:
+**Done: Graphite** (the logic grid collection): Sudoku, Nonogram, Star Battle, Calcudoku and Takuzu share one board, input, hint, undo, timer and daily engine. A new grid puzzle type is now mostly a generator in `games/graphite/levels/` plus a draw function. Candidates for the next types, all with free-to-use rules and generatable with exactly one solution:
 
 | Puzzle | Note |
 |---|---|
-| **Nonograms (picross)** | Also on the list below. Fits Graphite's grid and line solver. |
 | **Kakuro** | Sudoku's maths cousin; reuses Calcudoku's cage-tuple solver. |
 | **Hashi (bridges)**, **Slitherlink**, **Nurikabe** | Nikoli classics. The rules are free, but check each name for trademarks before using it in the store. |
 | **Killer Sudoku**, **Jigsaw Sudoku** | Sudoku variants: Calcudoku's cages, or irregular boxes from Star Battle's region grower. |
