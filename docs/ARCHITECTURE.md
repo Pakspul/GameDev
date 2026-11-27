@@ -23,11 +23,13 @@ How the repository is organised, why, and how to improve it step by step without
 │   ├── coin-dozer/          src/ holds the physics board (Rapier), the machine's rules, economy, themes, renderer and save; config.js has every number
 │   ├── starflip/            src/ holds its own pinball physics, the tables and missions as data, the rules, renderer and sounds; config.js has every number
 │   ├── bubbleworks/         src/ holds the honeycomb and every power (grid.js), the modes (engine.js), levels, the autoplayer (bot.js), renderer and sounds; config.js has every number
+│   ├── emberholm/           src/world (island, places, scatter, collisions: pure maths), src/sim (walking, day and night), src/render (three.js r186), src/ui (controls, map); see EMBERHOLM.md
 │   └── loopline/            src/ holds the rules (engine.js: Critters, depot.js: Depot, lot.js: its car park), pictures, level generator, solver, renderers (renderDepot.js for Depot) and sounds; config.js has every number
 ├── shared/                  Things every game uses, kept in exactly one place
 │   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md), gamenav.js (back button and menu), gamelobby.js (a game's own menu)
 │   ├── css/                 gamenav.css, gamelobby.css: the neutral look of those, which each game restyles
 │   ├── vendor/three/        three.js r128 (the 3D engine), served locally, and its GLTFLoader (Unscrew's realism mode)
+│   ├── vendor/three-r186/   three.js r186 as ES modules, for new games (Emberholm); left out of release builds while only experimental games use it
 │   ├── vendor/rapier/       Rapier 0.19.3 (rigid-body physics, WebAssembly inside an ES module), used by Coin Dozer
 │   └── icons/               App icon
 ├── blender/unscrew/         Blender sources of Unscrew's realism models: helpers, build scripts, .blend files (docs/UNSCREW-BLENDER.md)
@@ -43,6 +45,7 @@ How the repository is organised, why, and how to improve it step by step without
 ├── tests/bubbleworks/       npm test: Bubbleworks' rules, powers, modes and levels (rules.test.mjs in Node), e2e.mjs in a phone browser
 ├── tests/loopline/          npm test: Loopline's rules for every mode, every level of every track solvable and pinned (rules.test.mjs in Node), e2e.mjs in a phone browser
 ├── tests/wallbreaker/       npm test: Wallbreaker's acceptance criteria (rules.test.mjs in Node, e2e.mjs in a phone browser)
+├── tests/emberholm/         npm test: Emberholm's island and walking (rules.test.mjs in Node), e2e.mjs in a phone browser in landscape
 ├── tests/coin-dozer/        npm test: Coin Dozer's acceptance criteria (rules and sim tests in Node on the real physics, e2e.mjs in a phone browser)
 ├── docs/                    Guides (this file, Android publishing, roadmap)
 ├── dist/                    (generated) the exact files that go into the app; not committed
@@ -80,6 +83,7 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Bubbleworks | English + Dutch | ~2,400 (ES modules) | 2D canvas, cached bubble sprites; frame loop only while something moves | `bubbleworks.v1` | Bubble shooter in space: Classic, Levels, Endless and a daily level on one engine; powers collected on the board; seeded levels checked by an autoplayer (`src/bot.js`), results stored by `npm run bubbleworks:levels`. See [BUBBLEWORKS.md](BUBBLEWORKS.md) |
 | Inkfield | English + Dutch | ~1,500 (ES modules) | three.js r128, top-down; land smoothed on the GPU only where it changed | `inkfield.v1` | Territory game against computer players; rules in `src/sim.js` (fixed 60 Hz, grids), bots in `src/bots.js`. Prototype. See [INKFIELD.md](INKFIELD.md) |
 | Camper Crew | English + Dutch | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
+| Emberholm | English + Dutch | ~2,000 (ES modules) | three.js r186 (ES modules), landscape; capped at 30 fps; the start screen stops drawing once the island is built | `emberholm.v1` | Open-world RPG, milestone M0 (walk): a seeded island in chunks, instanced trees, day and night, map. Experimental (not in release builds). See [EMBERHOLM.md](EMBERHOLM.md) |
 
 Graphite came later and was written for this repository directly, not as an artifact. It already uses `Platform.home()` and `Platform.haptic()`, draws nothing while the board is idle, and has no three.js at all.
 

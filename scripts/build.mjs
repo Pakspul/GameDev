@@ -19,8 +19,11 @@ const gi = process.argv.indexOf("--game");
 const ONLY = gi > 0 ? process.argv[gi + 1] : null;
 // Playable in `npm run dev`, but left out of production builds (and their hub card removed)
 // until they're ready. Asking for one with --game still builds it.
-const EXPERIMENTAL = ["camper-crew"];
+const EXPERIMENTAL = ["camper-crew", "emberholm"];
 const HIDDEN = ONLY || process.argv.includes("--experimental") ? [] : EXPERIMENTAL;
+// Shared files only an experimental game uses: left out with it, so release builds don't grow.
+const ONLY_FOR = { emberholm: ["shared/vendor/three-r186"] };
+const SKIP_DIRS = HIDDEN.flatMap((g) => ONLY_FOR[g] || []).map((d) => join(ROOT, d));
 // staticwebapp.config.json is read by Azure Static Web Apps (MIME types, headers); harmless elsewhere.
 const GAMES = (await readdir(join(ROOT, "games"))).filter((g) => !HIDDEN.includes(g)).map((g) => `games/${g}`);
 const INCLUDE = ONLY ? [`games/${ONLY}`, "shared", "staticwebapp.config.json"]
@@ -44,7 +47,7 @@ if (!ONLY || ONLY === "crystal-reels") {
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST);
 for (const entry of INCLUDE) {
-  await cp(join(ROOT, entry), join(DIST, entry), { recursive: true, filter: (src) => !SKIP_FILES.has(basename(src)) });
+  await cp(join(ROOT, entry), join(DIST, entry), { recursive: true, filter: (src) => !SKIP_FILES.has(basename(src)) && !SKIP_DIRS.some((d) => src === d || src.startsWith(d + "/") || src.startsWith(d + "\\")) });
 }
 // Development-only tools never ship in a release build: their folder is removed and the
 // `// <debug> … // </debug>` block that loads them is cut out of the game's script.

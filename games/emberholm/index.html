@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1c2228">
+<title>Emberholm</title>
+<link rel="stylesheet" href="../../shared/css/gamenav.css">
+<link rel="stylesheet" href="../../shared/css/gamelobby.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="state-menu">
+
+<canvas id="cv" data-i18n-attr="aria-label:scene"></canvas>
+<!-- Takes the touches while playing: move stick on the left, camera on the right -->
+<div id="touch" aria-hidden="true"></div>
+<div id="stick" aria-hidden="true"><div id="knob"></div></div>
+
+<!-- Heads-up display while playing -->
+<header id="hud">
+  <div class="pill clock" role="status"><svg viewBox="0 0 24 24" aria-hidden="true" id="sunIcon"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><svg viewBox="0 0 24 24" aria-hidden="true" id="moonIcon" hidden><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/></svg><b id="clock">06:00</b><span id="dayNo"></span></div>
+  <div class="grow"></div>
+</header>
+<button type="button" id="mini" data-i18n-attr="aria-label:map"><canvas id="miniCv" width="240" height="240"></canvas></button>
+<div id="placeName" aria-live="polite"><b></b><span></span></div>
+<div id="perf" hidden></div>
+
+<!-- The whole island -->
+<section id="mapView" hidden>
+  <canvas id="mapCv"></canvas>
+  <button type="button" class="closeMap" id="mapClose" data-i18n-attr="aria-label:mapClose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+</section>
+
+<!-- Portrait on a phone -->
+<section id="turn" aria-live="polite">
+  <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="22" y="8" width="20" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10 50c6 6 16 8 26 6M36 56l-4 4M36 56l-5-2" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+  <b data-i18n="turn"></b>
+  <span data-i18n="turnText"></span>
+</section>
+
+<!-- Start screen -->
+<section id="menu" class="overlay" aria-label="Emberholm">
+  <div class="card">
+    <div class="topline"><span class="tag" data-i18n="prototype"></span></div>
+    <h1>Emberholm</h1>
+    <p class="lead" data-i18n="lead"></p>
+    <div class="lobby" id="lobby"></div>
+    <details>
+      <summary data-i18n="how"></summary>
+      <ul class="how">
+        <li data-i18n-html="how.1"></li>
+        <li data-i18n-html="how.2"></li>
+        <li data-i18n-html="how.3"></li>
+        <li data-i18n-html="how.4"></li>
+        <li data-i18n-html="how.5"></li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<script src="../../shared/js/platform.js"></script>
+<script src="../../shared/js/i18n.js"></script>
+<script src="../../shared/js/gamenav.js"></script>
+<script src="../../shared/js/gamelobby.js"></script>
+<script src="strings.js"></script>
+<script type="module" src="game.js"></script>
+</body>
+</html>
