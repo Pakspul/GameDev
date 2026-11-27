@@ -35,7 +35,9 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] Optional cleanup: remove the `window.claude` leftovers from the artifact days
 - [ ] Graphite: play every type and tier on the phone. Are the tiers well spaced? Is Star Battle Expert (10×10, 2 stars) quick enough to generate on an older phone?
 - [ ] Graphite: is the name a keeper? (Same checks as in [docs/NAMING.md](docs/NAMING.md).)
-- [ ] Graphite: a next puzzle type (ideas in the roadmap: Nonograms, Kakuro, …)
+- [x] Graphite: a next puzzle type: **Nonogram** (27 November 2026), second in the tabs; Takuzu moved to the end
+- [ ] Graphite: playtest Nonogram on the phone. Are cells on Expert (12×12) big enough to tap? Is drag-to-paint along a line comfortable? Is Easy (5×5) too easy?
+- [ ] Graphite: a next puzzle type after that (ideas in the roadmap: Kakuro, …)
 - [ ] Pick the next game from [docs/BACKLOG.md](docs/BACKLOG.md)
 - [x] Action game: choose a concept (**Camper Crew**) and build a grey-box prototype
 - [ ] Camper Crew: playtest on the phone (landscape and portrait) and with someone else; answer the questions in [docs/BACKLOG.md](docs/BACKLOG.md#prototype-status)
@@ -111,7 +113,7 @@ Found while writing the [release guide](docs/RELEASE.md) (4 November 2026). Each
 
 - [ ] iPhone release, on hold because of the US$99/year fee (see [docs/RELEASE.md](docs/RELEASE.md), chapter 2). Release issues 1–3 come first and cost nothing.
 - [ ] Also publish on itch.io and/or F-Droid
-- [ ] Hub extras: "Continue" button, a "Today" row with every daily puzzle (Graphite already has one for its four types)
+- [ ] Hub extras: "Continue" button, a "Today" row with every daily puzzle (Graphite already has one for its five types)
 - [x] A fifth game: **Graphite** (Sudoku, Takuzu, Star Battle, Calcudoku)
 
 ## Bugs & notes

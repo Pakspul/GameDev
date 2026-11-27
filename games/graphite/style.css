@@ -17,6 +17,7 @@
   --c-takuzu: #c25f1c;
   --c-stars: #7a4fd0;
   --c-calcudoku: #1d8758;
+  --c-nonogram: #b53c78;
 
   /* board colours (read by game.js) */
   --b-cell: #fffdf8;
@@ -45,7 +46,7 @@
     --paper: #16171a; --paper-2: #1f2024; --card: #1c1d21; --ink: #ece8df; --muted: #a09c93; --line: #2e2f35;
     --rule: rgba(150, 180, 255, .05); --bad: #ff6b62;
     --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 28px -18px rgba(0,0,0,.9);
-    --c-sudoku: #7ea4ff; --c-takuzu: #f0975a; --c-stars: #b596ff; --c-calcudoku: #52c993;
+    --c-sudoku: #7ea4ff; --c-takuzu: #f0975a; --c-stars: #b596ff; --c-calcudoku: #52c993; --c-nonogram: #ef85ba;
     --b-cell: #202126; --b-grid: #3d3f46; --b-grid-tint: rgba(236, 232, 223, .2); --b-ink: #ece8df;
     --b-peer: rgba(126, 164, 255, .08); --b-same: rgba(126, 164, 255, .2);
     --b-sun: #e8972c; --b-sun-soft: #9a6a2c; --b-moon: #6d80d4; --b-moon-soft: #44507f;
@@ -59,7 +60,7 @@
   --paper: #16171a; --paper-2: #1f2024; --card: #1c1d21; --ink: #ece8df; --muted: #a09c93; --line: #2e2f35;
   --rule: rgba(150, 180, 255, .05); --bad: #ff6b62;
   --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 28px -18px rgba(0,0,0,.9);
-  --c-sudoku: #7ea4ff; --c-takuzu: #f0975a; --c-stars: #b596ff; --c-calcudoku: #52c993;
+  --c-sudoku: #7ea4ff; --c-takuzu: #f0975a; --c-stars: #b596ff; --c-calcudoku: #52c993; --c-nonogram: #ef85ba;
   --b-cell: #202126; --b-grid: #3d3f46; --b-grid-tint: rgba(236, 232, 223, .2); --b-ink: #ece8df;
   --b-peer: rgba(126, 164, 255, .08); --b-same: rgba(126, 164, 255, .2);
   --b-sun: #e8972c; --b-sun-soft: #9a6a2c; --b-moon: #6d80d4; --b-moon-soft: #44507f;
@@ -73,6 +74,7 @@ body[data-kind="sudoku"]    { --accent: var(--c-sudoku); }
 body[data-kind="takuzu"]    { --accent: var(--c-takuzu); }
 body[data-kind="stars"]     { --accent: var(--c-stars); }
 body[data-kind="calcudoku"] { --accent: var(--c-calcudoku); }
+body[data-kind="nonogram"]  { --accent: var(--c-nonogram); }
 
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -119,7 +121,7 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); 
 }
 .wordmark::after {
   content: ""; display: block; width: 2.2em; height: .09em; margin-top: .14em; border-radius: 2px;
-  background: linear-gradient(90deg, var(--c-sudoku) 0 25%, var(--c-takuzu) 25% 50%, var(--c-stars) 50% 75%, var(--c-calcudoku) 75%);
+  background: linear-gradient(90deg, var(--c-sudoku) 0 20%, var(--c-nonogram) 20% 40%, var(--c-stars) 40% 60%, var(--c-calcudoku) 60% 80%, var(--c-takuzu) 80%);
 }
 .tagline { margin: 12px 0 0; color: var(--muted); max-width: 28em; }
 
@@ -127,7 +129,7 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); 
 .section-head h2, .levels-head h3 { margin: 0; font: 600 1.25rem/1.1 var(--font-display); }
 .streak { color: var(--muted); font-size: .88rem; font-weight: 700; }
 
-.today-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.today-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .day {
   position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
   padding: 10px 10px 9px; border-radius: 14px; text-align: left;
@@ -142,7 +144,7 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); 
 .day .check svg { width: 13px; height: 13px; }
 .day:active { transform: scale(.97); }
 
-.kinds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 26px 0 0; }
+.kinds { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 26px 0 0; }
 .kind {
   display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px 8px;
   border-radius: 14px 14px 0 0; color: var(--muted); font-weight: 700; font-size: .8rem;
@@ -312,6 +314,14 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); 
 
 @media (min-width: 560px) {
   .grid { grid-template-columns: repeat(10, 1fr); }
+}
+/* five day cards don't fit their names on a phone: icon and difficulty only (the name is in
+   the aria-label, and the tabs below show icon and name together) */
+@media (max-width: 519px) {
+  .day { align-items: center; text-align: center; padding: 10px 4px 9px; }
+  .day b { display: none; }
+  .day .check { right: 4px; top: 4px; width: 16px; height: 16px; }
+  .day .check svg { width: 11px; height: 11px; }
 }
 @media (max-width: 360px) {
   .day small { display: none; }

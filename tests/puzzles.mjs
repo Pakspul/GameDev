@@ -2,7 +2,7 @@
 // Checks Graphite's puzzle generators without a browser:
 //   1. every generated puzzle has exactly one solution, and it is the stored one;
 //   2. generation is deterministic: the same seed gives the same puzzle, forever;
-//   3. Star Battle's explained hints only ever point at real stars and dots (solving each
+//   3. Star Battle's and Nonogram's hints only ever point at the real solution (solving each
 //      puzzle from an empty board with hints alone).
 //
 // (2) matters because players' progress points at level numbers. If a fingerprint below
@@ -18,8 +18,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // The level files are classic scripts that only set globals, but "type": "module" makes Node
 // treat them as ES modules. import() loads them on any Node; require() of ESM needs 20.19+.
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "games", "graphite", "levels");
-for (const f of ["common.js", "sudoku.js", "takuzu.js", "stars.js", "calcudoku.js"]) await import(pathToFileURL(join(DIR, f)).href);
-const { GraphiteSudoku: S, GraphiteTakuzu: T, GraphiteStars: B, GraphiteCalcudoku: K } = globalThis;
+for (const f of ["common.js", "sudoku.js", "takuzu.js", "stars.js", "calcudoku.js", "nonogram.js"]) await import(pathToFileURL(join(DIR, f)).href);
+const { GraphiteSudoku: S, GraphiteTakuzu: T, GraphiteStars: B, GraphiteCalcudoku: K, GraphiteNonogram: N } = globalThis;
 
 const FINGERPRINTS = {
    "sudoku:easy": "905808e97bb123b0",
@@ -37,7 +37,11 @@ const FINGERPRINTS = {
    "calcudoku:easy": "7e539beda4665e00",
    "calcudoku:medium": "12fdffe238df459b",
    "calcudoku:hard": "d49de817990aa1e4",
-   "calcudoku:expert": "d21ad788f900243f"
+   "calcudoku:expert": "d21ad788f900243f",
+   "nonogram:easy": "1094a775c01d70a2",
+   "nonogram:medium": "76abe198faed210a",
+   "nonogram:hard": "ce939b93b966a7f4",
+   "nonogram:expert": "be995ef0a741fbe0"
 };
 
 const checks = {
@@ -74,8 +78,23 @@ const checks = {
     if (r.count !== 1) return "not unique";
     if (r.solutions[0].join() !== p.solution.join()) return "wrong solution";
   },
+  nonogram(p) {
+    const lines = N.linesOf(p.n);
+    if (lines.some((cells, li) => N.runs(cells.map((i) => p.solution[i])).join() !== (li < p.n ? p.rows[li] : p.cols[li - p.n]).join())) return "clues don't match the picture";
+    if (N.countSolutions(p.n, p.rows, p.cols, 2) !== 1) return "not unique";
+    if (!N.logicSolve(p.n, p.rows, p.cols).solved) return "needs guessing";
+    // hints, from an empty board to the end: every cell they settle must agree with the picture
+    const state = new Array(p.n * p.n).fill(-1);
+    for (let guard = 0; guard < p.n * p.n; guard++) {
+      const h = N.hint(p.n, p.rows, p.cols, state);
+      if (!h) break;
+      if (h.cells.some((i) => p.solution[i] !== h.value)) return "hint disagrees with the picture";
+      for (const i of h.cells) state[i] = h.value;
+    }
+    if (state.some((v, i) => v !== p.solution[i])) return "hints get stuck";
+  },
 };
-const GEN = { sudoku: S, takuzu: T, stars: B, calcudoku: K };
+const GEN = { sudoku: S, takuzu: T, stars: B, calcudoku: K, nonogram: N };
 const print = process.argv.includes("--print");
 const seeds = ["1", "2", "3", "50", "999"];
 let failures = 0;

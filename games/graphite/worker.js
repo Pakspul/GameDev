@@ -1,12 +1,13 @@
 // Graphite: generates puzzles off the main thread so the screen never freezes while a
 // big Star Battle or Expert Sudoku is being made. Same generator files as the page.
-importScripts("levels/common.js", "levels/sudoku.js", "levels/takuzu.js", "levels/stars.js", "levels/calcudoku.js");
+importScripts("levels/common.js", "levels/sudoku.js", "levels/takuzu.js", "levels/stars.js", "levels/calcudoku.js", "levels/nonogram.js");
 
 const GEN = {
   sudoku: self.GraphiteSudoku,
   takuzu: self.GraphiteTakuzu,
   stars: self.GraphiteStars,
   calcudoku: self.GraphiteCalcudoku,
+  nonogram: self.GraphiteNonogram,
 };
 
 self.onmessage = (e) => {
