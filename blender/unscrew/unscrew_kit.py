@@ -55,8 +55,9 @@ def srgb_to_linear(c):
 _MATS = {}
 
 
-def mat(name, hex_color, rough=0.55, metal=0.0):
-    """One material per palette key. Blender stores linear colour; the hex is sRGB, like the game's palettes."""
+def mat(name, hex_color, rough=0.55, metal=0.0, emit=0.0):
+    """One material per palette key. Blender stores linear colour; the hex is sRGB, like the game's palettes.
+    emit > 0 makes it glow in its own colour (fire, candle flames)."""
     if name in _MATS:
         return _MATS[name]
     m = bpy.data.materials.new(name)
@@ -67,6 +68,9 @@ def mat(name, hex_color, rough=0.55, metal=0.0):
     bsdf.inputs['Base Color'].default_value = (*rgb, 1)
     bsdf.inputs['Roughness'].default_value = rough
     bsdf.inputs['Metallic'].default_value = metal
+    if emit:
+        bsdf.inputs['Emission Color'].default_value = (*rgb, 1)
+        bsdf.inputs['Emission Strength'].default_value = emit
     m.diffuse_color = (*rgb, 1)
     _MATS[name] = m
     return m
@@ -172,6 +176,101 @@ def _tube(bm, points, radii, seg):
             bm.faces.new((ra[k], ra[(k + 1) % seg], rb[(k + 1) % seg], rb[k]))
     bm.faces.new(list(reversed(rings[0])))
     bm.faces.new(rings[-1])
+
+
+# ----- hard surfaces: boxes, cylinders, prisms and blobs merged into one mesh -----
+class Shape:
+    """Collects boxes, cylinders, prisms and blobs into one mesh, which becomes a part or a decoration with
+    finish(). Every piece is closed, so the whole mesh is too, as a collision shape must be.
+    Pieces in one mesh may overlap, but don't let their faces touch exactly: the game counts how often a screw
+    ray crosses a part's surface to know whether it starts inside, and two faces at one spot count only once.
+    Boxes are flat shaded with chamfered edges (bev); round pieces are smooth shaded."""
+
+    def __init__(self):
+        self.bm = bmesh.new()
+
+    def _chamfer(self, verts, bev):
+        if bev > 0:
+            edges = list({e for v in verts for e in v.link_edges})
+            bmesh.ops.bevel(self.bm, geom=list(verts) + edges, offset=bev, segments=1, affect='EDGES',
+                            profile=0.5, clamp_overlap=True)
+
+    def _smooth(self, verts, axis=None):
+        for f in {f for v in verts for f in v.link_faces}:
+            f.normal_update()
+            if axis is None or abs(f.normal.dot(axis)) < 0.7:
+                f.smooth = True
+
+    def box(self, lo, hi, bev=0.015, frame=None):
+        """A box from corner lo to corner hi; with frame (a 4x4 matrix) lo and hi are in that frame's axes."""
+        lo, hi = Vector(lo), Vector(hi)
+        size = hi - lo
+        m = Matrix.Translation((lo + hi) / 2) @ Matrix.Diagonal((size.x, size.y, size.z, 1))
+        if frame is not None:
+            m = frame @ m
+        vs = bmesh.ops.create_cube(self.bm, size=1, matrix=m)['verts']
+        self._chamfer(vs, min(bev, min(size) * 0.3))
+        return self
+
+    def cyl(self, center, r, h, axis=(0, 0, 1), seg=16, r2=None, smooth=True, bev=0.0):
+        """A cylinder (a cone frustum with r2) of height h around center, along axis."""
+        ax = Vector(axis).normalized()
+        m = Matrix.Translation(Vector(center)) @ ax.to_track_quat('Z', 'Y').to_matrix().to_4x4()
+        vs = bmesh.ops.create_cone(self.bm, cap_ends=True, cap_tris=False, segments=seg, radius1=r,
+                                   radius2=r if r2 is None else r2, depth=h, matrix=m)['verts']
+        self._chamfer(vs, bev)
+        if smooth:
+            self._smooth(vs, ax)
+        return self
+
+    def blob(self, center, radii, seg=16, rings=8, shape=None):
+        """A smooth ellipsoid, optionally reshaped per vertex by shape(v) -> v on the unit sphere."""
+        vs = bmesh.ops.create_uvsphere(self.bm, u_segments=seg, v_segments=rings, radius=1)['verts']
+        c = Vector(center)
+        for v in vs:
+            p = shape(v.co.copy()) if shape else v.co
+            v.co = c + Vector((p.x * radii[0], p.y * radii[1], p.z * radii[2]))
+        self._smooth(vs)
+        return self
+
+    def lathe(self, profile, center=(0, 0, 0), seg=20, smooth=True):
+        """Revolve [(r, z), ...] (bottom to top) around a vertical axis through center; closed at both ends."""
+        c = Vector(center)
+        rings = []
+        for r, z in profile:
+            rings.append([self.bm.verts.new(c + Vector((r * math.cos(2 * math.pi * k / seg), r * math.sin(2 * math.pi * k / seg), z)))
+                          for k in range(seg)])
+        faces = []
+        for a, b in zip(rings, rings[1:]):
+            for k in range(seg):
+                faces.append(self.bm.faces.new((a[k], a[(k + 1) % seg], b[(k + 1) % seg], b[k])))
+        faces.append(self.bm.faces.new(list(reversed(rings[0]))))
+        faces.append(self.bm.faces.new(rings[-1]))
+        if smooth:
+            for f in faces[:-2]:
+                f.smooth = True
+        return self
+
+    def prism(self, outline, offset, bev=0.0):
+        """A flat polygon (3D points, in order) pushed along offset."""
+        off = Vector(offset)
+        bot = [self.bm.verts.new(Vector(p)) for p in outline]
+        top = [self.bm.verts.new(Vector(p) + off) for p in outline]
+        n = len(bot)
+        self.bm.faces.new(bot)
+        self.bm.faces.new(list(reversed(top)))
+        for i in range(n):
+            self.bm.faces.new((bot[i], top[i], top[(i + 1) % n], bot[(i + 1) % n]))
+        self._chamfer(bot + top, bev)
+        return self
+
+    def tube(self, points, radii, seg=8):
+        _tube(self.bm, points, radii, seg)
+        return self
+
+    def finish(self, name, material):
+        bmesh.ops.recalc_face_normals(self.bm, faces=self.bm.faces)
+        return mesh_obj(name, self.bm, material, smooth=False)
 
 
 # Outlines for plates: f(u, v) maps the unit square [-1,1]^2 to the shape, in plate units (x across, y up).
