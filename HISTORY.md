@@ -34,9 +34,19 @@ Template: copy this to the top for a new day
 
 - **A new big game: Emberholm** (working title), a single-player open-world RPG for phones in landscape. Quests, levels, loot, gear and crafting, with survival (food, warmth, night) as the threat of the wilds. Nordic mood; a high chase camera; combat on **Attack** and **Parry** (a timed parry earns a riposte). The plan, scope and milestones are in [docs/EMBERHOLM.md](docs/EMBERHOLM.md).
 
+- **Emberholm M0, walk** ([docs/EMBERHOLM.md](docs/EMBERHOLM.md#m0-as-built)): a Nordic island generated from a seed (coast, hills, the Fells, a bog) with ten hand-placed places (Wreck Beach, the village Brandvik with its great fire, barrows, a mill, a raider camp, a beacon hill…), low-poly trees and rocks, a hero animated in code, a high chase camera, a floating stick and camera drag in landscape, 24-minute days (14 light, 10 night) with a lantern at night, place names as you walk in, a minimap and a map of the whole island, quality and frame-rate settings and a performance overlay. Built on three.js r186 as ES modules (`shared/vendor/three-r186/`).
+  - Tests: the island's fingerprints, places, walking blocked by deep water, trees and houses, the day's length (Node); stick, camera, keyboard, map, pause, saving and portrait in a phone browser.
+
+**Decided**
+- Emberholm: nights a little shorter than days (14 + 10 minutes); the death cairn stays as the sting; healing from food first, flasks later; a companion dog later.
+- Emberholm is experimental for now, like Camper Crew: playable in `npm run dev` and in test builds, left out of release builds (with three.js r186, which is unminified at 2.1 MB) until it's further along.
+
 **Next**
 - Playtest Nonogram on the phone (see TODO).
-- Emberholm: answer the open questions in the plan, then start M0 (walk around the island at 30 fps on the phone).
+- Emberholm: play M0 on the phone with "Show performance" on. Does it hold 30 fps on Medium? Then M1, fighting.
+
+**Notes**
+- Coin Dozer's e2e test fails 5 checks (timeouts) in the cloud test container, also on the commit before today's work: not caused by Emberholm, but worth a look.
 
 ## 2026-11-23
 

@@ -90,6 +90,8 @@ header p{margin:0;color:var(--muted);max-width:34em}
   --c-art:radial-gradient(circle at calc(100% - 92px) 34px,#ffffff 0 3px,#c8d3e6 4px 6px,#4a5470 7px 8px,transparent 9px),linear-gradient(155deg,transparent 40%,#5ce1ff 40% 60%,transparent 60%) right 70px top 52px/58px 20px no-repeat,radial-gradient(circle at 30% 40%,rgba(255,255,255,.28) 0 1px,transparent 1.5px) 0 0/53px 41px,radial-gradient(110% 80% at 90% 0%,rgba(255,90,217,.32),transparent 60%),radial-gradient(90% 70% at 0% 100%,rgba(92,225,255,.22),transparent 60%)}
 .g-loop{--c-bg:#2b2f62;--c-ink:#ffffff;--c-accent:#ff4f5e;--c-accent-ink:#ffffff;--c-font:400 2.1rem/1 "Lilita One","Arial Rounded MT Bold",sans-serif;--c-track:.01em;
   --c-art:linear-gradient(#ff4f5e,#ff4f5e) right 96px top 20px/12px 12px no-repeat,linear-gradient(#ffcf3f,#ffcf3f) right 82px top 20px/12px 12px no-repeat,linear-gradient(#39c46a,#39c46a) right 68px top 20px/12px 12px no-repeat,linear-gradient(#3d8cf0,#3d8cf0) right 96px top 34px/12px 12px no-repeat,linear-gradient(#a05ae0,#a05ae0) right 68px top 34px/12px 12px no-repeat,linear-gradient(#ff8a2b,#ff8a2b) right 96px top 48px/12px 12px no-repeat,linear-gradient(#ff7ab6,#ff7ab6) right 82px top 48px/12px 12px no-repeat,linear-gradient(#22c3b5,#22c3b5) right 68px top 48px/12px 12px no-repeat,linear-gradient(#b4b9e4,#b4b9e4) right 60px top 12px/60px 64px no-repeat}
+.g-ember{--c-bg:#1f252b;--c-ink:#f1e8d6;--c-accent:#f08a3c;--c-accent-ink:#241307;--c-font:600 2.2rem/1 Georgia,"Iowan Old Style","Palatino Linotype",serif;--c-track:.01em;
+  --c-art:radial-gradient(70% 60% at 100% 0%,#3c6b4a 0 45%,transparent 46%),radial-gradient(40% 50% at 82% 12%,#7d8790 0 40%,transparent 41%),radial-gradient(14% 18% at 92% 30%,#f08a3c 0 60%,transparent 62%)}
 .g-ink{--c-bg:#f7f3ea;--c-ink:#1b1f27;--c-accent:#2f6fec;--c-accent-ink:#ffffff;--c-font:900 2.1rem/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--c-track:-.03em;
   --c-art:radial-gradient(60% 55% at 92% 8%,#2f6fec 0 58%,transparent 59%),radial-gradient(40% 40% at 70% 0%,#e8504a 0 50%,transparent 51%),radial-gradient(35% 45% at 100% 45%,#3dbb6b 0 45%,transparent 46%)}
 details{margin-top:30px;border-top:1px solid var(--line);padding-top:18px}
@@ -221,6 +223,12 @@ dialog form button{font:inherit;font-weight:700;color:var(--bg);background:var(-
       <h2>Inkfield</h2>
       <p data-i18n="ink.blurb"></p>
     </a>
+    <a class="card g-ember" href="games/emberholm/index.html">
+      <span class="play" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></span>
+      <div class="meta"><span>3D</span><span data-i18n="tag.rpg"></span><span data-i18n="tag.prototype"></span></div>
+      <h2>Emberholm</h2>
+      <p data-i18n="ember.blurb"></p>
+    </a>
   </nav>
 
   <details>
@@ -297,6 +305,7 @@ I18n.add({
     "tag.daily": "Daily",
     "tag.action": "Action",
     "tag.prototype": "Prototype",
+    "tag.rpg": "Adventure",
     "tag.slots": "Slots",
     "tag.playMoney": "Play money",
     "tag.arcade": "Arcade",
@@ -314,6 +323,7 @@ I18n.add({
     "camp.blurb": "You're the only crew on a self-driving camper. Steer, refuel, cook and patch your way to camp before sunset.",
     "loop.blurb": "Clear a pixel picture colour by colour: bring buses to the stop as pixels loop past, send critters round, or peel a 3D sculpture of a thousand blocks. Easy, Medium and Hard.",
     "ink.blurb": "Draw loops to claim land, cut the others' trails, and be the last one on the board.",
+    "ember.blurb": "Wash ashore on a Nordic island and explore it, from the beach to the mountains. Play in landscape.",
     "star.blurb": "Space pinball with clear missions: shoot where the arrows point, open the wormhole, and warp to bonus tables to score fast.",
     "hub.whyQ": "Why are there no ads?",
     "hub.why1": "Most \"free\" mobile games are built to sell your attention: an ad after every level, timers you can skip for money, and tracking you never agreed to. These games are made the other way round. They are free because they are free: no ads, no data collection, no paid shortcuts, and no internet connection needed.",
@@ -350,6 +360,7 @@ I18n.add({
     "tag.daily": "Dagelijks",
     "tag.action": "Actie",
     "tag.prototype": "Prototype",
+    "tag.rpg": "Avontuur",
     "tag.slots": "Gokkasten",
     "tag.playMoney": "Speelgeld",
     "tag.arcade": "Arcade",
@@ -367,6 +378,7 @@ I18n.add({
     "camp.blurb": "Je bent de enige bemanning van een zelfrijdende camper. Stuur, tank, kook en repareer je een weg naar de camping voor zonsondergang.",
     "loop.blurb": "Maak een pixelplaatje leeg, kleur voor kleur: haal bussen naar de halte terwijl de pixels rondrijden, stuur beestjes de lus rond, of pel een 3D-beeld van duizend blokjes af. Makkelijk, gemiddeld en moeilijk.",
     "ink.blurb": "Trek lussen om land te veroveren, snij de sporen van de anderen door en blijf als laatste over.",
+    "ember.blurb": "Spoel aan op een Noords eiland en ontdek het, van het strand tot de bergen. Speel liggend.",
     "star.blurb": "Flipperen in de ruimte met duidelijke missies: schiet waar de pijlen wijzen, open het wormgat en spring naar bonuskasten om snel te scoren.",
     "hub.whyQ": "Waarom zijn er geen advertenties?",
     "hub.why1": "De meeste \"gratis\" mobiele spellen zijn gemaakt om je aandacht te verkopen: een advertentie na elk level, wachttijden die je met geld kunt overslaan, en tracking waar je nooit mee hebt ingestemd. Deze spellen zijn andersom gemaakt. Ze zijn gratis omdat ze gratis zijn: geen advertenties, geen dataverzameling, geen betaalde shortcuts en geen internetverbinding nodig.",

@@ -2,7 +2,7 @@
 
 *Working title.* A single-player open-world RPG for phones, played in landscape. You roam a Nordic island, take quests in the village, fight what lives in the wilds, gather and craft, and grow strong enough to go further. It has the genre of World of Warcraft (quests, levels, loot, gear) and of Valheim (survival, crafting, the wilds as a threat), but its own world, names and look.
 
-**Status: game plan, nothing built yet.** This document is the plan; the milestones at the end say what gets built first and when we decide whether to carry on.
+**Status: M0 (walk) is built and playable** in `games/emberholm/` (in `npm run dev` and test builds, not yet in release builds; the hub card says Prototype). See [M0 as built](#m0-as-built). This document is the plan; the milestones say what gets built next and when we decide whether to carry on.
 
 ## The pitch in one paragraph
 
@@ -107,6 +107,7 @@ Survival in Emberholm **adds a reason to prepare, never a chore**. Nothing ticks
 ### Food
 
 - You can have **up to three foods** active. Each raises your **maximum health and stamina** for a while (about 10 real minutes of play) and slowly heals you.
+- **Healing comes from food** at first. Later a **flask** joins it (a few charges, refilled when you rest by a fire).
 - **Hungry is not a damage timer.** It just means base stats, which are low: at level 1 about 50 health with no food, up to ~120 with three good meals. Going out unfed is a real risk, and eating well is a real reward.
 - Better food comes from better ingredients and stations: roasted meat at a campfire, stews from the cook pot in the village, later honey bread and mead.
 
@@ -123,7 +124,7 @@ Survival in Emberholm **adds a reason to prepare, never a chore**. Nothing ticks
 
 ### Day, night and weather
 
-- **A day lasts 24 real minutes of play** (16 day, 8 night). It only runs while you play.
+- **A day lasts 24 real minutes of play**: 14 of daylight, 10 of night (a night a little shorter than the day). It only runs while you play. On the island's clock the sun rises at 06:00 and sets at 20:00.
 - **Night is darker and meaner:** wolves come in bigger packs, the dead walk out of the barrows, and you see less. Night also has **its own loot**: some herbs only open at night, and wights carry barrow silver. Risk and reward, your choice.
 - **Light:** a lantern on your belt (crafted early). It lights a small circle; no fuel to manage in the first version.
 - **Weather:** clear, fog (shorter view), rain (wet: colder), storm (later zones). Weather changes are seeded per in-game day.
@@ -285,7 +286,7 @@ Zones are walled by sea and mountains. Relighting a beacon opens the pass to the
 
 ### Technology
 
-- **A current three.js as an ES module**, pinned and vendored next to r128 in `shared/vendor/` (the other games stay on r128, see [ARCHITECTURE.md](ARCHITECTURE.md)). No bundler needed: like Wallbreaker and Coin Dozer, the game loads plain ES modules.
+- **three.js r186 (0.186.1) as an ES module**, vendored in `shared/vendor/three-r186/` next to r128 (the other games stay on r128, see [ARCHITECTURE.md](ARCHITECTURE.md)). No bundler needed: like Wallbreaker and Coin Dozer, the game loads plain ES modules. The npm package has no minified build any more, so the files are the plain ones (2.1 MB); minify them before Emberholm goes into release builds. Until then `npm run build` leaves the folder out.
 - **No physics engine.** Walking is a character controller on a height field, with circles and boxes for trees, rocks and buildings. Fights are hit shapes (arcs and circles) checked on each step.
 - **Fixed-step simulation at 60 Hz**, rendering capped at **30 fps** by default (60 as a setting). Nothing runs while paused, in a menu or in the background.
 - **Rules separated from drawing**, as in Starflip and Loopline: combat, stats, survival, loot, crafting and quests run without the DOM, so Node tests can play them.
@@ -346,7 +347,8 @@ tests/emberholm/        rules tests in Node, e2e in a phone browser in landscape
 
 - **Multiplayer** of any kind: the mission rules out servers and accounts.
 - **Building a base.** A great Valheim feature, but a project in itself, and heavy saves. A later possibility: upgrade the village with your materials.
-- Boats (very Nordic, a good zone-2 or zone-3 idea), mounts, pets.
+- **A companion dog** who walks and fights next to you: wanted, after the first zone works.
+- Boats (very Nordic, a good zone-2 or zone-3 idea), mounts.
 - Character creation beyond a few looks to choose from.
 - More zones, weapons and the rune tree: after the first zone has been played and liked.
 
@@ -363,6 +365,30 @@ Each milestone ends with something you can play on the phone and a clear questio
 | **M4** | **Quest** | the village and its five characters, dialogue, the quest system, the zone's quests, map and waystones, barrows and the Barrow King | the first zone can be played from washing ashore to the beacon; on the hub as **Prototype** |
 | **M5** | **Polish** | art pass (Blender for heroes and bosses), sound, balance, Story/Hard settings, playtest feedback | testers finish the zone and ask what's next; then decide on zone 2 |
 
+## M0 as built
+
+What the first milestone has, and where it lives. Everything in `games/emberholm/`.
+
+| Part | What | File |
+|---|---|---|
+| The island | ~1.1 × 1.2 km of land in a 1.5 km square of sea: coast from slow noise, rolling hills, the Fells as a mountain wall in the north, the Blackmire bog, and the places stamped in (levelled ground, Beacon Hill raised, the three barrow mounds). Pure maths, the same on every device (only integer hashing and + − × ÷ √) | `src/world/noise.js`, `terrain.js`, `places.js` |
+| Places | Wreck Beach (start), Brandvik (five longhouses round the great fire), the Old Mill, the Barrows, the Blackmire, Raven Point (raider tents), Copper Hollow, the Watchtower, Beacon Hill, five waystones. Their name shows when you walk in | `src/world/places.js`, `src/render/models.js` |
+| Trees and rocks | pine, birch, rock, bush, dead tree, placed per 4 m cell from the seed; grass tufts close by. Nothing is saved: a chunk always gets the same things | `src/world/scatter.js` |
+| Walking | a circle on the height field: walk or run (stick all the way), slopes slow you and too steep stops you, wading slows you, deep water stops you, trees, rocks and buildings push you out | `src/sim/player.js`, `src/world/collide.js` |
+| Day and night | 14 + 10 minutes; sun and moon, fog and light colours through the day, warm at dawn and dusk; a lantern light at night; the village fire lights Brandvik | `src/sim/time.js`, `src/render/world.js` |
+| Drawing | terrain chunks of 64 m at 32/16/8 quads by distance (skirts hide the seams), built 2 per frame; nature instanced, a detailed model within 75 m and a simpler one beyond; trees between camera and player fade out (dithered, in the shader) | `src/render/world.js`, `models.js` |
+| The hero | rigid low-poly parts animated in code (walk, run, breathe), a round blob shadow | `src/render/hero.js` |
+| Camera | high chase camera (21° down, 9.5 m back), drag to turn, swings back behind you while you walk | `src/render/camera.js` |
+| Controls | floating stick on the left 45%, camera drag on the right; WASD/arrows, Shift, Q/E, M; gamepad | `src/ui/controls.js` |
+| Map | the island picture is drawn a few rows per frame from the terrain; round minimap; tap it for the whole island with the names of places you've found | `src/ui/map.js` |
+| Landscape | on a phone, Play asks for full screen and locks landscape where the browser allows it; in portrait a "turn your phone" screen pauses the game | `game.js`, `style.css` |
+| Settings | picture quality (Low/Medium/High: pixel ratio 1/1.25/1.5, view 140/175/210 m), 30 or 60 fps, full screen, performance overlay (`?debug` too). Prototype tools: time of day, start over | `game.js` |
+| Saving | `emberholm.v1`: position, facing, time and day, places found, settings. Every 10 s, on pause and when the page is hidden | `game.js` |
+
+Measured on the test machine (software rendering, so frame rates mean nothing there): about 1 ms of JavaScript per frame, 30–40 draw calls, 50–120k triangles (forest included). The real test is your phone with "Show performance" on.
+
+Tests: `npm run test:emberholm` (the island's fingerprints, places on dry land and level, nothing growing in the sea or in places, walking speed, deep water, trees and houses stopping you, 14 + 10 minute days) and `tests/emberholm/e2e.mjs` (stick, camera drag, keyboard, map, pause, saving, portrait).
+
 ## Risks
 
 | Risk | What we do about it |
@@ -377,10 +403,7 @@ Each milestone ends with something you can play on the phone and a clear questio
 ## Open questions
 
 - **The name.** "Emberholm" is a working title; check it like any name ([NAMING.md](NAMING.md)) before a store release.
-- **Day length:** is 24 minutes right, or should a night come round sooner in a short session?
-- **The death cairn:** right amount of sting, or should the default be gentler?
-- **Healing:** food and mead only, or also a slowly refilling flask (like a few charges per rest)?
-- **A companion** (a dog?) who fights next to you: charm and help, or a distraction?
+- **M0 on a real phone:** does it hold 30 fps on Medium? Is the camera angle right? Does the stick feel good?
 
 ## Decision log
 
@@ -389,3 +412,5 @@ Each milestone ends with something you can play on the phone and a clear questio
 | 2026-11-27 | A single-player open-world RPG for phones in landscape: quests, levels, loot, gear, crafting, with survival (food, warmth, night) as the threat of the wilds. |
 | 2026-11-27 | Camera: a high chase camera you can turn. Combat built on two buttons: **Attack** when you want, **Parry** to answer an attack and earn a riposte. |
 | 2026-11-27 | Mood: Nordic. First zone: The Strand. Working title: Emberholm. |
+| 2026-11-27 | A day is 24 minutes: 14 of daylight, 10 of night. The death cairn stays as the sting. Healing from food, flasks later. A companion dog later. |
+| 2026-11-27 | M0 built on three.js r186 (ES modules, no bundler), as an experimental game: playable in `npm run dev` and test builds, left out of release builds until it's further along. |

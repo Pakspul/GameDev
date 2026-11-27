@@ -43,7 +43,11 @@ The concrete next steps, roughly in order. Tick a box when it's done (`- [x]`), 
 - [ ] Camper Crew: playtest on the phone (landscape and portrait) and with someone else; answer the questions in [docs/BACKLOG.md](docs/BACKLOG.md#prototype-status)
 - [ ] Camper Crew: tune or cut based on the playtest, *then* decide on art, sound and more troubles
 - [x] Emberholm (open-world RPG): a game plan in [docs/EMBERHOLM.md](docs/EMBERHOLM.md)
-- [ ] Emberholm: M0, walk: terrain, chunks, camera and touch controls in landscape at 30 fps on the phone
+- [x] Emberholm: M0, walk: terrain, chunks, camera and touch controls in landscape
+- [ ] Emberholm: playtest M0 on the phone with "Show performance" on: 30 fps on Medium? Camera angle, stick feel, walking for five minutes
+- [ ] Emberholm: M1, fight: Attack and Parry, dodge, stamina, wolves and a raider (see [docs/EMBERHOLM.md](docs/EMBERHOLM.md#milestones))
+- [ ] Emberholm: minify three.js r186 before it goes into release builds
+- [ ] Coin Dozer: 5 e2e checks time out in the cloud test container (also before Emberholm); find out why
 - [ ] Inkfield: playtest on the phone (speed, zoom, controls, match length); answer the open questions in [docs/INKFIELD.md](docs/INKFIELD.md)
 - [ ] Inkfield: pick the first add-ons (ideas in [docs/INKFIELD.md](docs/INKFIELD.md#ideas-for-later-add-ons)) and decide on the final name
 - [ ] Starflip: playtest on the phone (table speed, mission clock, is the wormhole too easy or hard, are banner and arrows enough without "How to play"); see [docs/STARFLIP.md](docs/STARFLIP.md#open-questions)
