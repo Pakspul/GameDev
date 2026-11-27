@@ -14,6 +14,7 @@
 //   node scripts/unscrew-models.mjs villa,giraffe      only these
 //   node scripts/unscrew-models.mjs giraffe --drops    plus the parts that were dropped
 //   node scripts/unscrew-models.mjs giraffe --shots    plus screenshots
+//   node scripts/unscrew-models.mjs real:house         a realism model (real/real.js); ms = time to build a level
 import { createRequire } from "node:module";
 import { mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
@@ -39,27 +40,31 @@ const url = `http://127.0.0.1:${server.address().port}/games/unscrew/index.html`
 await page.goto(url);
 await page.waitForTimeout(500);
 
+if (only?.some((n) => n.startsWith("real:"))) await page.evaluate(() => REAL.load());
 const names = only || (await page.evaluate(() => GENS3D.map((g) => g[0])));
-const report = await page.evaluate(({ names, DIFFS, LEVELS }) => names.map((name) => {
-  const g = GENS3D.find((g) => g[0] === name);
+// realism models are named "real:<name>" and built as in realism mode
+const genOf = (name) => (name.startsWith("real:") ? GENS_REAL.find((g) => "real:" + g[0] === name) : GENS3D.find((g) => g[0] === name));
+const report = await page.evaluate(({ names, DIFFS, LEVELS, genOf }) => names.map((name) => {
+  const g = eval(genOf)(name), mode = name.startsWith("real:") ? "real" : "3d";
   if (!g) return { name, missing: true };
   const f = (n) => n.toFixed(2), at = (v) => `(${f(v.x)}, ${f(v.y)}, ${f(v.z)})`;
   const describe = (p) => `${p.box ? `box ${f(p.box.w)} x ${f(p.box.h)} x ${f(p.box.d)}` : p.cyl ? `cylinder r ${f(p.cyl.r)} h ${f(p.cyl.h)}` : p.mesh.geometry.type.replace("Geometry", "").toLowerCase()} at ${at(p.mesh.position)}, ${p.slots.length} slot(s)`;
   return { name, rows: DIFFS.map((diff) => LEVELS.map((level) => {
     const cfg = cfgFor(diff, level);
+    const t0 = performance.now();
     for (let attempt = 0; attempt < 10; attempt++) {
-      const R = rng(`3d|${diff}|${level}|report|${attempt}`);
+      const R = rng(`${mode}|${diff}|${level}|report|${attempt}`);
       BLD = { group: new THREE.Group(), parts: [] }; g[1](R, cfg);
-      const built = BLD.parts.filter((p) => !p.static), lv = finalize(R, cfg, "3d");
+      const built = BLD.parts.filter((p) => !p.static), lv = finalize(R, cfg, mode);
       if (lv) {
-        const live = new Set(lv.parts), lost = built.filter((p) => !live.has(p)).map(describe);
-        disposeTree(lv.group); return { diff, level, screws: lv.screws.length, kept: 1 - lost.length / built.length, tries: attempt + 1, lost };
+        const live = new Set(lv.parts), lost = built.filter((p) => !live.has(p)).map((p) => (p.label ? `${p.label}: ` : "") + describe(p));
+        disposeTree(lv.group); return { diff, level, screws: lv.screws.length, kept: 1 - lost.length / built.length, tries: attempt + 1, lost, ms: performance.now() - t0 };
       }
       disposeTree(BLD.group);
     }
     return { diff, level, failed: true };
   })) };
-}), { names, DIFFS, LEVELS });
+}), { names, DIFFS, LEVELS, genOf: genOf.toString() });
 
 let failures = 0;
 const pad = (s, n) => String(s).padEnd(n);
@@ -71,11 +76,12 @@ for (const m of report) {
     failures += row.length - ok.length;
     if (!ok.length) return pad("FAILED", 22);
     const sc = ok.map((r) => r.screws), kept = Math.min(...ok.map((r) => r.kept)), tries = Math.max(...ok.map((r) => r.tries));
-    return pad(`${Math.min(...sc)}-${Math.max(...sc)} scr, ${Math.round(kept * 100)}%${tries > 1 ? ` ${tries}t` : ""}${ok.length < row.length ? " FAIL" : ""}`, 22);
+    const ms = Math.max(...ok.map((r) => r.ms)), slow = ms > 400 ? ` ${Math.round(ms)}ms` : "";
+    return pad(`${Math.min(...sc)}-${Math.max(...sc)} scr, ${Math.round(kept * 100)}%${tries > 1 ? ` ${tries}t` : ""}${slow}${ok.length < row.length ? " FAIL" : ""}`, 22 + slow.length);
   });
   console.log(pad(m.name, 12) + cells.join(""));
 }
-console.log("\nscr = screws per level (lowest-highest), % = lowest share of parts kept, Nt = most seeds needed");
+console.log("\nscr = screws per level (lowest-highest), % = lowest share of parts kept, Nt = most seeds needed, ms = slowest build (over 400 ms)");
 if (drops) for (const m of report.filter((m) => m.rows)) {
   console.log(`\nDropped parts: ${m.name}`);
   const lines = m.rows.flat().filter((r) => r.lost?.length).map((r) => `  ${r.diff} ${r.level}:\n${r.lost.map((l) => `      ${l}`).join("\n")}`);

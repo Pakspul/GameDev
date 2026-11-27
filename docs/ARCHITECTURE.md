@@ -17,20 +17,22 @@ How the repository is organised, why, and how to improve it step by step without
 │   │   └── fonts/           Self-hosted fonts + their licences
 │   ├── nuts-and-bolts/
 │   ├── outbound/
-│   ├── unscrew/             models/ holds the 3D models: kit.js (building blocks), one file per category, order.js (level order); dev/inspector.js is the model inspector (?models, left out of builds)
+│   ├── unscrew/             models/ holds the 3D models: kit.js (building blocks), one file per category, order.js (level order); real/ the realism mode's Blender models (real.js, .glb files); dev/inspector.js is the model inspector (?models, left out of builds)
 │   ├── graphite/            levels/ holds one generator per puzzle type; worker.js runs them off the main thread
 │   ├── wallbreaker/         src/ holds the engine, generator, modes, economy (config.js has every number), renderer and save
 │   ├── coin-dozer/          src/ holds the physics board (Rapier), the machine's rules, economy, themes, renderer and save; config.js has every number
 │   ├── starflip/            src/ holds its own pinball physics, the tables and missions as data, the rules, renderer and sounds; config.js has every number
+│   ├── bubbleworks/         src/ holds the honeycomb and every power (grid.js), the modes (engine.js), levels, the autoplayer (bot.js), renderer and sounds; config.js has every number
 │   ├── emberholm/           src/world (island, places, scatter, collisions: pure maths), src/sim (walking, day and night), src/render (three.js r186), src/ui (controls, map); see EMBERHOLM.md
 │   └── loopline/            src/ holds the rules (engine.js: Critters, depot.js: Depot, lot.js: its car park), pictures, level generator, solver, renderers (renderDepot.js for Depot) and sounds; config.js has every number
 ├── shared/                  Things every game uses, kept in exactly one place
 │   ├── js/                  platform.js, i18n.js (languages), economy.js (shared currency rules, see ECONOMY.md), gamenav.js (back button and menu), gamelobby.js (a game's own menu)
 │   ├── css/                 gamenav.css, gamelobby.css: the neutral look of those, which each game restyles
-│   ├── vendor/three/        three.js r128 (the 3D engine), served locally
+│   ├── vendor/three/        three.js r128 (the 3D engine), served locally, and its GLTFLoader (Unscrew's realism mode)
 │   ├── vendor/three-r186/   three.js r186 as ES modules, for new games (Emberholm); left out of release builds while only experimental games use it
 │   ├── vendor/rapier/       Rapier 0.19.3 (rigid-body physics, WebAssembly inside an ES module), used by Coin Dozer
 │   └── icons/               App icon
+├── blender/unscrew/         Blender sources of Unscrew's realism models: helpers, build scripts, .blend files (docs/UNSCREW-BLENDER.md)
 ├── scripts/                 Developer tools (never shipped to players)
 │   ├── serve.mjs            npm run dev: local server, also reachable from your phone
 │   ├── build.mjs            npm run build: assembles dist/
@@ -39,7 +41,8 @@ How the repository is organised, why, and how to improve it step by step without
 ├── tests/smoke.mjs          npm test: opens every game in a headless phone browser
 ├── tests/puzzles.mjs        npm test: Graphite's generators give unique puzzles, and the same ones every time
 ├── tests/economy.mjs        npm test: every game's prices and rewards follow docs/ECONOMY.md
-├── tests/unscrew.mjs        npm test: every Unscrew model is loaded, in the fixed level order, and named in every language
+├── tests/unscrew.mjs        npm test: every Unscrew model is loaded, in the fixed level order, and named in every language; realism .glb files follow the part rules
+├── tests/bubbleworks/       npm test: Bubbleworks' rules, powers, modes and levels (rules.test.mjs in Node), e2e.mjs in a phone browser
 ├── tests/loopline/          npm test: Loopline's rules for every mode, every level of every track solvable and pinned (rules.test.mjs in Node), e2e.mjs in a phone browser
 ├── tests/wallbreaker/       npm test: Wallbreaker's acceptance criteria (rules.test.mjs in Node, e2e.mjs in a phone browser)
 ├── tests/emberholm/         npm test: Emberholm's island and walking (rules.test.mjs in Node), e2e.mjs in a phone browser in landscape
@@ -70,13 +73,14 @@ Each game's inline `<script>` blocks became external classic `<script src>` file
 | Jade Pavilion | English + Dutch | ~610 | three.js 3D table | `jade-pavilion-v1` | Seeded generator, daily challenge, table themes |
 | Nuts & Bolts | English + Dutch | ~1,320 | three.js + 2D canvas particles | `nutsbolts:*` | Solver runs in a Web Worker (built from a Blob), washers currency |
 | Outbound | English + Dutch | ~2,650 | 2D canvas, three.js loaded on demand for 3D modes | `outbound.*` | Three level generators (flat, box, shapes), light/dark theme, haptics, shop |
-| Unscrew | English + Dutch | ~1,120 (of which ~650 in `models/`) | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators (see [UNSCREW-MODELS.md](UNSCREW-MODELS.md)), coins and shop |
+| Unscrew | English + Dutch | ~1,120 (of which ~650 in `models/`) | three.js 3D objects | `unscrew.v2` | 2D plates + 3D object generators (see [UNSCREW-MODELS.md](UNSCREW-MODELS.md)), a realism mode with models made in Blender (see [UNSCREW-BLENDER.md](UNSCREW-BLENDER.md)), coins and shop |
 | Graphite | English + Dutch | ~2,200 | 2D canvas, redraws only on change | `graphite.v1` | Five logic puzzle types, generators in a Web Worker, logic-based hints, five dailies |
 | Wallbreaker | English + Dutch | ~3,300 (ES modules) | 2D canvas, frame loop only while a level is played | `wallbreaker.save` | Brick breaker, seven modes on one engine (`src/engine.js`, fixed 120 Hz, swept collision); seeded levels; its own economy in `src/config.js`; service worker for offline install. See [WALLBREAKER.md](WALLBREAKER.md) |
 | Coin Dozer | English + Dutch | ~2,900 (ES modules) | three.js r128 + Rapier physics, instanced coins; nothing runs while paused or hidden | `coin-dozer.save` | Coin pusher: fixed 60 Hz physics, seeded board, prizes and bonus events; its own economy in `src/config.js`; service worker for offline install. See [COIN-DOZER.md](COIN-DOZER.md) |
 | Crystal Reels | English + Dutch | ~6,000 (ES modules) | DOM + SVG, no canvas except particles; frame loop only while something moves | `honest-arcade.slots.save.0/1` | Slot machines with play money; maths engine + simulator in `games/crystal-reels/src/engine`, see [SLOTS.md](SLOTS.md) |
 | Starflip | English + Dutch | ~2,200 (ES modules) | 2D canvas, a cached layer per table; frame loop only while playing | `starflip.v1` | Pinball with missions and bonus tables; its own physics in `src/physics.js` (fixed 600 Hz), rules in `src/rules.js`. See [STARFLIP.md](STARFLIP.md) |
 | Loopline | English + Dutch | ~5,400 (ES modules) | 2D canvas, pixel sprites (Orbit: three.js); frame loop only while something moves (Depot: while a level is played, at most 30 fps) | `loopline.v3` | Colour-matching puzzle in three modes (Depot: a crowd and a jammed car park; Critters; Orbit in 3D) × three difficulty tracks; rules in `src/engine.js` and `src/depot.js` (ticks), seeded levels built from a solution in `src/levels.js`, hint solver in `src/solver.js`. See [LOOPLINE.md](LOOPLINE.md) |
+| Bubbleworks | English + Dutch | ~2,400 (ES modules) | 2D canvas, cached bubble sprites; frame loop only while something moves | `bubbleworks.v1` | Bubble shooter in space: Classic, Levels, Endless and a daily level on one engine; powers collected on the board; seeded levels checked by an autoplayer (`src/bot.js`), results stored by `npm run bubbleworks:levels`. See [BUBBLEWORKS.md](BUBBLEWORKS.md) |
 | Inkfield | English + Dutch | ~1,500 (ES modules) | three.js r128, top-down; land smoothed on the GPU only where it changed | `inkfield.v1` | Territory game against computer players; rules in `src/sim.js` (fixed 60 Hz, grids), bots in `src/bots.js`. Prototype. See [INKFIELD.md](INKFIELD.md) |
 | Camper Crew | English + Dutch | ~1,250 | three.js 3D (r128), renders only while playing | `camper-crew.v1` | Grey-box action prototype; seeded roads in `levels.js`; touch stick, keyboard and gamepad |
 | Emberholm | English + Dutch | ~2,000 (ES modules) | three.js r186 (ES modules), landscape; capped at 30 fps; the start screen stops drawing once the island is built | `emberholm.v1` | Open-world RPG, milestone M0 (walk): a seeded island in chunks, instanced trees, day and night, map. Experimental (not in release builds). See [EMBERHOLM.md](EMBERHOLM.md) |

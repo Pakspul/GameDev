@@ -22,22 +22,25 @@ Template: copy this to the top for a new day
 ## 2026-11-27
 
 **Done**
+- **New game: Bubbleworks**, a bubble shooter in space ([docs/BUBBLEWORKS.md](docs/BUBBLEWORKS.md)). Drag to aim, let go to fire, bounce off the walls; three of a colour pop and whatever hangs from them drops. Every colour has its own symbol.
+  - Three modes on one engine: **Classic** (clear the screen; the ceiling drops after 8 shots that pop nothing; endless stages), **Levels** (a goal per level: clear the board, rescue the aliens or collect a colour, with a shot budget and stars) and **Endless** (a new row every few shots, faster as you go). Plus a **daily level**.
+  - **Powers** collected on the board into a tray of three: Bomb, Prism, Laser, Comet, Black hole and Freeze. A power shot doesn't use a shot; in Classic and Endless a big drop earns a random one.
+  - **Stardust** under the arcade's economy rules: new stars pay, Aim+ and +5 shots in a level cost stardust and a star. Classic and Endless pay once for new progress.
+  - Levels are seeded and checked by an autoplayer, which also sets the shot budget; too-easy boards are made again. `npm run bubbleworks:levels` stores the results for levels 1–300, so a level starts instantly.
+  - Tests: rules in Node, and an end-to-end run in a phone browser.
 - **Graphite: Nonogram**, a fifth puzzle type. Fill the cells the row and column clues ask for, and a little picture appears. Four tiers (5×5, 8×8, 10×10, 12×12), endless seeded levels, a fifth daily.
   - Pictures are random noise smoothed into blobs, often mirrored, so they look like shapes. A picture is kept only if the line solver finishes it, which proves one solution and no guessing; harder tiers keep the picture that needs the most sweeps. Clues are capped (3 to 5 numbers per line) so they fit beside the board on a phone. Generating takes a few milliseconds.
   - Tap to fill, tap again to clear; drag to paint along a row or column. **Cross** mode marks cells that stay empty (optional; crosses disappear when the picture is done). Clues dim when their line matches, and turn red when they can't fit any more (with "Show clashes" on).
   - Hints settle one whole line: "Every way to fit 6 3 into this row fills the blinking cells."
   - Tests: unique solution, the clues match the picture, hints from an empty board only ever agree with the picture, fingerprints. The levels of the other four types are unchanged.
-
-**Decided**
-- Nonogram takes Takuzu's place as the second tab; Takuzu moves to the end, after Calcudoku. Takuzu stays: its levels, progress and daily are unchanged.
-- On phones the five "Today" cards show icon and difficulty only; the names didn't fit.
-
 - **A new big game: Emberholm** (working title), a single-player open-world RPG for phones in landscape. Quests, levels, loot, gear and crafting, with survival (food, warmth, night) as the threat of the wilds. Nordic mood; a high chase camera; combat on **Attack** and **Parry** (a timed parry earns a riposte). The plan, scope and milestones are in [docs/EMBERHOLM.md](docs/EMBERHOLM.md).
-
 - **Emberholm M0, walk** ([docs/EMBERHOLM.md](docs/EMBERHOLM.md#m0-as-built)): a Nordic island generated from a seed (coast, hills, the Fells, a bog) with ten hand-placed places (Wreck Beach, the village Brandvik with its great fire, barrows, a mill, a raider camp, a beacon hill…), low-poly trees and rocks, a hero animated in code, a high chase camera, a floating stick and camera drag in landscape, 24-minute days (14 light, 10 night) with a lantern at night, place names as you walk in, a minimap and a map of the whole island, quality and frame-rate settings and a performance overlay. Built on three.js r186 as ES modules (`shared/vendor/three-r186/`).
   - Tests: the island's fingerprints, places, walking blocked by deep water, trees and houses, the day's length (Node); stick, camera, keyboard, map, pause, saving and portrait in a phone browser.
 
 **Decided**
+- Nonogram takes Takuzu's place as the second tab; Takuzu moves to the end, after Calcudoku. Takuzu stays: its levels, progress and daily are unchanged.
+- On phones the five "Today" cards show icon and difficulty only; the names didn't fit.
+- Bubble shooter: named **Bubbleworks** (the name "Bubble Blast" is taken by another game), space theme, Endless pushes by shots rather than a clock, and stardust follows the arcade's economy rules.
 - Emberholm: nights a little shorter than days (14 + 10 minutes); the death cairn stays as the sting; healing from food first, flasks later; a companion dog later.
 - Emberholm is experimental for now, like Camper Crew: playable in `npm run dev` and in test builds, left out of release builds (with three.js r186, which is unminified at 2.1 MB) until it's further along.
 

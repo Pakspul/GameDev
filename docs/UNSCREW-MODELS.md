@@ -14,7 +14,7 @@ games/unscrew/models/
   order.js      MODEL_ORDER: the fixed order of all models in the level shuffle; it builds GENS3D for game.js
 ```
 
-✅ = in the game. The other entries are ideas: pick one, build it, tick it here.
+✅ = in the game. "realism" = in the game as a Blender model in realism mode only. The other entries are ideas: pick one, build it, tick it here.
 
 ### 1. Houses (`houses.js`)
 
@@ -23,6 +23,7 @@ games/unscrew/models/
 | Cottage | ✅ | Planked walls, gabled roof, chimney, fence, garden props |
 | Villa | ✅ | Modern: two floors, flat roofs, glass balustrade, solar panels, pool with a screwed-on rim |
 | Dutch canal house | ✅ | A row of one to three tall, narrow houses on a canal: brick courses, stepped gables, hoist beams, pairs of sash windows, a moored boat |
+| Medieval house | realism | Made in Blender for realism mode ([UNSCREW-BLENDER.md](UNSCREW-BLENDER.md#the-medieval-house)): a timber-framed house of three storeys and an attic, every room furnished (kitchen with hearth, living room, bedroom, a bathroom with a bucket shower, a children's room, a study, a loft), in a garden with a tree, a well and a vegetable bed. About 300 parts and 400 to 500 screws |
 | Farmhouse with barn | | House plus a barn with big doors, a silo (cylinder plus cladding), hay bales (boxes) |
 | Log cabin | | Walls of horizontal round logs (cylinders lying down), a stone chimney, a porch |
 | Houseboat | | A hull on blue water, a cabin on deck, plant pots, a gangway |
@@ -47,7 +48,7 @@ games/unscrew/models/
 | Turtle | ✅ | A tiered shell: rims of scutes around two cores, hexagonal plates on top that each hide a screw; flippers, a head on a neck, a pond |
 | Elephant | | Big ears as plates, a trunk of stacked cylinders, a saddle blanket |
 | Dinosaur (stegosaurus) | | A row of back plates and a spiked tail |
-| Owl | | A round body, feather plates in rows, big eyes, on a branch |
+| Owl | realism | Made in Blender for realism mode ([UNSCREW-BLENDER.md](UNSCREW-BLENDER.md)): on a tree stump with feather plates, wings, ear tufts, facial discs, mushrooms, ivy and acorns. Not yet a 3D generator |
 | Cow | | Patches like the giraffe's spots, a bell, in a little meadow with a fence |
 | Penguin | | On an ice floe, with a fish |
 | Crab | | A wide shell, claws and legs on both sides |
